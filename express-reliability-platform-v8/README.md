@@ -1,41 +1,97 @@
-# Express Reliability Platform V7
+
+# Express Reliability Platform V8
 
 ## Chapters Covered
-- Chapter 25: Multi-Region Deployment and Disaster Recovery
-- Chapter 26: Advanced Scaling and High Availability
-- Chapter 27: Automated Backups and Data Protection
-- Chapter 28: Global Monitoring and Alerting
-- Chapter 29: Customizing for Enterprise Use Cases
+- Chapter 30: Multi-Region Deployment and Disaster Recovery
+- Chapter 31: Advanced Scaling and High Availability
+- Chapter 32: Automated Backups and Data Protection
+- Chapter 33: Global Monitoring and Alerting
+- Chapter 34: Customizing for Enterprise Use Cases
 
-## Quick Start (For Beginners)
 
-1. **Sign up for AWS**: Go to [aws.amazon.com](https://aws.amazon.com/) and create a free account.
-2. **Install Prerequisites**:
-   - Install [Git](https://git-scm.com/downloads)
-   - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
-   - Install [Helm](https://helm.sh/docs/intro/install/)
-3. **Clone the Project**:
-   ```sh
-   git clone <URL-of-this-repo>
-   cd express-reliability-platform-course/express-reliability-platform-v7
-   ```
-4. **Configure Your Environment**:
-   - Open `environments/live/live.tfvars` and `environments/shared/shared.tfvars` in a text editor.
-   - Make sure your region is set to `us-east-1` (or add more regions for multi-region setup).
-5. **Deploy the Platform**:
-   ```sh
-   cd environments/live
-   terraform init
-   terraform plan -out=tfplan
-   terraform apply tfplan
-   ```
-6. **Access the UI Portal**:
-   - After deployment, run:
-     ```sh
-     terraform output
-     ```
-   - Copy the `ui_portal_url` and paste it into your browser.
-   - You should see the UI portal. From here, you can access fintech and hospital services across regions.
+## ArgoCD-Based Deployment & Administration
+
+Version 8 introduces GitOps-based deployment and administration using [ArgoCD](https://argo-cd.readthedocs.io/). All platform services (Fintech, Hospital, UI Portal) are now managed as Kubernetes manifests and Helm charts, deployed and updated via ArgoCD for reliability, scalability, and disaster recovery.
+
+### Key Features
+- **Multi-Region Deployment**: Use ArgoCD ApplicationSets to deploy services across multiple clusters/regions.
+- **Disaster Recovery**: Automated sync and rollback using ArgoCD.
+- **Advanced Scaling & High Availability**: Kubernetes-native scaling, managed by ArgoCD and Helm.
+- **Automated Backups & Data Protection**: Integrate backup jobs and policies as Kubernetes resources.
+- **Global Monitoring & Alerting**: Deploy Prometheus, Grafana, and Alertmanager via ArgoCD. Integrate with AWS CloudWatch using exporters.
+- **Enterprise Customization**: Use Helm values and overlays for compliance, integrations, and automation.
+
+---
+
+## Quick Start (ArgoCD)
+
+1. **Install Prerequisites**:
+   - [Git](https://git-scm.com/downloads)
+   - [kubectl](https://kubernetes.io/docs/tasks/tools/)
+   - [Helm](https://helm.sh/docs/intro/install/)
+   - [ArgoCD CLI](https://argo-cd.readthedocs.io/en/stable/cli_install/)
+2. **Provision EKS Clusters**:
+   - Use Terraform in `environments/live` and `environments/shared` to create EKS clusters in each region.
+3. **Install ArgoCD**:
+   - Follow [ArgoCD install guide](https://argo-cd.readthedocs.io/en/stable/getting_started/) for each cluster.
+4. **Bootstrap Platform Apps**:
+   - Push manifests/Helm charts for fintech, hospital, and UI portal to your Git repo.
+   - Create ArgoCD Applications or ApplicationSets for each service/region.
+5. **Sync & Manage Deployments**:
+   - Use ArgoCD UI or CLI to sync, rollback, and monitor deployments.
+
+---
+
+## Example ArgoCD ApplicationSet (Multi-Region)
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: express-reliability-platform-multiregion
+spec:
+  generators:
+    - list:
+        elements:
+          - cluster: us-east-1
+          - cluster: us-west-2
+  template:
+    metadata:
+      name: express-reliability-platform-{{cluster}}
+    spec:
+      project: default
+      source:
+        repoURL: <your-git-repo-url>
+        path: manifests/{{cluster}}
+        targetRevision: HEAD
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: express-reliability-platform
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+```
+
+---
+
+## Monitoring & Alerting
+- Deploy Prometheus, Grafana, and Alertmanager using ArgoCD Applications.
+- Use exporters for AWS CloudWatch integration.
+- Configure global alerting policies in Helm values.
+
+---
+
+## Enterprise Customization
+- Use overlays and Helm values for compliance, integrations, and automation.
+- Example: `manifests/overlays/enterprise/values.yaml`
+
+---
+
+## Next Steps
+- Continue to the next chapters for advanced GitOps, scaling, and enterprise features.
+- See `manifests/` and `charts/` folders for example Kubernetes manifests and Helm charts.
+
+---
 
 ---
 
@@ -50,20 +106,21 @@
 
 ---
 
-## Chapter 25: Multi-Region Deployment and Disaster Recovery
-Learn how to use Terraform to deploy resources in multiple AWS regions and set up disaster recovery strategies.
 
-## Chapter 26: Advanced Scaling and High Availability
-Configure auto-scaling groups, load balancers, and multi-AZ deployments for high availability and scalability.
+## Chapter 30: Multi-Region Deployment and Disaster Recovery
+Deploy platform services (Fintech, Hospital, UI Portal) across multiple Kubernetes clusters/regions using ArgoCD ApplicationSets. Achieve disaster recovery with automated sync, rollback, and cluster failover managed by ArgoCD.
 
-## Chapter 27: Automated Backups and Data Protection
-Set up automated backups for databases and critical data. Use AWS Backup and cross-region replication.
+## Chapter 31: Advanced Scaling and High Availability
+Leverage Kubernetes-native scaling (HPA, multi-AZ clusters) and high availability for all services. Use ArgoCD and Helm to manage scalable deployments and ensure uptime across regions.
 
-## Chapter 28: Global Monitoring and Alerting
-Implement global monitoring with Prometheus, Grafana, and AWS CloudWatch. Set up alerting for all regions.
+## Chapter 32: Automated Backups and Data Protection
+Integrate backup jobs and data protection policies as Kubernetes resources. Use ArgoCD to deploy and manage backup solutions, ensuring automated and reliable data protection for all services.
 
-## Chapter 29: Customizing for Enterprise Use Cases
-Learn how to adapt the platform for enterprise requirements, including compliance, integrations, and advanced automation.
+## Chapter 33: Global Monitoring and Alerting
+Deploy Prometheus, Grafana, and Alertmanager via ArgoCD. Integrate AWS CloudWatch exporters and configure global alerting policies using Helm values and overlays for comprehensive monitoring.
+
+## Chapter 34: Customizing for Enterprise Use Cases
+Adapt the platform for enterprise requirements using Helm overlays, custom values, and ArgoCD projects. Enable compliance, integrations, and advanced automation for enterprise-scale deployments.
 
 ---
 
