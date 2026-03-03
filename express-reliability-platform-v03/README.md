@@ -1,101 +1,109 @@
-# Express Reliability Platform V3 — Orchestration & Identity Foundations
+# Express Reliability Platform V3 — Orchestration + Identity Foundations
 
-## Chapters Covered
-- Chapter 6: From Local Coordination to Cloud Identity Foundations
-- Chapter 7: Cloud Orchestration with Amazon ECS (Including Load Balancer)
-- Chapter 8: From Manual Deployment to Automated Delivery
+## 1) Version Purpose
 
-## Overview
-Version 3 builds on Version 2 by introducing orchestration and identity. You will learn to coordinate multiple services locally with Docker Compose, set up AWS IAM and OIDC for secure cloud access, deploy to ECS with load balancing, and automate delivery with CI/CD pipelines.
+Coordinate all services together locally, then establish secure cloud identity and deploy the platform to ECS behind an Application Load Balancer.
 
----
+## 2) Chapters Covered
 
-## Part 1: Manual Provisioning & Deployment
+- Chapter 6 (Part 1): Local Orchestration with Docker Compose
+- Chapter 7 (Part 2): Cloud Identity Foundations (AWS IAM + OIDC)
+- Chapter 8 (Part 3): Cloud Orchestration with ECS + ALB
 
-### Local Orchestration
-- Use Docker Compose to run Node API, Flask API, and Web UI together:
-  ```sh
-  docker-compose up --build
-  ```
-- Access services:
-  - Node API: [http://localhost:3000](http://localhost:3000)
-  - Flask API: [http://localhost:5000](http://localhost:5000)
-  - Web UI: [http://localhost:8080](http://localhost:8080)
-- Stop services:
-  ```sh
-  docker-compose down
-  ```
+## 3) What You Will Build
 
-### Cloud Identity Setup (IAM & OIDC)
-1. **Create AWS Account**: [https://aws.amazon.com](https://aws.amazon.com)
-2. **Enable MFA on root account** and store credentials securely
-3. **Create IAM Group** (e.g., `b2m-cloud-engineers`)
-   - Attach managed policies for sandbox or least privilege (see chapters)
-4. **Create IAM User** (e.g., `b2m-deployer`)
-   - Enable programmatic access
-   - Add to IAM group
-   - Download credentials
-5. **Install AWS CLI**: [https://aws.amazon.com/cli/](https://aws.amazon.com/cli/)
-   - Configure with `aws configure`
-6. **Set Up OIDC for CI/CD**
-   - IAM > Identity Providers > Add Provider (OpenID Connect)
-   - Provider URL: `https://token.actions.githubusercontent.com`
-   - Audience: `sts.amazonaws.com`
-   - Create IAM Role for GitHub OIDC provider
-   - Restrict to your repo: `repo:YOUR_GITHUB_USERNAME/express-reliability-platform-v3:ref:refs/heads/main`
-   - Attach policies (Admin for sandbox, least privilege for production)
+- A 3-service local stack with one command.
+- IAM/OIDC setup for secure CI/CD access.
+- ECS deployment flow supported by scripts in `scripts/`.
 
-### Manual ECS Deployment
-- Create ECR repositories for each service
-- Build, tag, and push Docker images to ECR
-- Create ECS cluster and task definitions
-- Deploy services using AWS Fargate
-- Attach Application Load Balancer (ALB)
-- Test public access via ALB DNS
+## 4) Architecture Diagram (Mermaid)
 
----
+```mermaid
+flowchart LR
+    User[Browser] --> ALB[AWS ALB]
+    ALB --> ECS[ECS Services]
+    ECS --> Node[Node API]
+    ECS --> Flask[Flask API]
+    ECS --> UI[Web UI]
+    GH[GitHub Actions] --> OIDC[OIDC Role Assumption]
+    OIDC --> ECR[ECR Images]
+    ECR --> ECS
+```
 
-## Part 2: Automated Provisioning & Deployment (GitHub Actions)
+## 5) Project Structure
 
-### CI/CD Automation
-- Set up `.github/workflows/deploy.yml` in your repo
-- Configure GitHub secrets for AWS credentials and OIDC
-- Workflow steps:
-  1. Checkout code
-  2. Configure AWS credentials (OIDC role assumption)
-  3. Login to ECR
-  4. Build and push Docker images
-  5. Update ECS service for new deployment
-- Example workflow:
-  ```yaml
-  name: Deploy to ECS
-  on:
-    push:
-      branches:
-        - main
-  jobs:
-    deploy:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout code
-          uses: actions/checkout@v4
-        - name: Configure AWS credentials
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            role-to-assume: arn:aws:iam::ACCOUNT_ID:role/b2m-github-actions-role
-            aws-region: us-east-1
-        # ...build, tag, push, update ECS steps...
-  ```
-- On every push to main, your platform is built, pushed, and deployed automatically.
+```text
+express-reliability-platform-v03/
+├── apps/
+│   ├── node-api/
+│   ├── flask-api/
+│   └── web-ui/
+├── docker-compose.yml
+├── scripts/
+│   ├── provision_iam_oidc.sh
+│   ├── create_ecr_repos.sh
+│   ├── build_tag_push_ecr.sh
+│   ├── create_ecs_cluster_and_tasks.py
+│   └── deploy_to_ecs.sh
+└── README.md
+```
 
----
+## 6) Run Steps
 
-## What I Learned
-- How to orchestrate multiple services locally
-- How to set up secure cloud identity and access (IAM & OIDC)
-- How to deploy and scale with ECS and ALB
-- How to automate delivery with GitHub Actions CI/CD
+### Part 1 — Local Compose
 
----
+```sh
+docker compose up --build
+```
 
-**Next:** In Version 4, you will add observability, monitoring, and stress testing to your platform.
+Endpoints:
+
+- Node API: `http://localhost:3000`
+- Flask API: `http://localhost:5000`
+- Web UI: `http://localhost:8080`
+
+Stop stack:
+
+```sh
+docker compose down
+```
+
+### Part 2 — IAM + OIDC Foundation
+
+1. Create AWS IAM users/groups with least privilege.
+2. Configure GitHub OIDC trust for your repository.
+3. Use `scripts/provision_iam_oidc.sh` as your bootstrap helper.
+
+### Part 3 — ECS + ALB Deployment
+
+Run scripts in order:
+
+```sh
+./scripts/create_ecr_repos.sh
+./scripts/build_tag_push_ecr.sh
+python3 scripts/create_ecs_cluster_and_tasks.py
+./scripts/deploy_to_ecs.sh
+```
+
+## 7) Validation Checklist
+
+- [ ] Compose starts all 3 services.
+- [ ] Local endpoints return expected responses.
+- [ ] ECR repositories are created.
+- [ ] ECS services become healthy and reachable through ALB.
+- [ ] OIDC-based deployment authentication works from CI/CD.
+
+## 8) Troubleshooting
+
+- Compose fails: run `docker compose logs` and fix the first service error.
+- AWS auth errors: verify role trust policy and region configuration.
+- ECS health check fails: confirm container port mappings and task definition.
+
+## 9) Cleanup
+
+- Local: `docker compose down`.
+- Cloud: remove ECS services/tasks, ALB, and test ECR images when done.
+
+## 10) Next Version Preview
+
+In V4, you add Prometheus + Grafana and begin reliability simulation through stress and failure scenarios.
