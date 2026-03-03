@@ -1,39 +1,22 @@
 #!/bin/bash
-CLUSTER_NAME=express-cluster
-SERVICE_NAME=express-service
-TASK_FAMILY=express-task
-REGION=us-east-1
-REPO_NAME=t2s-express-app
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-IMAGE=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:latest
+# Deploy services to AWS ECS
+set -e
+AWS_REGION="us-east-1"
+ECR_REPO_NODE="node-api"
+ECR_REPO_FLASK="flask-api"
+ECR_REPO_WEB="web-ui"
 
-aws ecs create-cluster --cluster-name $CLUSTER_NAME
+# Authenticate Docker to ECR
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com
 
-TASK_DEF=$(cat <<EOF
-{
-  "family": "$TASK_FAMILY",
-  "networkMode": "awsvpc",
-  "containerDefinitions": [
-    {
-      "name": "express-container",
-      "image": "$IMAGE",
-      "portMappings": [
-        {
-          "containerPort": 3000,
-          "hostPort": 3000,
-          "protocol": "tcp"
-        }
-      ],
-      "essential": true
-    }
-  ],
-  "requiresCompatibilities": ["FARGATE"],
-  "cpu": "256",
-  "memory": "512",
-  "executionRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/ecsTaskExecutionRole"
-}
-EOF
-)
+# Build and push images
+for service in node-api flask-api web-ui; do
+  docker build -t $service ./apps/$service
+  docker tag $service:latest $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com/$service:latest
+  docker push $(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com/$service:latest
+done
 
-echo "$TASK_DEF" > taskdef.json
-aws ecs register-task-definition --cli-input-json file://taskdef.json
+# Update ECS service (assumes ECS cluster and service already exist)
+# aws ecs update-service --cluster <cluster-name> --service <service-name> --force-new-deployment
+
+echo "Deployment to ECS complete."

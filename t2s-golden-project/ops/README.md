@@ -1,3 +1,0 @@
-# ops
-
-Documentation for ops.

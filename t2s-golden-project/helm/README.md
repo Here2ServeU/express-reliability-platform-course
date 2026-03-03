@@ -1,3 +1,0 @@
-# helm
-
-Documentation for helm.

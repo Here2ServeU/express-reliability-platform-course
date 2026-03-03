@@ -1,3 +1,0 @@
-# aiops
-
-Documentation for aiops.

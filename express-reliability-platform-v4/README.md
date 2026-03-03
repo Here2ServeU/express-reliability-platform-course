@@ -1,107 +1,62 @@
-# Express Reliability Platform — Version 4 (ECS + CI/CD)
+# Express Reliability Platform V4 — Observability & Monitoring
 
-This repository represents **Version 4** of the Express Reliability Platform.
+## Chapters Covered
+- Chapter 9: Observability, Monitoring, and Stress Testing
+- Chapter 10: Building a Feedback Loop for Reliability
 
-Version 4 focuses on:
-
-- Cloud Orchestration using Amazon ECS (Fargate)
-- Infrastructure as Code using Terraform
-- CI/CD automation using GitHub Actions
-- Real-world Bank (FinTech) and Hospital (Healthcare) simulation components
+## Overview
+Version 4 introduces observability and monitoring to your platform. You will learn to instrument your services for metrics and logs, set up Prometheus and Grafana for monitoring, and perform stress testing to ensure reliability. This version builds on the orchestration and cloud deployment foundations from version 3.
 
 ---
 
-# Architecture Overview (V4)
+## Part 1: Observability & Monitoring Setup
 
-Local Development → Docker Images → Amazon ECR → Amazon ECS (Fargate) → ALB → Public Endpoint  
-GitHub Push → GitHub Actions → Build → Push → Deploy ECS
+### Instrument Services
+- Add metrics endpoints to Node API and Flask API (e.g., `/metrics`)
+- Log key events and errors in all services
 
----
+### Monitoring Stack
+- Add Prometheus and Grafana services to `docker-compose.yml`
+- Configure Prometheus to scrape metrics from Node API and Flask API
+- Use Grafana dashboards to visualize metrics
 
-# Folder Structure
+### Example Prometheus Service (docker-compose):
+```yaml
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+```
 
-express-reliability-platform/
-├── apps/
-├── simulators/
-├── infra/aws/ecs/
-├── .aws/
-├── .github/workflows/
-├── docker-compose.yml
-└── README.md
-
----
-
-# Step 1 — Build & Push Images to ECR
-
-export AWS_REGION="us-east-1"
-export AWS_ACCOUNT_ID="123456789012"
-
-aws ecr create-repository --repository-name node-api || true
-aws ecr create-repository --repository-name flask-api || true
-
-aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-
-docker build -t node-api:v1 apps/node-api
-docker tag node-api:v1 $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/node-api:v1
-docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/node-api:v1
-
-docker build -t flask-api:v1 apps/flask-api
-docker tag flask-api:v1 $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/flask-api:v1
-docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/flask-api:v1
+### Example Grafana Service (docker-compose):
+```yaml
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+```
 
 ---
 
-# Step 2 — Provision Infrastructure (Terraform)
+## Part 2: Stress Testing & Feedback Loop
 
-cd infra/aws/ecs
-terraform init
-terraform apply
+### Stress Testing
+- Use tools like `hey`, `ab`, or `locust` to simulate load
+- Monitor service health and resource usage during tests
 
----
-
-# Step 3 — CI/CD Pipeline (GitHub Actions)
-
-Every push to main branch:
-1) Builds Docker images
-2) Pushes to ECR
-3) Updates ECS task definitions
-4) Deploys services
-
-Required GitHub Secrets:
-- AWS_REGION
-- AWS_ACCOUNT_ID
-- AWS_ROLE_TO_ASSUME
-- ECS_CLUSTER_NAME
-- ECS_NODE_SERVICE_NAME
-- ECS_FLASK_SERVICE_NAME
-- ECS_TASKDEF_NODE_PATH
-- ECS_TASKDEF_FLASK_PATH
+### Feedback Loop
+- Set up alerting in Grafana for error rates, latency, and resource exhaustion
+- Use monitoring insights to improve reliability and scalability
 
 ---
 
-# Real-World Components
-
-Bank:
-- /bank/login
-- /bank/balance
-- /bank/transfer
-
-Hospital:
-- /hospital/checkin
-- /hospital/vitals
-- /hospital/med-order
-
-Simulators generate load and stress conditions.
+## What I Learned
+- How to instrument services for observability
+- How to monitor metrics and logs with Prometheus and Grafana
+- How to perform stress testing and use feedback to improve reliability
 
 ---
 
-# Version 4 Outcome
-
-You now have:
-- ECS cluster
-- Terraform-managed infra
-- Automated CI/CD
-- Real fintech + healthcare simulation
-- Public cloud endpoint
-
-Author: Emmanuel Naweji
+**Next:** In Version 5, you will add advanced security, compliance, and cost optimization features to your platform.

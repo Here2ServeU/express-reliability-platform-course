@@ -1,3 +1,0 @@
-# app
-
-Documentation for app.

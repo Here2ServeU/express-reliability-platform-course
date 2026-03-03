@@ -1,3 +1,0 @@
-# observability
-
-Documentation for observability.

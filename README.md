@@ -1,80 +1,35 @@
-# Express Web App to Enterprise AIOps Curriculum
+# Express Reliability Platform — IT Career Acceleration Playbook
 
-This repository provides a comprehensive, hands-on journey from local Node.js development to managing an enterprise-grade, AI-driven cloud platform. It mirrors architecture used by industry leaders like Netflix and Shopify.
+Welcome to the Express Reliability Platform, a step-by-step guide from beginner to professional, built for IT career acceleration. This project evolves through ten versions (v1 to v10), each representing a major milestone in your journey from running a local app to deploying cloud-native, production-grade systems.
 
-## Curriculum Roadmap
+## Project Structure
+- express-reliability-platform-v1: Local foundation
+- express-reliability-platform-v2: Portable containerized system
+- express-reliability-platform-v3: Orchestration & Identity (Chapters 6–8)
+- express-reliability-platform-v4: Observability & Stress Testing (Chapter 9)
+- express-reliability-platform-v5: Kubernetes & Self-Healing (Chapter 10)
+- express-reliability-platform-v6: Infrastructure as Code (Chapter 11)
+- express-reliability-platform-v7: Internet Exposure & Observability as Code (Chapter 12)
+- express-reliability-platform-v8: Intelligence Infrastructure (Chapter 13)
+- express-reliability-platform-v9: Cyber-Physical Reliability (Chapter 14)
+- express-reliability-platform-v10: Autonomous, Quantum-Augmented, DevSecOps (Chapters 15–16)
 
-### Phase 1: Foundations & Containerization
+Each version includes:
+- A dedicated README guide
+- Practical steps grouped by chapters
+- Professional documentation and structure
 
-* **v1: Local Development**: Build a robust foundation using Node.js and Express.
-* **v2: Docker & AWS Registry**: Package the app into an immutable container and push it to **AWS ECR**.
+## About the Author
+This playbook is based on real-world experience working with companies like Comcast, Octo, IBM, and more, plus PhD research at National University. The goal is to accelerate your IT career with proven, repeatable systems.
 
-### Phase 2: Orchestration & Infrastructure as Code (IaC)
+## License
+See LICENSE for usage terms.
 
-* **v3 & v4: Terraform Automation**: Use **Terraform** to provision AWS ECS, VPCs, and Load Balancers.
-* **v5: Enterprise Kubernetes (EKS)**: Deploy a scalable cluster on **Amazon EKS** with an **AWS ALB Controller**.
-
-### Phase 3: Modern Ops (AIOps, GitOps & FinOps)
-
-* **v6: Enterprise Modernization**: Implement **ArgoCD** for GitOps, **Prometheus/Grafana** for observability, and custom **AIOps** engines for anomaly detection.
-* **AIOps Demo**: Includes a specialized module for human-in-the-loop remediation via Slack.
-
----
-
-## Foundational Setup: t2s-iam-oidc-foundation
-
-This foundation establishes secure, production-style authentication between GitHub Actions and AWS using OpenID Connect (OIDC), eliminating long-lived access keys.
-
-### Why OIDC?
-
-* **No static keys to leak**: Credentials are short-lived and auditable.
-* **Granular Control**: Access is restricted by specific repository and branch.
-
-### Quick Start
-
-1. **Create OIDC Provider**: Run `bash 00-oidc-provider/create_oidc_provider.sh`.
-2. **Create Least-Privilege Roles**: Roles are available for both **ECS** and **EKS** pipelines.
-3. **Configure Environment Variables**:
-```bash
-export AWS_REGION="us-east-1"
-export AWS_ACCOUNT_ID="123456789012"
-export GITHUB_ORG="Here2ServeU"
-export GITHUB_REPO="express-t2s-collection"
-
-```
-
----
-## Author
-
-By Emmanuel Naweji, 2025  
-**Cloud | DevOps | SRE | FinOps | AI Engineer**  
-Helping businesses modernize infrastructure and guiding engineers into top 1% career paths through real-world projects and automation-first thinking.
-
-![AWS Certified](https://img.shields.io/badge/AWS-Certified-blue?logo=amazonaws)
-![Azure Solutions Architect](https://img.shields.io/badge/Azure-Solutions%20Architect-0078D4?logo=microsoftazure)
-![CKA](https://img.shields.io/badge/Kubernetes-CKA-blue?logo=kubernetes)
-![Terraform](https://img.shields.io/badge/IaC-Terraform-623CE4?logo=terraform)
-![GitHub Actions](https://img.shields.io/badge/CI/CD-GitHub%20Actions-blue?logo=githubactions)
-![GitLab CI](https://img.shields.io/badge/CI/CD-GitLab%20CI-FC6D26?logo=gitlab)
-![Jenkins](https://img.shields.io/badge/CI/CD-Jenkins-D24939?logo=jenkins)
-![Ansible](https://img.shields.io/badge/Automation-Ansible-red?logo=ansible)
-![ArgoCD](https://img.shields.io/badge/GitOps-ArgoCD-orange?logo=argo)
-![VMware](https://img.shields.io/badge/Virtualization-VMware-607078?logo=vmware)
-![Linux](https://img.shields.io/badge/OS-Linux-black?logo=linux)
-![FinOps](https://img.shields.io/badge/FinOps-Cost%20Optimization-green?logo=money)
-![OpenAI](https://img.shields.io/badge/AI-OpenAI-ff9900?logo=openai)
+## How to Use
+1. Start with v1 and follow the README guide.
+2. Progress through each version, learning new skills and concepts.
+3. Use the guides to build, run, and deploy real applications.
 
 ---
 
-## Connect with Me
-
-- [LinkedIn](https://www.linkedin.com/in/ready2assist/)
-- [GitHub](https://github.com/Here2ServeU)
-- [My Website](https://www.emmanuelnaweji.com)
-
----
-
-## Book a Free Consultation
-- If you want me to help you with DevOps/Cloud/AI skills. 
-- If you want me to help modernize your cloud infrastructure, DevOps, or AI strategy.  
-👉🏾 [Let's Keep in Touch](https://www.emmanuelnaweji.com/hire-me)
+For details on each version, see the README inside each folder.

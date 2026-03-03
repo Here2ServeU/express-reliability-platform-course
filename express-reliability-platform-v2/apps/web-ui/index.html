@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Express Reliability Platform V2</title>
+</head>
+<body>
+  <h2>Express Reliability Platform — Version 2</h2>
+
+  <input id="input" placeholder="Enter value">
+  <button onclick="run()">Score</button>
+
+  <pre id="output"></pre>
+
+  <script>
+    async function run() {
+      const value = document.getElementById("input").value;
+      const response = await fetch(`http://localhost:3000/score?input=${value}`);
+      const data = await response.json();
+      document.getElementById("output").textContent =
+        JSON.stringify(data, null, 2);
+    }
+  </script>
+</body>
+</html>

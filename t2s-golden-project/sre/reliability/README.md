@@ -1,3 +1,0 @@
-# reliability
-
-Documentation for reliability.

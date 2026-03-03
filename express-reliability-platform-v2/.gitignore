@@ -1,35 +1,6 @@
-# Node.js dependencies
-node_modules/
-
-# Logs
-logs
-*.log
-npm-debug.log*
-
-# OS-specific files
-.DS_Store
-Thumbs.db
-
-# Environment variables
+node_modules
 .env
-.env.local
-.env.*.local
-
-# Yarn
-yarn.lock
-
-# VS Code settings
-.vscode/
-
-# Terraform files and directories
-*.tfstate
-*.tfstate.*
-.terraform/
-.terraform.lock.hcl
-crash.log
-*.tfvars.backup
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-terraform.tfvars.json
+__pycache__
+*.pyc
+dist
+build
