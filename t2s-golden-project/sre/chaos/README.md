@@ -1,3 +1,0 @@
-# chaos
-
-Documentation for chaos.

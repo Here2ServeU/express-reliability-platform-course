@@ -1,3 +1,0 @@
-# dr
-
-Documentation for dr.

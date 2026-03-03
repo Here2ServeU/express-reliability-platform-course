@@ -1,3 +1,0 @@
-# sre
-
-Documentation for sre.

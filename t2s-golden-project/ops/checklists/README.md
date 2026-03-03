@@ -1,3 +1,0 @@
-# checklists
-
-Documentation for checklists.

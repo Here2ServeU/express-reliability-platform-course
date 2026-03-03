@@ -1,11 +1,13 @@
-const express = require('express');
+const express = require("express");
 const app = express();
-const path = require('path');
-
-// Serve static files from the 'public' directory
-app.use(express.static('public'));
-
 const PORT = 3000;
+
+app.use(express.static("public"));
+
+app.get("/health", (req, res) => {
+  res.json({ status: "healthy" });
+});
+
 app.listen(PORT, () => {
-  console.log(`Emmanuel Services app running at http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });

@@ -1,3 +1,0 @@
-# workflows
-
-Documentation for workflows.

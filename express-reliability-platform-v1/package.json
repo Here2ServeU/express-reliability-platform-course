@@ -1,16 +1,12 @@
 {
-  "name": "express-t2s-app",
-  "version": "1.0.1",
-  "description": "This app helps our client resolve key issues using Node.js and Express.js",
+  "name": "express-reliability-platform-v1",
+  "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "install": "npm install"
   },
-  "keywords": ["nodejs", "express", "web-app", "api", "T2S"],
-  "author": "Dr. Emmanuel N.",
-  "license": "T2S",
-  "type": "commonjs",
   "dependencies": {
-    "express": "^5.1.0"
+    "express": "^4.19.2"
   }
 }

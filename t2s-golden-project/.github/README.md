@@ -1,3 +1,0 @@
-# .github
-
-Documentation for .github.

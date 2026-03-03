@@ -1,145 +1,120 @@
-# Getting Started with express-t2s-app-v1
+# Express Reliability Platform V1 — Local Foundation
 
-Welcome to **express-t2s-app-v1**, the foundation of your journey toward building a cloud-native, DevOps-ready application using Node.js and Express.
+## Chapters Covered
+- Chapter 1: What You Are Building and Why It Matters
+- Chapter 2: Running the App on Your Computer
+- Chapter 3: From Shared Platform to Your Working Version
 
-This version sets up a simple web server and introduces you to key concepts like HTTP, Express routing, and serving HTML pages.
+## Overview
+Version 1 is your starting point. You will learn what a web application is, why structure matters, and how to run the app locally with confidence. This version reflects the practical steps I took to rapidly transition into senior-level IT roles from a full-time pastoral ministry background.
 
----
+## Architecture
+- **Express app**: Receives requests, sends responses
+- **Local only**: Runs on your computer, not the cloud
 
-## What You’ll Learn
+## Prerequisites
+- Node.js
+- Git
+- Visual Studio Code
 
-- How to run a basic Express.js app locally  
-- How the code is structured  
-- How to test the app in your browser  
-- Basic debugging and port setup
+## Run Locally
+After you have pushed your project to your own GitHub repository, you can run it locally:
 
----
+1. Install Node.js, Git, and VS Code (see chapter instructions)
+2. Clone your repository from GitHub:
+   ```sh
+   git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v1.git
+   cd express-reliability-platform-v1
+   ```
+3. Install dependencies:
+   ```sh
+   npm install
+   ```
+4. Start the app:
+   ```sh
+   npm start
+   ```
+5. Open your browser at [http://localhost:3000](http://localhost:3000)
 
-## Requirements
+## Project Structure
+- `package.json`: App info + dependencies
+- `index.js`: Server entry point
+- `public/index.html`: Webpage users see
+- `node_modules/`: Installed packages
+- `.gitignore`: Files Git should ignore
+- `README.md`: Project instructions
 
-Before you start, make sure you have:
-
-| Tool          | How to Install                                                  |
-|---------------|-----------------------------------------------------------------|
-| **Node.js**   | https://nodejs.org/ (Download and install the LTS version)      |
-| **Git**       | https://git-scm.com/downloads                                   |
-| **Terminal**  | Use Terminal (Mac/Linux) or PowerShell (Windows)                |
-| **VS Code**   | (Recommended) https://code.visualstudio.com/                    |
-
----
-
-## Folder Structure
-
-Here’s what’s inside this version:
-
-```
-express-t2s-app-v1/
-├── public/              # Static HTML/CSS files served to the browser
-│   └── index.html       # Home page
-├── index.js             # Main application file (starts the server)
-├── package.json         # Project metadata + dependencies
-├── package-lock.json    # Dependency lock file
-└── README.md            # Project info
-```
-
----
-
-## Step-by-Step: Run the App Locally
-
-### 1. Open your terminal and navigate to the project folder
-
-```bash
-cd express-t2s-app-v1
-```
-
-### 2. Install dependencies
-
-This project uses `express`, which is listed in `package.json`. Install it using:
-
-```bash
-npm install
-```
-
-### 3. Start the server
-
-```bash
-node index.js
-```
-
-You should see something like:
-
-```
-Server is running at http://localhost:3000
-```
-
-### 4. View the App in Your Browser
-
-Open your browser and go to:
-
-```
-http://localhost:3000
-```
+## What I Learned
+- What local development means
+- How to install tools and run an app
+- How to read logs and solve beginner problems
+- Why structure and discipline matter
 
 ---
 
-## What’s Happening in the Code
+## How to Make This Your Own Project and Push to GitHub
 
-- `index.js` creates a simple Express web server
-- It uses `express.static()` to serve static files (like HTML, CSS) from the `/public` folder
-- It listens on port `3000` by default
+### 1. Create a GitHub Account
+- Go to [https://github.com](https://github.com)
+- Click **Sign Up** and follow the instructions to create your account
+- Verify your email address
+
+### 2. Configure Git on Your Local Machine
+- Open your terminal
+- Set your name and email (replace with your info):
+  ```sh
+  git config --global user.name "Your Name"
+  git config --global user.email "your.email@example.com"
+  ```
+- (Optional) Generate an SSH key for secure access:
+  ```sh
+  ssh-keygen -t ed25519 -C "your.email@example.com"
+  # Follow prompts, then add the public key to GitHub (Settings > SSH and GPG keys)
+  ```
+
+### 3. Clone the Starter Project to Your Local Machine
+- In your workspace directory, run:
+  ```sh
+  git clone https://github.com/Here2ServeU/express-reliability-platform-course.git
+  cd express-reliability-platform-course/express-reliability-platform-v1
+  ```
+
+### 4. Create a New Repository on Your GitHub Account
+- Log in to GitHub
+- Click the **+** icon (top right) > **New repository**
+- Name it `express-reliability-platform-v1`
+- Add a description (optional)
+- Choose **Public** or **Private**
+- Click **Create repository**
+
+### 5. Initialize Git Locally and Push to Your GitHub
+- In your project folder:
+  ```sh
+  git init
+  git add .
+  git commit -m "Initial commit: my version 1"
+  git branch -M main
+  git remote add origin https://github.com/YOUR_USERNAME/express-reliability-platform-v1.git
+  git push -u origin main
+  ```
+- Replace `YOUR_USERNAME` with your GitHub username
+
+### 6. Troubleshooting Common Issues
+- **Error: Permission denied (publickey)**
+  - Make sure your SSH key is added to GitHub
+  - Or use HTTPS instead of SSH for remote URL
+- **Error: Repository not found**
+  - Double-check the remote URL and your username
+- **Error: Nothing to commit**
+  - Run `git status` to see if files are staged
+  - Use `git add .` to stage all files
+- **Error: Remote rejected**
+  - Make sure you have permission to push
+  - Check if you need to authenticate (login)
+- **General tip:**
+  - Read the first error line, not the last
+  - Search for the error message online or ask for help
 
 ---
 
-## Common Troubleshooting
-
-| Problem                             | Solution                                                      |
-|-------------------------------------|---------------------------------------------------------------|
-| `command not found: node`           | Install Node.js properly and restart your terminal            |
-| Page not loading                    | Ensure server is running (`node index.js`) and open port 3000 |
-| Port 3000 already in use            | Edit `index.js` and change the port to something like `3001`  |
-
----
-
-## Modify and Experiment
-
-- Try editing `index.html` inside `public/` to change the welcome message.
-- Add a new route to `index.js` like `/about`:
-
-```js
-app.get('/about', (req, res) => {
-  res.send('About this app');
-});
-```
-
-Then go to `http://localhost:3000/about` in your browser.
-
----
-
-## Stop the Server
-
-When you’re done:
-
-- Press `Ctrl + C` in your terminal to stop the running server.
-
----
-
-## Next Steps
-
-Once you're comfortable with this version:
-
-- Move on to `express-t2s-app-v2` to learn how to **Dockerize** this app.
-- Each version builds on this foundation to prepare you for modern cloud infrastructure.
-
----
-
-## Final Notes
-
-You’ve just completed your first Express app! You can now:
-
-- Start simple web projects
-- Understand Express routing and static content
-- Get comfortable using the terminal and Node.js basics
-
----
-
-© 2025 Emmanuel Naweji | Transformed 2 Succeed (T2S)
+By following these steps, you can create own version of the project, push it to GitHub, and begin building your portfolio. Troubleshooting tips help you solve common problems calmly and confidently.

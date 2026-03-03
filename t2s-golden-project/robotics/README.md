@@ -1,3 +1,0 @@
-# robotics
-
-Documentation for robotics.

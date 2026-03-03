@@ -1,3 +1,0 @@
-# playbooks
-
-Documentation for playbooks.

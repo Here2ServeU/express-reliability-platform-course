@@ -1,0 +1,4 @@
+apiVersion: v2
+name: global-monitoring
+version: 0.1.0
+description: Helm chart for global Prometheus and Grafana monitoring
