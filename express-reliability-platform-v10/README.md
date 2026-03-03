@@ -1,128 +1,120 @@
 
+# Express Reliability Platform V10 — Quantum-Augmented Optimization (Post-Book Labs)
 
+## 1) Version Purpose
 
+Run extension labs that combine robotics simulation, AIOps workflows, and quantum-style optimization experiments.
 
-# Express Reliability Platform V10
+## 2) Chapters Covered
 
-Welcome! This guide will help you get started with robotics, quantum computing, AIOps, and SRE—even if you’re a complete beginner.
+- Bonus/Extension Labs: Quantum concepts applied to routing/scheduling (simulated)
+- Integrated with Chapter 16 operational themes (CPS + auto-response)
 
----
+## 3) What You Will Build
 
-## Chapters Covered
-- Chapter 40: Robotics Layer
-- Chapter 41: Quantum Computing Layer
-- Chapter 42: AIOps and Automation
-- Chapter 43: SRE Best Practices
-- Chapter 44: Onboarding and Demo Instructions
+- A demo-ready lab environment for robotics and quantum experiments.
+- End-to-end simulation flow: telemetry → analysis → alert → remediation.
 
----
+## 4) Architecture Diagram (Mermaid)
 
-## What You’ll Learn
-1. How to run robotics and quantum computing demos
-2. How to use AIOps for prediction and automated fixes
-3. How to follow SRE best practices for reliability
-4. How to onboard and demo the platform step-by-step
-
----
-
-
-## Step-by-Step Guide: Getting Started
-
-### 1. Install Prerequisites
-You’ll need:
-- Git (for downloading the project)
-- Python (for running scripts)
-- Node.js (for some automation)
-
-Download and install these from their official websites.
-
-### 2. Clone the Repository
-Open your terminal and run:
-```sh
-git clone <URL-of-this-repo>
-cd express-reliability-platform-course/express-reliability-platform-v10
+```mermaid
+flowchart LR
+	 Robo[Robotics Demo] --> Telemetry[Telemetry Stream]
+	 Quantum[Quantum Demo] --> Optimizer[Optimization Insights]
+	 Telemetry --> AIOps[AIOps Engine]
+	 Optimizer --> AIOps
+	 AIOps --> Slack[Slack Notifications]
+	 AIOps --> DR[DR Runbook Actions]
 ```
 
-### 3. Provision Infrastructure (Cloud or Local)
-- **Cloud (Recommended for full testing):**
-	- Use Terraform or AWS Console to create an EKS cluster (see previous versions for details)
-	- Deploy platform components (robotics, quantum, aiops, etc.) as Kubernetes workloads
-	- Use Helm charts for easy deployment and management
-	- Run demos and DR drills in the EKS environment
-- **Local (Quick start):**
-	- Run all scripts and demos directly on your laptop
-	- No cloud resources required for simulation and basic testing
+## 5) Project Structure
 
-### 4. Read the Docs
-- Start with `docs/onboarding.md` for a simple onboarding guide
-- Check `docs/demo_instructions.md` for how to run demos
-- Review `docs/sre.md` for reliability tips, DR drills, and EKS guidance
-
-
-### 4. Run the Robotics Demo and Remediation
-```sh
-python robotics/demo_robotics.py
+```text
+express-reliability-platform-v10/
+├── robotics/
+│   ├── demo_robotics.py
+│   └── remediate_robot.py
+├── quantum/
+│   └── demo_quantum.py
+├── aiops/
+│   ├── check_slo_sli.py
+│   └── predict_and_remediate.py
+├── scripts/
+│   ├── simulate_latency.py
+│   ├── simulate_500_error.py
+│   ├── simulate_cpu_memory.py
+│   ├── simulate_app_failure.py
+│   └── terraform_init_apply.sh
+├── slack/
+│   └── send_slack_message.py
+├── dr/
+│   └── runbook.txt
+├── docs/
+│   ├── onboarding.md
+│   ├── demo_instructions.md
+│   └── sre.md
+└── README.md
 ```
-You’ll see robots performing tasks—no hardware required!
 
-#### Remediate Hospital Robot Issues
-If you receive a Slack alert about a robot issue, run:
-```sh
-python robotics/remediate_robot.py
-```
-Follow the prompts to resolve errors, low battery, overheating, or network problems.
+## 6) Run Steps
 
-### 6. Run the Quantum Computing Demo
-```sh
-python quantum/demo_quantum.py
-```
-You’ll see quantum bits being processed—no quantum computer needed!
+1. Read docs first:
 
+	```sh
+	cat docs/onboarding.md
+	cat docs/demo_instructions.md
+	```
 
-### 7. Advanced Slack Integration for Hospital Telemetry
-Run the Slack integration script to emulate real hospital robot telemetry and incident alerts:
-```sh
-python slack/send_slack_message.py
-```
-This script generates realistic alerts and actionable recommendations for hospital operations.
+2. Run robotics labs:
 
-### 8. Try AIOps and Automation
-Use the AIOps scripts to predict problems and see how the platform can fix them automatically.
+	```sh
+	python3 robotics/demo_robotics.py
+	python3 robotics/remediate_robot.py
+	```
 
-### 8. Practice SRE, DR Drills, and Incident Management
-- Read the runbooks and SRE docs
-- Try the drills and see how to respond to incidents
-- Practice DR scenarios in both local and EKS environments
+3. Run quantum lab:
 
----
+	```sh
+	python3 quantum/demo_quantum.py
+	```
 
-## How to Test Everything Locally
-You don’t need cloud resources to try this out. Just run the demo scripts and AIOps locally on your laptop. All instructions are in the docs folder.
+4. Run reliability simulations and AIOps:
 
----
+	```sh
+	python3 scripts/simulate_latency.py
+	python3 scripts/simulate_500_error.py
+	python3 scripts/simulate_cpu_memory.py
+	python3 scripts/simulate_app_failure.py
+	python3 aiops/check_slo_sli.py
+	python3 aiops/predict_and_remediate.py
+	```
 
-## Troubleshooting Tips
-- If a script doesn’t work, make sure Python and Node.js are installed.
-- Check you’re in the right folder before running a script.
-- If you get an error, read the docs or search online for help.
+5. Send operational alerts:
 
----
+	```sh
+	python3 slack/send_slack_message.py
+	```
 
-## Example Directory Structure
-- `robotics/`: Robotics demo scripts
-- `quantum/`: Quantum computing demo scripts
-- `aiops/`: Prediction, remediation, and SLO/SLI scripts
-- `slack/`: Slack integration scripts
-- `dr/`: Runbooks and disaster recovery guides
-- `docs/`: Onboarding, demo instructions, and SRE documentation
+## 7) Validation Checklist
 
----
+- [ ] Robotics demo and remediation scripts execute.
+- [ ] Quantum demo script executes.
+- [ ] AIOps scripts produce outputs tied to simulated events.
+- [ ] Slack alert path is validated.
+- [ ] DR runbook is executed for at least one scenario.
 
-## Next Steps
-- Try making your own robotics or quantum demos
-- Expand AIOps to cover more problems
-- Write new runbooks and share with your team
+## 8) Troubleshooting
 
----
+- Import errors: install missing Python dependencies in a virtual environment.
+- Script path errors: run commands from this version root folder.
+- Alert failures: validate Slack configuration and required environment variables.
+
+## 9) Cleanup
+
+- Stop all active processes and archive demo output artifacts.
+
+## 10) Next Version Preview
+
+V10 is the final version in this course track. Next, package your final architecture, runbook set, and demo flow into a portfolio project and technical presentation.
 
 

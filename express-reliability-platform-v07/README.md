@@ -1,110 +1,79 @@
-# Express Reliability Platform V7
+# Express Reliability Platform V7 — Enterprise Reliability Operations
 
-## Chapters Covered
-- Chapter 25: Multi-Region Deployment and Disaster Recovery
-- Chapter 26: Advanced Scaling and High Availability
-- Chapter 27: Automated Backups and Data Protection
-- Chapter 28: Global Monitoring and Alerting
-- Chapter 29: Customizing for Enterprise Use Cases
+## 1) Version Purpose
 
-## Quick Start (For Beginners)
+Translate infrastructure maturity into operational maturity: runbooks, incident response, SLO/SLI thinking, and disaster recovery basics.
 
-1. **Sign up for AWS**: Go to [aws.amazon.com](https://aws.amazon.com/) and create a free account.
-2. **Install Prerequisites**:
-   - Install [Git](https://git-scm.com/downloads)
-   - Install [Terraform](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli)
-   - Install [Helm](https://helm.sh/docs/intro/install/)
-3. **Clone the Project**:
-   ```sh
-   git clone <URL-of-this-repo>
-   cd express-reliability-platform-course/express-reliability-platform-v7
-   ```
-4. **Configure Your Environment**:
-   - Open `environments/live/live.tfvars` and `environments/shared/shared.tfvars` in a text editor.
-   - Make sure your region is set to `us-east-1` (or add more regions for multi-region setup).
-5. **Deploy the Platform**:
-   ```sh
-   cd environments/live
-   terraform init
-   terraform plan -out=tfplan
-   terraform apply tfplan
-   ```
-6. **Access the UI Portal**:
-   - After deployment, run:
-     ```sh
-     terraform output
-     ```
-   - Copy the `ui_portal_url` and paste it into your browser.
-   - You should see the UI portal. From here, you can access fintech and hospital services across regions.
+## 2) Chapters Covered
 
----
+- Chapter 14: Runbooks + Incident Response (SLOs/SLIs, on-call mindset, DR basics)
 
-## Troubleshooting Tips
-- If you see an error about missing AWS credentials, make sure you have set up your AWS account and configured your credentials.
-- If Terraform fails, check for typos in your `.tfvars` files and make sure your internet connection is working.
-- If the UI portal does not load, wait a few minutes and try again. Sometimes AWS takes a little time to set up resources.
-- For any error, copy the message and search for it online or ask for help.
+## 3) What You Will Build
 
-## Example Screenshot
-![Example UI Portal](https://via.placeholder.com/600x300?text=UI+Portal+Screenshot)
+- A practical incident response workflow tied to your platform environments.
+- Operational checklists that guide detection, triage, mitigation, and recovery.
 
----
+## 4) Architecture Diagram (Mermaid)
 
-## Chapter 25: Multi-Region Deployment and Disaster Recovery
-Learn how to use Terraform to deploy resources in multiple AWS regions and set up disaster recovery strategies.
+```mermaid
+flowchart LR
+    Alert[Alert Signal] --> Triage[Incident Triage]
+    Triage --> Runbook[Runbook Steps]
+    Runbook --> Mitigation[Mitigation Action]
+    Mitigation --> Verify[Verify SLI Recovery]
+    Verify --> Postmortem[Post-Incident Review]
+```
 
-## Chapter 26: Advanced Scaling and High Availability
-Configure auto-scaling groups, load balancers, and multi-AZ deployments for high availability and scalability.
+## 5) Project Structure
 
-## Chapter 27: Automated Backups and Data Protection
-Set up automated backups for databases and critical data. Use AWS Backup and cross-region replication.
+```text
+express-reliability-platform-v07/
+├── environments/
+│   ├── live/
+│   └── shared/
+├── infrastructure/
+│   └── bootstrap/
+├── modules/
+│   ├── alb/
+│   ├── eks/
+│   ├── iam/
+│   └── vpc/
+├── scripts/
+│   └── terraform_init_apply.sh
+└── README.md
+```
 
-## Chapter 28: Global Monitoring and Alerting
-Implement global monitoring with Prometheus, Grafana, and AWS CloudWatch. Set up alerting for all regions.
+## 6) Run Steps
 
-## Chapter 29: Customizing for Enterprise Use Cases
-Learn how to adapt the platform for enterprise requirements, including compliance, integrations, and advanced automation.
+1. Deploy platform baseline with Terraform helper script.
+2. Define SLI targets (latency, error rate, availability).
+3. Create incident severity levels and escalation path.
+4. Practice one incident drill end-to-end:
+   - detect
+   - classify
+   - mitigate
+   - recover
+   - document
 
----
+## 7) Validation Checklist
 
-## How to Provision the Services
+- [ ] SLO/SLI targets are documented and measurable.
+- [ ] At least one runbook exists for a high-impact incident.
+- [ ] Drill execution time and communication timeline are captured.
+- [ ] Recovery is validated against objective metrics.
 
-### 1. Configure Your Environment
-- Edit `environments/live/live.tfvars` and `environments/shared/shared.tfvars` to set your environment name, region(s), and disaster recovery settings.
+## 8) Troubleshooting
 
-### 2. Define Multi-Region Resources
-- In `environments/live/main.tf`, add resources for:
-  - Fintech backend (multi-region EC2, RDS, or container service)
-  - Hospital backend (multi-region EC2, RDS, or container service)
-  - UI portal (global ALB, EC2, or container service)
-- Use the express-reliability-platform naming pattern for all resources.
+- Alert fatigue: tighten thresholds and prioritize critical alerts first.
+- Slow incident response: simplify runbook steps and assign clear ownership.
+- Noisy metrics: standardize labels and time windows for SLI measurement.
 
-### 3. Provision with Terraform
-- Initialize and apply Terraform in each environment:
-  ```sh
-  cd environments/live
-  terraform init
-  terraform plan -out=tfplan
-  terraform apply tfplan
-  ```
-- Repeat for `environments/shared` if you have shared resources.
+## 9) Cleanup
 
-### 4. Access the Portals Online
-- After provisioning, find the output values in Terraform (e.g., global ALB DNS names):
-  ```sh
-  terraform output
-  ```
-- Open the UI portal DNS name in your browser. From the UI, you can access fintech and hospital portals across regions.
-- Each service will have its own endpoint, accessible via the UI portal.
+- Remove temporary test resources and close all drill tickets/issues.
 
-## Example Resource Naming
-- Fintech: `express-reliability-platform-fintech-<env>-<region>`
-- Hospital: `express-reliability-platform-hospital-<env>-<region>`
-- UI Portal: `express-reliability-platform-ui-<env>-<region>`
+## 10) Next Version Preview
 
-## Next Steps
-- Continue to the next chapters for advanced features, global scaling, and enterprise customization.
-
----
+In V8, you introduce AIOps patterns for risk scoring, pattern detection, and faster incident summaries.
 
 

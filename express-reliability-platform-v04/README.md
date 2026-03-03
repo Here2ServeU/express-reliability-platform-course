@@ -1,62 +1,88 @@
-# Express Reliability Platform V4 — Observability & Monitoring
+# Express Reliability Platform V4 — Observability + Real-World Simulation
 
-## Chapters Covered
-- Chapter 9: Observability, Monitoring, and Stress Testing
-- Chapter 10: Building a Feedback Loop for Reliability
+## 1) Version Purpose
 
-## Overview
-Version 4 introduces observability and monitoring to your platform. You will learn to instrument your services for metrics and logs, set up Prometheus and Grafana for monitoring, and perform stress testing to ensure reliability. This version builds on the orchestration and cloud deployment foundations from version 3.
+Add observability to the platform and practice reliability engineering with controlled stress and failure scenarios.
 
----
+## 2) Chapters Covered
 
-## Part 1: Observability & Monitoring Setup
+- Chapter 9 (Part 1): Prometheus + Grafana First
+- Chapter 10 (Part 2): Stress, Failure, Responsibility
 
-### Instrument Services
-- Add metrics endpoints to Node API and Flask API (e.g., `/metrics`)
-- Log key events and errors in all services
+## 3) What You Will Build
 
-### Monitoring Stack
-- Add Prometheus and Grafana services to `docker-compose.yml`
-- Configure Prometheus to scrape metrics from Node API and Flask API
-- Use Grafana dashboards to visualize metrics
+- A monitored stack with service metrics in Prometheus.
+- Dashboards in Grafana for reliability visibility.
+- A repeatable method to test latency/error behavior.
 
-### Example Prometheus Service (docker-compose):
-```yaml
-  prometheus:
-    image: prom/prometheus
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
+## 4) Architecture Diagram (Mermaid)
+
+```mermaid
+flowchart LR
+    User[Browser] --> UI[Web UI]
+    UI --> Node[Node API]
+    UI --> Flask[Flask API]
+    Node --> MetricsN[/metrics/]
+    Flask --> MetricsF[/metrics/]
+    Prom[Prometheus] --> MetricsN
+    Prom --> MetricsF
+    Graf[Grafana] --> Prom
 ```
 
-### Example Grafana Service (docker-compose):
-```yaml
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3001:3000"
+## 5) Project Structure
+
+```text
+express-reliability-platform-v04/
+├── apps/
+│   ├── node-api/
+│   ├── flask-api/
+│   └── web-ui/
+├── monitoring/
+│   └── prometheus.yml
+├── docker-compose.yml
+└── README.md
 ```
 
----
+## 6) Run Steps
 
-## Part 2: Stress Testing & Feedback Loop
+1. Start all services:
 
-### Stress Testing
-- Use tools like `hey`, `ab`, or `locust` to simulate load
-- Monitor service health and resource usage during tests
+   ```sh
+   docker compose up --build
+   ```
 
-### Feedback Loop
-- Set up alerting in Grafana for error rates, latency, and resource exhaustion
-- Use monitoring insights to improve reliability and scalability
+2. Open endpoints:
+   - App UI: `http://localhost:8080`
+   - Node API: `http://localhost:3000`
+   - Flask API: `http://localhost:5000`
+   - Prometheus: `http://localhost:9090`
+   - Grafana: `http://localhost:3001`
 
----
+3. Generate load with any HTTP tool (`hey`, `ab`, or browser refresh loops).
+4. Repeat the same checks in cloud environments after deployment to compare local vs cloud behavior.
+5. Observe latency, request count, and error trends in Grafana.
 
-## What I Learned
-- How to instrument services for observability
-- How to monitor metrics and logs with Prometheus and Grafana
-- How to perform stress testing and use feedback to improve reliability
+## 7) Validation Checklist
 
----
+- [ ] Compose launches all app and monitoring services.
+- [ ] Prometheus targets show app services as `UP`.
+- [ ] Grafana can query Prometheus data source.
+- [ ] You can observe metric changes while generating load.
 
-**Next:** In Version 5, you will add advanced security, compliance, and cost optimization features to your platform.
+## 8) Troubleshooting
+
+- Prometheus target down: verify service name and port in `monitoring/prometheus.yml`.
+- Grafana empty dashboards: confirm Prometheus datasource URL.
+- Container restart loops: inspect logs with `docker compose logs <service>`.
+
+## 9) Cleanup
+
+```sh
+docker compose down
+```
+
+- If you provisioned cloud resources for this version, destroy non-shared test resources after validation.
+
+## 10) Next Version Preview
+
+In V5, you move to Kubernetes on EKS and add self-healing and autoscaling concepts.

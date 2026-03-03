@@ -1,99 +1,96 @@
+# Express Reliability Platform V9 — Cyber-Physical Reliability
 
+## 1) Version Purpose
 
-# Express Reliability Platform V9
+Apply reliability engineering to cyber-physical workflows using telemetry simulation, predictive checks, and automated response loops.
 
-## Step-by-Step Guide: Provisioning the Infrastructure
+## 2) Chapters Covered
 
-### 1. Install Prerequisites
-- [Git](https://git-scm.com/downloads)
-- [Python](https://www.python.org/downloads/)
-- [Node.js](https://nodejs.org/en/download/)
-- [Slack account & API token](https://api.slack.com/)
+- Chapter 16: Robotics + IoMT Telemetry + Auto-Response (CPS workflows)
 
-### 2. Clone the Repository
-```sh
-git clone <URL-of-this-repo>
-cd express-reliability-platform-course/express-reliability-platform-v9
+## 3) What You Will Build
+
+- Incident simulation workflows across latency, errors, resource stress, and failures.
+- AIOps checks plus Slack notifications for operations response.
+- DR runbook practice tied to realistic failure scenarios.
+
+## 4) Architecture Diagram (Mermaid)
+
+```mermaid
+flowchart LR
+	 Sim[Simulation Scripts] --> Telemetry[Operational Telemetry]
+	 Telemetry --> AIOps[AIOps Analysis]
+	 AIOps --> Alert[Slack Alert]
+	 AIOps --> Remedy[Remediation Recommendation]
+	 Remedy --> Ops[Operator + Runbook]
 ```
 
-### 3. Provision Infrastructure (Cloud or Local)
-- For cloud: Use Terraform or your preferred IaC tool to provision cloud resources (EKS, EC2, etc.) if needed for full-scale deployment. In this project, we use EKS. Use the previous versions to review how to do it. 
-- For local testing: You can run all scripts and AIOps logic directly on your laptop. No cloud resources required for simulation and basic testing.
+## 5) Project Structure
 
-### 4. Simulate Application Issues
-Run scripts in the `scripts/` folder to simulate:
-- Latency: `python scripts/simulate_latency.py`
-- 500 Error: `python scripts/simulate_500_error.py`
-- CPU/Memory: `python scripts/simulate_cpu_memory.py`
-- App Failure: `python scripts/simulate_app_failure.py`
+```text
+express-reliability-platform-v09/
+├── aiops/
+│   ├── check_slo_sli.py
+│   └── predict_and_remediate.py
+├── scripts/
+│   ├── simulate_latency.py
+│   ├── simulate_500_error.py
+│   ├── simulate_cpu_memory.py
+│   ├── simulate_app_failure.py
+│   └── terraform_init_apply.sh
+├── slack/
+│   └── send_slack_message.py
+├── dr/
+│   └── runbook.txt
+└── README.md
+```
 
-### 5. Run AIOps Prediction & Remediation
-Use scripts in the `aiops/` folder:
-- Prediction & Remediation: `python aiops/predict_and_remediate.py`
-- SLO/SLI Check: `python aiops/check_slo_sli.py`
+## 6) Run Steps
 
-### 6. Integrate Slack for Alerts
-Run the Slack integration script:
-- `python slack/send_slack_message.py`
-Configure your Slack API token as needed for real integration.
+1. Install Python 3 and dependencies used by your scripts.
+2. Run one failure simulation at a time:
 
-### 7. Review Runbooks & Practice DR
-Read and follow guides in the `dr/` folder:
-- `dr/runbook.txt` for incident management and DR drills.
+	```sh
+	python3 scripts/simulate_latency.py
+	python3 scripts/simulate_500_error.py
+	python3 scripts/simulate_cpu_memory.py
+	python3 scripts/simulate_app_failure.py
+	```
 
----
+3. Run AIOps checks:
 
-## How to Test Locally
-You can test all features on your laptop:
-1. Make sure Python and Node.js are installed.
-2. Open a terminal and run the simulation scripts in the `scripts/` folder.
-3. Run the AIOps scripts in the `aiops/` folder to see predictions and remediation steps.
-4. Run the Slack script in the `slack/` folder to simulate alert messages.
-5. Read and follow the runbook in the `dr/` folder for incident management practice.
+	```sh
+	python3 aiops/check_slo_sli.py
+	python3 aiops/predict_and_remediate.py
+	```
 
----
+4. Send/verify alert path:
 
-## Chapters Covered
-- Chapter 35: Simulating Errors and Latency
-- Chapter 36: AIOps for Prediction and Automated Remediation
-- Chapter 37: Slack Integration for Proactive Alerts
-- Chapter 38: SLOs, SLIs, and AIOps Monitoring
-- Chapter 39: Disaster Recovery, Runbooks, and Incident Management
+	```sh
+	python3 slack/send_slack_message.py
+	```
 
----
+5. Execute response steps from `dr/runbook.txt`.
 
-## Overview
-Version 9 introduces AIOps-driven prediction, automated remediation, and proactive incident management. The platform simulates real-world failures, leverages AI models (LSTM, TCN) for forecasting, integrates Slack for alerting, and provides runbooks for disaster recovery and incident response.
+## 7) Validation Checklist
 
-### Key Features
-- **Error & Latency Simulation**: Scripts to simulate latency, 500 errors, CPU/memory exhaustion, and app failures.
-- **AIOps Prediction & Remediation**: AI models predict incidents and generate remediation steps.
-- **Slack Integration**: Engineers receive real-time alerts and recommendations via Slack.
-- **SLO/SLI Monitoring**: Automated checks and reporting on service reliability.
-- **Disaster Recovery & Runbooks**: Step-by-step guides and drills for incident management and communications.
+- [ ] All simulation scripts run without syntax/runtime errors.
+- [ ] AIOps scripts output prediction/check results.
+- [ ] Slack alert path works (or dry-run output is validated).
+- [ ] Runbook actions are executed and documented.
 
----
+## 8) Troubleshooting
 
-## Troubleshooting Tips
-- If a script fails, check that Python/Node.js is installed and your environment variables are set.
-- For Slack integration, ensure your API token is correct and your workspace allows bot messages.
-- If AIOps scripts do not detect issues, verify that simulation scripts are running and producing expected outputs.
+- Python package errors: create and activate a virtual environment.
+- Slack failures: verify token/channel environment variables.
+- No predicted incident: confirm simulation output is being produced before AIOps run.
 
----
+## 9) Cleanup
 
-## Example Directory Structure
-- `scripts/`: Error and latency simulation scripts
-- `aiops/`: Prediction, remediation, and SLO/SLI scripts
-- `slack/`: Slack integration scripts
-- `dr/`: Runbooks and disaster recovery guides
+- Stop any local processes and remove temporary test data/logs.
 
----
+## 10) Next Version Preview
 
-## Next Steps
-- Expand AIOps models and automation
-- Integrate with additional messaging platforms
-- Enhance DR and incident management workflows
-
----
+In V10, you extend into post-book labs with robotics and quantum-augmented optimization experiments.
 
 
