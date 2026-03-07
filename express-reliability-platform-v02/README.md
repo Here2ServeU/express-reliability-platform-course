@@ -6,6 +6,13 @@ Version 2 is a containerized three-service platform designed for local reliabili
 - `node-api` (Express): receives `/health` and `/score` requests
 - `flask-api` (Flask): computes a simple risk score used by `node-api`
 
+## Use Cases (V2)
+
+- Local reliability demo for interview, classroom, or architecture walkthroughs.
+- Integration testing across UI, Node, and Flask layers using one `docker compose` stack.
+- API observability and troubleshooting practice with container logs and health checks.
+- Safe sandbox for trying resilience ideas (timeouts, retries, fallback behavior) before production systems.
+
 ## Architecture
 
 ```mermaid
