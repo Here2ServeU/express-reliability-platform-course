@@ -4,7 +4,7 @@ const axios = require("axios");
 const app = express();
 const PORT = 3000;
 
-const FLASK_BASE_URL = "http://localhost:5000";
+const FLASK_BASE_URL = process.env.FLASK_BASE_URL || "http://localhost:5000";
 
 app.get("/health", (req, res) => {
   res.json({ status: "node-api healthy" });
