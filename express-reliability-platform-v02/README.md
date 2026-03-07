@@ -2,6 +2,11 @@
 
 Version 2 is a containerized three-service platform designed for local reliability testing.
 
+## Chapters Covered
+
+- Chapter 4: Containerization Foundations with Docker
+- Chapter 5: Multi-Service Composition with Docker Compose
+
 - `web-ui` (Nginx): serves static UI on `http://localhost:8080`
 - `node-api` (Express): receives `/health` and `/score` requests
 - `flask-api` (Flask): computes a simple risk score used by `node-api`
