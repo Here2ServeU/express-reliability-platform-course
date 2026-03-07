@@ -14,7 +14,7 @@
   <script>
     async function run() {
       const value = document.getElementById("input").value;
-      const response = await fetch(`http://localhost:3000/score?input=${value}`);
+      const response = await fetch(`/api/score?input=${value}`);
       const data = await response.json();
       document.getElementById("output").textContent =
         JSON.stringify(data, null, 2);
