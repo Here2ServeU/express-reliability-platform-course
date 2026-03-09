@@ -46,7 +46,7 @@ Resource naming convention used across scripts and cloud resources:
 
 ## About the Author
 
-This playbook is based on enterprise delivery experience (including Comcast, Octo, IBM, and related consulting environments) and advanced research in resilient systems.
+Rev. Dr. Emmanuel developped this curriculum drawing from his experience working for top leading companies and his PhD Research in Computer Science focusing on AI, Machine Learning, Robotics and Quantum Computing applied to Cloud Infra in regulated environments such as Hospitals and FinTech. 
 
 Students in my live classes can use this program at no cost as part of course participation.
 
