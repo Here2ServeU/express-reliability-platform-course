@@ -1,5 +1,19 @@
 # Express Reliability Platform V4 — Observability + Real-World Simulation
 
+## Builds on V3
+
+Before you start V4, copy your personal V3 repository to your local machine and rename it to V4:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v03.git
+mv express-reliability-platform-v03 express-reliability-platform-v04
+cd express-reliability-platform-v04
+```
+
+Use the main class repository for scripts and canonical structure:
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
 ## 1) Version Purpose
 
 Add observability to the platform and practice reliability engineering with controlled stress and failure scenarios.
@@ -45,7 +59,7 @@ express-reliability-platform-v04/
 
 ## 6) Run Steps
 
-1. Start all services:
+1. Run the local Docker Compose gate first:
 
    ```sh
    docker compose up --build
@@ -59,8 +73,8 @@ express-reliability-platform-v04/
    - Grafana: `http://localhost:3001`
 
 3. Generate load with any HTTP tool (`hey`, `ab`, or browser refresh loops).
-4. Repeat the same checks in cloud environments after deployment to compare local vs cloud behavior.
-5. Observe latency, request count, and error trends in Grafana.
+4. Observe latency, request count, and error trends in Grafana.
+5. After local validation passes, promote to cloud in order: `dev -> staging -> prod`.
 
 ## 7) Validation Checklist
 
@@ -85,4 +99,4 @@ docker compose down
 
 ## 10) Next Version Preview
 
-In V5, you move to Kubernetes on EKS and add self-healing and autoscaling concepts.
+In V5, you build on V4 by moving to Kubernetes on EKS and adding self-healing and autoscaling concepts.

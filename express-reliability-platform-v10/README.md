@@ -1,6 +1,20 @@
 
 # Express Reliability Platform V10 — Quantum-Augmented Optimization (Post-Book Labs)
 
+## Builds on V9
+
+Before you start V10, copy your personal V9 repository to your local machine and rename it to V10:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v09.git
+mv express-reliability-platform-v09 express-reliability-platform-v10
+cd express-reliability-platform-v10
+```
+
+Use the main class repository for scripts and canonical structure:
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
 ## 1) Version Purpose
 
 Run extension labs that combine robotics simulation, AIOps workflows, and quantum-style optimization experiments.
@@ -58,27 +72,38 @@ express-reliability-platform-v10/
 
 ## 6) Run Steps
 
-1. Read docs first:
+1. Run the local Docker Compose gate first using your latest local stack (from V4):
+
+	```sh
+	cd ../express-reliability-platform-v04
+	docker compose up --build -d
+	curl http://localhost:8080/api/health
+	docker compose down
+	cd ../express-reliability-platform-v10
+	```
+
+2. Promote any infrastructure changes in order: `dev -> staging -> prod`.
+3. Read docs first:
 
 	```sh
 	cat docs/onboarding.md
 	cat docs/demo_instructions.md
 	```
 
-2. Run robotics labs:
+4. Run robotics labs:
 
 	```sh
 	python3 robotics/demo_robotics.py
 	python3 robotics/remediate_robot.py
 	```
 
-3. Run quantum lab:
+5. Run quantum lab:
 
 	```sh
 	python3 quantum/demo_quantum.py
 	```
 
-4. Run reliability simulations and AIOps:
+6. Run reliability simulations and AIOps:
 
 	```sh
 	python3 scripts/simulate_latency.py
@@ -89,7 +114,7 @@ express-reliability-platform-v10/
 	python3 aiops/predict_and_remediate.py
 	```
 
-5. Send operational alerts:
+7. Send operational alerts:
 
 	```sh
 	python3 slack/send_slack_message.py

@@ -1,5 +1,19 @@
 # Express Reliability Platform V5 — Kubernetes Self-Healing (EKS)
 
+## Builds on V4
+
+Before you start V5, copy your personal V4 repository to your local machine and rename it to V5:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v04.git
+mv express-reliability-platform-v04 express-reliability-platform-v05
+cd express-reliability-platform-v05
+```
+
+Use the main class repository for scripts and canonical structure:
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
 ## 1) Version Purpose
 
 Move from ECS-style orchestration to Kubernetes (EKS), then introduce self-healing and autoscaling concepts.
@@ -12,7 +26,7 @@ Move from ECS-style orchestration to Kubernetes (EKS), then introduce self-heali
 ## 3) What You Will Build
 
 - An EKS-based platform foundation managed with Terraform modules.
-- A repeatable deployment path for workloads in `live` and `shared` environments.
+- A repeatable deployment path for workloads in the `live` environment, ready to promote with `dev -> staging -> prod` discipline.
 
 ## 4) Architecture Diagram (Mermaid)
 
@@ -47,16 +61,26 @@ express-reliability-platform-v05/
 
 ## 6) Run Steps
 
-1. Install prerequisites: AWS CLI, Terraform, kubectl, Helm.
-2. Configure AWS credentials for your account.
-3. Run infrastructure deployment helper:
+1. Run the local Docker Compose gate first using your latest local stack (from V4):
+
+   ```sh
+   cd ../express-reliability-platform-v04
+   docker compose up --build -d
+   curl http://localhost:8080/api/health
+   docker compose down
+   cd ../express-reliability-platform-v05
+   ```
+
+2. Install prerequisites: AWS CLI, Terraform, kubectl, Helm.
+3. Configure AWS credentials for your account.
+4. Run infrastructure deployment helper:
 
    ```sh
    ./scripts/terraform_init_apply.sh
    ```
 
-4. Validate Terraform outputs and configure kubectl for EKS.
-5. Confirm cluster health:
+5. Validate Terraform outputs and configure kubectl for EKS.
+6. Confirm cluster health:
 
    ```sh
    kubectl get nodes
@@ -87,6 +111,6 @@ express-reliability-platform-v05/
 
 ## 10) Next Version Preview
 
-In V6, you formalize infrastructure-as-code discipline with stronger Terraform structure, state strategy, and environment separation.
+In V6, you build on V5 and formalize stronger Terraform structure, state strategy, and environment separation.
 
 

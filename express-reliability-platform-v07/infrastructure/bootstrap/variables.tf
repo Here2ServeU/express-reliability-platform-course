@@ -4,6 +4,11 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "environment_name" {
+  description = "Environment name suffix for bootstrap resources"
+  type        = string
+}
+
 variable "state_bucket_name" {
   description = "Name of the S3 bucket for remote state"
   type        = string

@@ -2,6 +2,22 @@
 
 Version 2 is a containerized three-service platform designed for local reliability testing.
 
+## Builds on V1
+
+Before you start V2, copy your personal V1 repository to your local machine and rename it to V2:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v01.git
+mv express-reliability-platform-v01 express-reliability-platform-v02
+cd express-reliability-platform-v02
+```
+
+Then sync your folder structure with the class repository V2 layout.
+
+Class repository (scripts and canonical structure):
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
 ## Chapters Covered
 
 - Chapter 4: Containerization Foundations with Docker
@@ -98,6 +114,14 @@ Expected example response:
   }
 }
 ```
+
+## Promotion Path
+
+V2 is your local test gate with Docker Compose.
+
+1. Pass all local checks in this README.
+2. Commit your changes.
+3. Move to V3 to start Terraform and cloud promotion with `dev -> staging -> prod`.
 
 ## Day-2 Operations
 

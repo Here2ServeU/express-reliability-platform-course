@@ -1,5 +1,19 @@
 # Express Reliability Platform V9 — Cyber-Physical Reliability
 
+## Builds on V8
+
+Before you start V9, copy your personal V8 repository to your local machine and rename it to V9:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v08.git
+mv express-reliability-platform-v08 express-reliability-platform-v09
+cd express-reliability-platform-v09
+```
+
+Use the main class repository for scripts and canonical structure:
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
 ## 1) Version Purpose
 
 Apply reliability engineering to cyber-physical workflows using telemetry simulation, predictive checks, and automated response loops.
@@ -47,8 +61,19 @@ express-reliability-platform-v09/
 
 ## 6) Run Steps
 
-1. Install Python 3 and dependencies used by your scripts.
-2. Run one failure simulation at a time:
+1. Run the local Docker Compose gate first using your latest local stack (from V4):
+
+	```sh
+	cd ../express-reliability-platform-v04
+	docker compose up --build -d
+	curl http://localhost:8080/api/health
+	docker compose down
+	cd ../express-reliability-platform-v09
+	```
+
+2. Promote any infrastructure changes in order: `dev -> staging -> prod`.
+3. Install Python 3 and dependencies used by your scripts.
+4. Run one failure simulation at a time:
 
 	```sh
 	python3 scripts/simulate_latency.py
@@ -57,20 +82,20 @@ express-reliability-platform-v09/
 	python3 scripts/simulate_app_failure.py
 	```
 
-3. Run AIOps checks:
+5. Run AIOps checks:
 
 	```sh
 	python3 aiops/check_slo_sli.py
 	python3 aiops/predict_and_remediate.py
 	```
 
-4. Send/verify alert path:
+6. Send/verify alert path:
 
 	```sh
 	python3 slack/send_slack_message.py
 	```
 
-5. Execute response steps from `dr/runbook.txt`.
+7. Execute response steps from `dr/runbook.txt`.
 
 ## 7) Validation Checklist
 
@@ -91,6 +116,6 @@ express-reliability-platform-v09/
 
 ## 10) Next Version Preview
 
-In V10, you extend into post-book labs with robotics and quantum-augmented optimization experiments.
+In V10, you build on V9 and extend into post-book labs with robotics and quantum-augmented optimization experiments.
 
 
