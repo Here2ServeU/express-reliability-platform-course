@@ -22,6 +22,17 @@ Standardize Terraform usage across environments with clear state, module, and bo
 
 - Chapter 13: Terraform Foundations (state, backend, modules, environments)
 
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Review backend/state strategy and module boundaries.
+2. Build: Apply infrastructure in shared then live order.
+3. Test: Validate plans, state lock behavior, and idempotency.
+4. Break: Trigger a controlled infra/config fault in a non-prod environment.
+5. Fix: Use Terraform plan/output and cloud logs to recover.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Add scripts/checks for plan validation and safe apply.
+8. Improve: Tighten state isolation, policy checks, and promotion controls.
+
 ## 3) What You Will Build
 
 - A disciplined IaC workflow for `live` and `shared` environments.

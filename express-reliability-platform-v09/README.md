@@ -20,7 +20,18 @@ Apply reliability engineering to cyber-physical workflows using telemetry simula
 
 ## 2) Chapters Covered
 
-- Chapter 16: Robotics + IoMT Telemetry + Auto-Response (CPS workflows)
+- Chapter 17: Robotics + IoMT Telemetry + Auto-Response (CPS workflows)
+
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Review telemetry, AIOps checks, and runbook response path.
+2. Build: Prepare simulation scripts and alert integrations.
+3. Test: Run simulations and validate AIOps outputs.
+4. Break: Trigger one controlled failure mode at a time.
+5. Fix: Apply recommended remediation and verify recovery.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Convert repeat fixes into scripts and notification workflows.
+8. Improve: Tune detection quality and reduce false positives.
 
 ## 3) What You Will Build
 

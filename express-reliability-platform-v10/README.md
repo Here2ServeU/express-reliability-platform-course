@@ -24,6 +24,17 @@ Run extension labs that combine robotics simulation, AIOps workflows, and quantu
 - Bonus/Extension Labs: Quantum concepts applied to routing/scheduling (simulated)
 - Integrated with Chapter 16 operational themes (CPS + auto-response)
 
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Review robotics/quantum lab goals and operational constraints.
+2. Build: Set up demo scripts, AIOps flow, and alert/runbook integration.
+3. Test: Execute labs and verify expected outputs.
+4. Break: Trigger controlled simulation failures.
+5. Fix: Restore service and validate remediation outcomes.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Package repeat actions into scripts and response playbooks.
+8. Improve: Refine reliability, response speed, and demo repeatability.
+
 ## 3) What You Will Build
 
 - A demo-ready lab environment for robotics and quantum experiments.

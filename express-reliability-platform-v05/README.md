@@ -20,8 +20,16 @@ Move from ECS-style orchestration to Kubernetes (EKS), then introduce self-heali
 
 ## 2) Chapters Covered
 
-- Chapter 11: EKS Foundations (pods, deployments, services, ingress)
-- Chapter 12: Self-Healing + Autoscaling (probes, HPA, node scaling concepts)
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Review EKS architecture and autoscaling concepts.
+2. Build: Deploy infrastructure and baseline workloads.
+3. Test: Validate cluster health, scheduling, and service reachability.
+4. Break: Trigger a controlled pod/service fault.
+5. Fix: Use `kubectl`, logs, and metrics to restore health.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Add runbooks/scripts for recovery and scale checks.
+8. Improve: Tune probe, HPA, and capacity settings.
 
 ## 3) What You Will Build
 

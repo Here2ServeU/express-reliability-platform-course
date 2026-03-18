@@ -20,9 +20,16 @@ Coordinate all services together locally, then introduce Terraform best practice
 
 ## 2) Chapters Covered
 
-- Chapter 6 (Part 1): Local Orchestration with Docker Compose
-- Chapter 7 (Part 2): Cloud Identity Foundations (AWS IAM + OIDC)
-- Chapter 8 (Part 3): Cloud Orchestration with ECS + ALB
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Read architecture, Terraform foundations, and deployment flow.
+2. Build: Complete local Compose, Terraform, IAM/OIDC, and ECS steps in order.
+3. Test: Validate endpoints, Terraform plan quality, and cloud health checks.
+4. Break: Trigger one controlled failure (for example, stop one service/task).
+5. Fix: Use logs, health checks, and cloud diagnostics to restore service.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Add scripts/runbooks for repeatable deployment and recovery.
+8. Improve: Re-run pipeline checks and tighten least-privilege/security controls.
 
 ## 3) What You Will Build
 
