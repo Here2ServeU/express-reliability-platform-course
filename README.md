@@ -28,7 +28,7 @@ This model is the fastest path from beginner execution to senior engineering beh
 | `express-reliability-platform-v06` | Chapter 13 | Terraform discipline + environment promotion |
 | `express-reliability-platform-v07` | Chapters 14-15 | Incident response + chaos engineering |
 | `express-reliability-platform-v08` | Chapter 16 | AIOps incident-management workflow |
-| `express-reliability-platform-v09` | Phase 4 extension | AI-driven operational intelligence |
+| `express-reliability-platform-v09` | Chapters 17-18 | Slack alerting + ITSM integration + advanced chaos |
 | `express-reliability-platform-v10` | Phase 5 extension | Automation and recovery at scale |
 | `express-reliability-platform-capstone` | Final integrated reference | Golden platform for interviews and client delivery |
 
@@ -54,9 +54,10 @@ This model is the fastest path from beginner execution to senior engineering beh
 
 ### Phase 4 - Intelligence (Version 9)
 
-- Python-based analysis
-- anomaly detection and pattern recognition
-- AI-assisted incident summarization
+- Slack Incoming Webhook alerting tied to AIOps risk scoring
+- ITSM automation: ServiceNow incident tickets and Jira issues from evidence JSON
+- Advanced chaos engineering: full pipeline drills (inject → score → alert → ticket)
+- Python-based simulation and anomaly detection
 
 ### Phase 5 - Automation (Version 10)
 
@@ -73,8 +74,11 @@ This model is the fastest path from beginner execution to senior engineering beh
 - GitOps: ArgoCD
 - DevSecOps: IAM, secrets, OPA/Sentinel concepts, Trivy, Checkov
 - Observability: Prometheus, Grafana, Loki, Jaeger, OpenTelemetry
+- Alerting: Slack Incoming Webhooks
+- ITSM: ServiceNow (incident table REST API), Jira (REST API v3)
 - FinOps: cost and usage optimization
-- AIOps: anomaly detection, AI summaries, decision support
+- AIOps: anomaly detection, risk scoring, AI summaries, decision support
+- Chaos Engineering: controlled failure injection, blast radius testing, pipeline drills
 
 ## How to Use This Repository
 

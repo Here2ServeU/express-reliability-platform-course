@@ -68,3 +68,19 @@ EOF
 
 echo "AIOps summary written to $output_file"
 echo "risk_score=$risk_score severity=$severity"
+
+# ---------------------------------------------------------------------------
+# Optional: Slack notification
+# ---------------------------------------------------------------------------
+# Set SLACK_WEBHOOK_URL in your environment to enable real alerts.
+# Leave it unset for a dry-run that prints the message without sending.
+if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
+  bash "$(dirname "$0")/../slack/send_slack_webhook.sh" \
+    --evidence-file "$output_file" 2>/dev/null \
+    || echo "Slack notification failed — check SLACK_WEBHOOK_URL and the evidence file path."
+else
+  echo ""
+  echo "[Slack] SLACK_WEBHOOK_URL not set — skipping notification."
+  echo "        To enable: export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/..."
+  echo "        Message that would be sent: $severity alert for $service (risk_score=$risk_score)"
+fi
