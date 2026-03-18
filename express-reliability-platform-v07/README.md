@@ -23,6 +23,17 @@ Translate infrastructure maturity into operational maturity: runbooks, incident 
 - Chapter 14: Runbooks + Incident Response (SLOs/SLIs, on-call mindset, DR basics)
 - Chapter 15: Chaos Engineering (controlled failure testing, resilience validation, and recovery confidence)
 
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Review incident lifecycle, SLO/SLI, DR, and chaos safety rules.
+2. Build: Prepare runbooks, on-call, and DR artifacts.
+3. Test: Execute incident and chaos drills in controlled scope.
+4. Break: Introduce one safe fault at a time.
+5. Fix: Restore service using runbooks, logs, metrics, and alerts.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Improve drill scripts, alerts, and runbook actions.
+8. Improve: Reduce recovery time and strengthen reliability guardrails.
+
 ## 3) What You Will Build
 
 - A practical incident response workflow tied to your platform environments.

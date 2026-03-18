@@ -1,5 +1,7 @@
 # Express Reliability Platform V2
 
+## 1) Version Purpose
+
 Version 2 is a containerized three-service platform designed for local reliability testing.
 
 ## Builds on V1
@@ -18,23 +20,32 @@ Class repository (scripts and canonical structure):
 
 - https://github.com/Here2ServeU/express-reliability-platform-course
 
-## Chapters Covered
+## 2) Chapters Covered
 
-- Chapter 4: Containerization Foundations with Docker
-- Chapter 5: Multi-Service Composition with Docker Compose
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
-- `web-ui` (Nginx): serves static UI on `http://localhost:8080`
+1. Understand: Read `Version Purpose` and `Chapters Covered`.
+2. Build: Complete the container setup steps in order.
+3. Test: Validate UI and API endpoints from this README.
+4. Break: Stop one service container intentionally (for example, `docker compose stop flask-api`).
+5. Fix: Use `docker compose logs` and restart the failed service.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Add script-based checks for startup and health validation.
+8. Improve: Re-run end-to-end checks and update reliability guardrails.
+
+## 3) What You Will Build
+
 - `node-api` (Express): receives `/health` and `/score` requests
 - `flask-api` (Flask): computes a simple risk score used by `node-api`
 
-## Use Cases (V2)
+## 4) Use Cases (V2)
 
 - Local reliability demo for interview, classroom, or architecture walkthroughs.
 - Integration testing across UI, Node, and Flask layers using one `docker compose` stack.
 - API observability and troubleshooting practice with container logs and health checks.
 - Safe sandbox for trying resilience ideas (timeouts, retries, fallback behavior) before production systems.
 
-## Architecture
+## 5) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -43,7 +54,7 @@ flowchart LR
   Node --> Flask[flask-api :5000]
 ```
 
-## Project Structure
+## 6) Project Structure
 
 ```text
 express-reliability-platform-v02/
@@ -64,7 +75,7 @@ express-reliability-platform-v02/
 └── README.md
 ```
 
-## Linux Prerequisites
+## 7) Linux Prerequisites
 
 Install:
 - Docker Engine
@@ -75,7 +86,7 @@ Optional tools used in troubleshooting:
 - `lsof`
 - `wget`
 
-## Quick Start (Linux)
+## 8) Quick Start (Linux)
 
 1. Move into the v02 directory:
 
@@ -115,7 +126,7 @@ Expected example response:
 }
 ```
 
-## Promotion Path
+## 9) Promotion Path
 
 V2 is your local test gate with Docker Compose.
 
@@ -123,7 +134,7 @@ V2 is your local test gate with Docker Compose.
 2. Commit your changes.
 3. Move to V3 to start Terraform and cloud promotion with `dev -> staging -> prod`.
 
-## Day-2 Operations
+## 10) Day-2 Operations
 
 Check running services:
 
@@ -146,7 +157,7 @@ Stop everything:
 docker compose down
 ```
 
-## Service-Level Validation
+## 11) Service-Level Validation
 
 Run a request through full stack:
 
@@ -161,7 +172,7 @@ docker exec node-api wget -qO- http://flask-api:5000/health
 docker exec node-api wget -qO- "http://flask-api:5000/score?input=reliability"
 ```
 
-## Troubleshooting (Linux)
+## 12) Troubleshooting
 
 Port `8080` already in use:
 
@@ -195,7 +206,7 @@ docker system prune -af
 docker compose up --build -d
 ```
 
-## Cleanup
+## 13) Cleanup
 
 ```sh
 docker compose down --remove-orphans
@@ -203,7 +214,7 @@ docker image prune -f
 ```
 
 ---
-## Linux Command Reference
+## 14) Linux Command Reference
 
 This section explains every Linux command used in this README.
 

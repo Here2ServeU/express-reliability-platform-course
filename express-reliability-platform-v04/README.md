@@ -20,8 +20,16 @@ Add observability to the platform and practice reliability engineering with cont
 
 ## 2) Chapters Covered
 
-- Chapter 9 (Part 1): Prometheus + Grafana First
-- Chapter 10 (Part 2): Stress, Failure, Responsibility
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Read monitoring architecture and metric goals.
+2. Build: Start the monitored stack and configure dashboards.
+3. Test: Confirm targets are up and metrics change under load.
+4. Break: Trigger a controlled fault or stress event.
+5. Fix: Use metrics, logs, and alerts to recover.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Add repeatable stress tests and alert checks.
+8. Improve: Tune SLI/SLO thresholds and alert quality.
 
 ## 3) What You Will Build
 
