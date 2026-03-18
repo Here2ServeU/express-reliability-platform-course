@@ -59,6 +59,7 @@ These are the skills hiring teams look for, and they are practiced in this versi
 - Local AIOps testing workflow with evidence output.
 - Cloud AIOps testing workflow with promotion safety checks.
 - Risk rules and severity bands for consistent triage.
+- Slack alerting that fires automatically after every risk-score run.
 
 ## 7) Architecture Diagram (Mermaid)
 
@@ -68,6 +69,7 @@ flowchart LR
     Detect --> Score[Risk Scoring]
     Score --> Summary[Incident Summary]
     Summary --> Action[Recommended First Action]
+    Action --> Slack[Slack Alert]
     Action --> Ops[Operator + Runbook]
     Ops --> Validate[Recovery Validation]
 ```
@@ -101,8 +103,10 @@ express-reliability-platform-v08/
 ├── scripts/
 │   ├── aiops_cloud_incident_test.sh
 │   ├── aiops_local_incident_test.sh
-│   ├── aiops_score_and_summarize.sh
+│   ├── aiops_score_and_summarize.sh  <- scores risk AND sends Slack
 │   └── terraform_init_apply.sh
+├── slack/
+│   └── send_slack_webhook.sh  <- standalone Slack webhook sender
 └── README.md
 ```
 
@@ -149,7 +153,7 @@ cd ../express-reliability-platform-v08
 ### Step C - Test (Local AIOps)
 
 ```sh
-chmod +x scripts/aiops_score_and_summarize.sh scripts/aiops_local_incident_test.sh
+chmod +x scripts/aiops_score_and_summarize.sh scripts/aiops_local_incident_test.sh slack/send_slack_webhook.sh
 ./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health node-api 650 1.8 1 1 local-oncall
 ```
 
@@ -159,6 +163,22 @@ What this does:
 2. Uses incident inputs (latency, error rate, restarts, blast radius).
 3. Computes risk score and severity.
 4. Writes a machine-readable incident summary file.
+5. Sends a Slack alert if `SLACK_WEBHOOK_URL` is set — otherwise prints a dry-run message.
+
+To enable Slack:
+
+```sh
+export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health node-api 650 1.8 1 1 local-oncall
+```
+
+To send a standalone Slack message:
+
+```sh
+./slack/send_slack_webhook.sh --message "AIOps: SEV1 on node-api"
+./slack/send_slack_webhook.sh --evidence-file artifacts/aiops/evidence/local/INC-001.json
+./slack/send_slack_webhook.sh --dry-run --evidence-file artifacts/aiops/evidence/local/INC-001.json
+```
 
 Expected evidence location:
 
@@ -282,6 +302,8 @@ cd ../express-reliability-platform-v08
 - [ ] AIOps incident-management guide is reviewed.
 - [ ] Risk rules are documented in `risk-rules.yaml`.
 - [ ] Local AIOps test generated a JSON incident summary.
+- [ ] Slack dry-run output is visible (no `SLACK_WEBHOOK_URL` needed).
+- [ ] Slack real alert fires when `SLACK_WEBHOOK_URL` is set.
 - [ ] Cloud AIOps test generated `dev` evidence.
 - [ ] Promotion to `staging` happened only after stable recovery.
 - [ ] `prod` test required explicit approval flag.
@@ -295,6 +317,7 @@ cd ../express-reliability-platform-v08
 - Too many high-risk incidents: tune thresholds in `risk-rules.yaml`.
 - Terraform plan fails in live: confirm `vpc_id` and `subnet_ids` are set in `live.tfvars`.
 - Prod test blocked: set `APPROVED_PROD_TEST=true` only after formal approval.
+- Slack message not sending: verify `SLACK_WEBHOOK_URL` is exported. Run `send_slack_webhook.sh --dry-run` first to confirm message format.
 
 ## 12) Cloud Cleanup
 

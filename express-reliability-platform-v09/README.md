@@ -1,4 +1,4 @@
-# Express Reliability Platform V9 — Cyber-Physical Reliability
+# Express Reliability Platform V9 — Operational Intelligence + ITSM Integration
 
 ## Builds on V8
 
@@ -16,117 +16,327 @@ Use the main class repository for scripts and canonical structure:
 
 ## 1) Version Purpose
 
-Apply reliability engineering to cyber-physical workflows using telemetry simulation, predictive checks, and automated response loops.
+V9 completes the operational intelligence loop. You detect incidents using AIOps, alert your team on Slack, open ITSM tickets automatically in ServiceNow and Jira, and run advanced chaos drills that exercise the full pipeline end-to-end.
 
 ## 2) Chapters Covered
 
-- Chapter 17: Robotics + IoMT Telemetry + Auto-Response (CPS workflows)
+- Chapter 17: Cyber-Physical Reliability — Robotics + IoMT Telemetry + Auto-Response
+- Chapter 18: Slack Alerting + ITSM Integration + Advanced Chaos Engineering
 
 ## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
-1. Understand: Review telemetry, AIOps checks, and runbook response path.
-2. Build: Prepare simulation scripts and alert integrations.
-3. Test: Run simulations and validate AIOps outputs.
-4. Break: Trigger one controlled failure mode at a time.
-5. Fix: Apply recommended remediation and verify recovery.
-6. Explain: Document what failed, why it failed, and what fixed it.
-7. Automate: Convert repeat fixes into scripts and notification workflows.
-8. Improve: Tune detection quality and reduce false positives.
+1. Understand: Review the full pipeline — simulation → AIOps → Slack → ITSM → runbook.
+2. Build: Configure Slack webhook, ITSM credentials, and chaos drill scripts.
+3. Test: Run end-to-end chaos drills and validate every pipeline stage produces output.
+4. Break: Trigger one controlled failure mode and watch alerts and tickets appear.
+5. Fix: Apply recommended remediation and verify pipeline reaches recovery state.
+6. Explain: Document what failed, why it failed, what the ITSM ticket captured, and what fixed it.
+7. Automate: Wire chaos drills into CI/CD so every deployment is tested.
+8. Improve: Tune detection thresholds and reduce false-positive ticket noise.
 
 ## 3) What You Will Build
 
-- Incident simulation workflows across latency, errors, resource stress, and failures.
-- AIOps checks plus Slack notifications for operations response.
-- DR runbook practice tied to realistic failure scenarios.
+- A real Slack webhook integration that fires rich alerts from AIOps evidence files.
+- Automated ServiceNow incident ticket creation tied to AIOps risk scoring.
+- Automated Jira issue creation with severity, labels, and structured description.
+- An advanced chaos drill script that runs the full pipeline in one command.
+- Telemetry simulation workflows covering latency, error rates, CPU stress, and pod kills.
 
-## 4) Architecture Diagram (Mermaid)
+## 4) Concepts Explained (Simple Language)
+
+- **Slack Incoming Webhook**: a URL you paste into a curl or Python request; Slack posts the message to a channel. No bot token needed.
+- **ITSM (IT Service Management)**: the practice of tracking incidents, changes, and requests in a ticketing system like ServiceNow or Jira so nothing is lost and every incident has an audit trail.
+- **ServiceNow**: enterprise ticketing platform used heavily in regulated industries (finance, healthcare, government). incidents are tracked in the `incident` table via REST API.
+- **Jira**: project and issue tracker used by engineering teams. REST API v3 creates issues with priority, labels, and rich text.
+- **Chaos engineering**: intentionally injecting failures (latency, errors, crashes) in a controlled way to find weaknesses before customers do.
+- **Blast radius**: the number of services or users affected when a failure spreads.
+- **Full pipeline drill**: one command that injects a failure, scores it, alerts via Slack, and opens ITSM tickets — proving every layer is connected.
+
+## 5) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
-	 Sim[Simulation Scripts] --> Telemetry[Operational Telemetry]
-	 Telemetry --> AIOps[AIOps Analysis]
-	 AIOps --> Alert[Slack Alert]
-	 AIOps --> Remedy[Remediation Recommendation]
-	 Remedy --> Ops[Operator + Runbook]
+    Chaos[Chaos Drill] --> Sim[Simulated Failure]
+    Sim --> AIOps[AIOps Risk Scoring]
+    AIOps --> Slack[Slack Alert]
+    AIOps --> SNOW[ServiceNow Ticket]
+    AIOps --> Jira[Jira Issue]
+    AIOps --> Runbook[DR Runbook]
+    Slack --> Ops[Operator Response]
+    SNOW --> Ops
+    Jira --> Ops
+    Ops --> Fix[Remediation]
+    Fix --> Validate[Recovery Validation]
 ```
 
-## 5) Project Structure
+## 6) Project Structure
 
 ```text
 express-reliability-platform-v09/
 ├── aiops/
 │   ├── check_slo_sli.py
 │   └── predict_and_remediate.py
+├── chaos/
+│   └── run_chaos_drill.sh        <- full pipeline: inject -> score -> alert -> ticket
+├── itsm/
+│   ├── create_servicenow_ticket.py
+│   └── create_jira_issue.py
 ├── scripts/
+│   ├── aiops_score_and_summarize.sh
 │   ├── simulate_latency.py
 │   ├── simulate_500_error.py
 │   ├── simulate_cpu_memory.py
 │   ├── simulate_app_failure.py
 │   └── terraform_init_apply.sh
 ├── slack/
-│   └── send_slack_message.py
+│   └── send_slack_message.py     <- real Incoming Webhook implementation
 ├── dr/
 │   └── runbook.txt
 └── README.md
 ```
 
-## 6) Run Steps
+## 7) Step-by-Step Guide (Local and Cloud)
 
-1. Run the local Docker Compose gate first using your latest local stack (from V4):
+### Step A — Understand
 
-	```sh
-	cd ../express-reliability-platform-v04
-	docker compose up --build -d
-	curl http://localhost:8080/api/health
-	docker compose down
-	cd ../express-reliability-platform-v09
-	```
+Read the chaos drill script and ITSM scripts before running anything:
 
-2. Promote any infrastructure changes in order: `dev -> staging -> prod`.
-3. Install Python 3 and dependencies used by your scripts.
-4. Run one failure simulation at a time:
+```sh
+cat chaos/run_chaos_drill.sh
+cat itsm/create_servicenow_ticket.py
+cat itsm/create_jira_issue.py
+cat slack/send_slack_message.py
+```
 
-	```sh
-	python3 scripts/simulate_latency.py
-	python3 scripts/simulate_500_error.py
-	python3 scripts/simulate_cpu_memory.py
-	python3 scripts/simulate_app_failure.py
-	```
+What you should understand before building:
 
-5. Run AIOps checks:
+1. How `run_chaos_drill.sh` chains scoring → Slack → ITSM in one call.
+2. What environment variables each integration requires.
+3. What `--dry-run` mode does and why to use it first.
 
-	```sh
-	python3 aiops/check_slo_sli.py
-	python3 aiops/predict_and_remediate.py
-	```
+### Step B — Build: Configure Integrations
 
-6. Send/verify alert path:
+#### B1: Slack Incoming Webhook
 
-	```sh
-	python3 slack/send_slack_message.py
-	```
+1. Go to [https://api.slack.com/apps](https://api.slack.com/apps) → Create New App → From Scratch.
+2. Enable **Incoming Webhooks** → Add New Webhook to Workspace → choose a channel.
+3. Copy the webhook URL and export it:
 
-7. Execute response steps from `dr/runbook.txt`.
+```sh
+export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+```
 
-## 7) Validation Checklist
+Test it standalone:
 
-- [ ] All simulation scripts run without syntax/runtime errors.
-- [ ] AIOps scripts output prediction/check results.
-- [ ] Slack alert path works (or dry-run output is validated).
-- [ ] Runbook actions are executed and documented.
+```sh
+python3 slack/send_slack_message.py --message "V9 Slack integration working"
+```
 
-## 8) Troubleshooting
+Dry-run (no credentials needed):
 
-- Python package errors: create and activate a virtual environment.
-- Slack failures: verify token/channel environment variables.
-- No predicted incident: confirm simulation output is being produced before AIOps run.
+```sh
+python3 slack/send_slack_message.py --dry-run --message "test"
+```
 
-## 9) Cleanup
+#### B2: ServiceNow (Personal Developer Instance)
 
-- Stop any local processes and remove temporary test data/logs.
+1. Register at [https://developer.servicenow.com](https://developer.servicenow.com) and request a free PDI.
+2. Note your instance name (format: `dev12345`).
+3. Export credentials:
 
-## 10) Next Version Preview
+```sh
+export SNOW_INSTANCE=dev12345
+export SNOW_USER=admin
+export SNOW_PASSWORD=your_pdi_password
+```
 
-In V10, you build on V9 and extend into post-book labs with robotics and quantum-augmented optimization experiments.
+Test standalone (dry-run first):
 
+```sh
+python3 itsm/create_servicenow_ticket.py --dry-run \
+  --evidence-file artifacts/aiops/evidence/local/INC-001.json
+```
+
+#### B3: Jira (Free Cloud Instance)
+
+1. Register at [https://www.atlassian.com/software/jira/free](https://www.atlassian.com/software/jira/free) and create a project (key: `OPS`).
+2. Generate an API token at [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens).
+3. Export credentials:
+
+```sh
+export JIRA_BASE_URL=https://your-org.atlassian.net
+export JIRA_USER=you@example.com
+export JIRA_API_TOKEN=your_api_token
+export JIRA_PROJECT=OPS
+```
+
+Test standalone (dry-run first):
+
+```sh
+python3 itsm/create_jira_issue.py --dry-run \
+  --evidence-file artifacts/aiops/evidence/local/INC-001.json
+```
+
+### Step C — Test: Local Docker Gate
+
+Run the mandatory local gate before any chaos drill:
+
+```sh
+cd ../express-reliability-platform-v04
+docker compose up --build -d
+curl http://localhost:8080/api/health
+docker compose down
+cd ../express-reliability-platform-v09
+```
+
+### Step D — Break: Run a Chaos Drill
+
+Run the full pipeline with a single command:
+
+```sh
+chmod +x chaos/run_chaos_drill.sh scripts/aiops_score_and_summarize.sh
+./chaos/run_chaos_drill.sh INC-CHAOS-001 node-api latency
+```
+
+Available experiments:
+
+| Experiment | Simulates |
+|---|---|
+| `latency` | 1200ms API response time |
+| `error_rate` | 8% HTTP 5xx error rate |
+| `pod_kill` | Pod crash with multi-service fallout |
+| `cpu_stress` | CPU saturation and elevated latency |
+
+What the drill does in order:
+
+1. Sets failure parameters for the chosen experiment.
+2. Scores the incident using `scripts/aiops_score_and_summarize.sh`.
+3. Sends a Slack alert (dry-run if `SLACK_WEBHOOK_URL` is not set).
+4. Creates a ServiceNow ticket (dry-run if `SNOW_*` vars are not set).
+5. Creates a Jira issue (dry-run if `JIRA_*` vars are not set).
+6. Writes evidence to `artifacts/aiops/evidence/chaos/INC-CHAOS-001.json`.
+
+Run simulations individually:
+
+```sh
+python3 scripts/simulate_latency.py
+python3 scripts/simulate_500_error.py
+python3 scripts/simulate_cpu_memory.py
+python3 scripts/simulate_app_failure.py
+```
+
+Run AIOps checks separately:
+
+```sh
+python3 aiops/check_slo_sli.py
+python3 aiops/predict_and_remediate.py
+```
+
+### Step E — Fix
+
+Apply remediation steps from `dr/runbook.txt`. Verify recovery:
+
+```sh
+cd ../express-reliability-platform-v04
+docker compose up --build -d
+curl http://localhost:8080/api/health
+cd ../express-reliability-platform-v09
+```
+
+### Step F — Explain
+
+Document three answers after every drill:
+
+1. What was injected?
+2. What did AIOps detect and score?
+3. What did the ITSM ticket capture, and what fixed it?
+
+### Step G — Automate
+
+The chaos drill is already a single script — wire it into CI/CD:
+
+```sh
+# In a GitHub Actions workflow:
+- name: Chaos drill
+  run: |
+    chmod +x chaos/run_chaos_drill.sh scripts/aiops_score_and_summarize.sh
+    ./chaos/run_chaos_drill.sh INC-CI-${{ github.run_number }} node-api latency
+  env:
+    SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+```
+
+### Step H — Improve
+
+After each drill cycle:
+
+- Adjust AIOps scoring thresholds to reduce false alerts.
+- Improve ITSM ticket descriptions to capture all required triage fields.
+- Add new chaos experiments for scenarios not yet covered.
+
+### Step I — Cloud Deployment
+
+1. Configure AWS access:
+
+```sh
+aws configure
+aws sts get-caller-identity
+```
+
+2. Deploy shared environment:
+
+```sh
+terraform -chdir=environments/shared init
+terraform -chdir=environments/shared apply -var-file=shared.tfvars
+```
+
+3. Deploy live environment:
+
+```sh
+terraform -chdir=environments/live init
+terraform -chdir=environments/live apply -var-file=live.tfvars
+```
+
+4. Run chaos drill against cloud services:
+
+```sh
+./chaos/run_chaos_drill.sh INC-CLOUD-001 node-api error_rate
+```
+
+## 8) Validation Checklist
+
+- [ ] All simulation scripts run without errors.
+- [ ] AIOps scripts produce scored output.
+- [ ] Chaos drill completes and writes evidence JSON.
+- [ ] Slack dry-run output is visible (no credentials needed).
+- [ ] Slack real alert fires with `SLACK_WEBHOOK_URL` set.
+- [ ] ServiceNow dry-run shows correct ticket payload.
+- [ ] ServiceNow ticket created on PDI with correct priority.
+- [ ] Jira dry-run shows correct issue payload.
+- [ ] Jira issue created with correct severity and labels.
+- [ ] `dr/runbook.txt` steps were executed and documented.
+
+## 9) Troubleshooting
+
+- **Python package errors**: create a virtual environment (`python3 -m venv venv && source venv/bin/activate`).
+- **Slack not sending**: verify `SLACK_WEBHOOK_URL` is exported and points to an active webhook. Run `--dry-run` first.
+- **ServiceNow 401**: PDI credentials are wrong or the instance is hibernating. Wake it from the developer portal.
+- **Jira 403**: API token may be expired or the project key is wrong. Verify `JIRA_PROJECT` matches an existing project key.
+- **No evidence file**: confirm `scripts/aiops_score_and_summarize.sh` has execute permission and the output directory is writable.
+- **Chaos drill exits early**: run each step manually to isolate which stage fails.
+
+## 10) Cleanup
+
+```sh
+cd ../express-reliability-platform-v04
+docker compose down
+cd ../express-reliability-platform-v09
+terraform -chdir=environments/live destroy -var-file=live.tfvars
+terraform -chdir=environments/shared destroy -var-file=shared.tfvars
+```
+
+Archive all evidence files and document lessons learned.
+
+## 11) Next Version Preview
+
+In V10, you build post-book extension labs covering robotics simulation, quantum-augmented optimization, and full auto-remediation workflows that combine everything from V1 through V9.
 
