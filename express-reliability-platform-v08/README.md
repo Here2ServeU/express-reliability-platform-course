@@ -77,12 +77,42 @@ flowchart LR
 ## 8) Project Structure
 
 ```text
-express-reliability-platform-v08/
-├── artifacts/
-│   └── aiops/
-│       ├── high-demand-aiops-engineer-blueprint.md
-│       └── risk-rules.yaml
-├── environments/
+## 1) Version Purpose
+
+Version 8 trains you to run AIOps incident management in a real engineering workflow.
+You will detect incidents, score risk, summarize impact, and validate recovery.
+
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You will build an automated triage system — one that reads your platform's health signals, assigns a risk score from 1 to 10, and produces a written summary with a recommended action. Think of it like a triage nurse in an emergency room who takes every patient's vital signs, assigns a priority number (1 = immediate, 5 = can wait), and hands the doctor a card that says: "Priority 2. Elevated heart rate and blood pressure. Recommend ECG."
+
+**How does a bank or hospital use this?**
+Large financial institutions receive thousands of monitoring alerts per day. No human team can manually review each one. AIOps tools read every alert, score it, and surface only the ones that need human attention — so engineers spend their time fixing real problems instead of reading through noise.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **AIOps** | Automation that reads signals from your system, scores their severity, and suggests what to do — faster than any human alone |
+| **Risk score** | A number (1–10) that represents how serious an incident is, calculated from multiple signals at once |
+| **Anomaly detection** | Noticing when a number goes outside the normal range — like seeing your heart rate jump from 70 to 140 |
+| **Evidence file (JSON)** | A machine-readable file that records what signals were seen, when, and what the risk score was — like a medical chart |
+| **Incident summary** | A short plain-language description of what is wrong, how serious it is, and what to do first |
+| **Severity band** | A label that groups risk scores — Low (1–3), Medium (4–6), High (7–8), Critical (9–10) |
+| **SLI** | Service Level Indicator — the actual measured number, like "p95 latency = 620ms" |
+| **SLO** | Service Level Objective — the target, like "p95 latency must stay under 500ms" |
+
+**Expected result at the end of this version:**
+- Running `./scripts/aiops_score_and_summarize.sh` produces a risk score and text summary.
+- A JSON evidence file is written to disk for every scoring run.
+- An incident with a risk score ≥ 7 triggers a Slack notification automatically.
+
+---
+
+## 2) Chapter Covered
 │   ├── live/
 │   │   ├── live.tfvars
 │   │   ├── main.tf

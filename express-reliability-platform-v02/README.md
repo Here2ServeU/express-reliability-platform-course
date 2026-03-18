@@ -4,6 +4,34 @@
 
 Version 2 is a containerized three-service platform designed for local reliability testing.
 
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You will wrap your three services inside Docker containers so they all start with one command and run identically on any computer. This is like putting each ingredient of a recipe into a labeled package, then bundling all the packages into one box — anyone can open the box and follow the same instructions.
+
+**How does a bank or hospital use this?**
+Financial institutions and hospitals require that code behaves identically in development, testing, and production. A bug that only appears on one engineer's laptop but not on the server can cause transactions to fail or patient data to be corrupted. Docker eliminates that problem by guaranteeing the environment is always the same.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Docker** | A tool that packages your program and all its dependencies into a self-contained box called a container |
+| **Container** | A running instance of a packaged program — isolated from everything else on the computer |
+| **Docker Image** | The blueprint for a container — like a recipe. Running the image creates a container |
+| **Docker Compose** | A tool that starts multiple containers together with a single command using a `docker-compose.yml` file |
+| **docker-compose.yml** | A configuration file that describes every service, what image it uses, and how services connect to each other |
+| **Port mapping** | Connecting a port inside a container to a port on your computer — `8080:80` means "when my browser hits port 8080, forward it to port 80 inside the container" |
+
+**Expected result at the end of this version:**
+- `docker compose up --build -d` starts all three services with no errors.
+- `http://localhost:8080` shows the web UI.
+- `curl http://localhost:8080/api/health` returns `{"status": "ok"}`.
+
+---
+
 ## Builds on V1
 
 Before you start V2, copy your personal V1 repository to your local machine and rename it to V2:

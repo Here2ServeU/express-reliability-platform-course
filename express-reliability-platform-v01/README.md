@@ -4,7 +4,35 @@
 
 Build and run your first working reliability service on your computer, then create your own GitHub copy so you own the project from day one.
 
-## 2) Chapters Covered
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You are setting up your workbench. Before any engineer at any company writes a single line of server code, they run it on their own computer first to prove it works. That is exactly what you will do here.
+
+**How does a bank or hospital use this?**
+Every new engineer joining a bank's technology team runs the platform locally on their laptop before they are allowed to touch any shared server. This ensures they understand how the system works without any risk of breaking something real.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Terminal** | A text window where you type instructions directly to your computer — like texting commands instead of clicking icons |
+| **Node.js** | A program that lets your computer run JavaScript code — JavaScript is the language this project's API is written in |
+| **npm** | Node's package manager — it downloads the software pieces your program needs, like an app store for code libraries |
+| **localhost** | Your own computer's address — `http://localhost:3000` means "open port 3000 on this computer" |
+| **Port** | A numbered door on your computer that programs listen on — port 3000 is where your app waits for browser requests |
+| **GitHub** | A website that stores your code online, tracks every change, and lets you share your work with employers |
+| **Git** | The tool on your computer that saves code history and pushes it to GitHub |
+| **SSH Key** | A secure digital key that proves your identity to GitHub — safer than a password |
+
+**Expected result at the end of this version:**
+- Your browser opens `http://localhost:3000` and shows the app.
+- Your code is visible at `https://github.com/YOUR_USERNAME/express-reliability-platform-v01`.
+
+---
+
 
 ## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 

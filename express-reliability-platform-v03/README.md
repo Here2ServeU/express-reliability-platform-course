@@ -18,7 +18,36 @@ Use the main class repository as your source for scripts and canonical project s
 
 Coordinate all services together locally, then introduce Terraform best practices before cloud deployment to ECS behind an Application Load Balancer.
 
-## 2) Chapters Covered
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You will write code that tells Amazon's cloud to build servers, networks, and load balancers for you — automatically. Instead of logging into a website and clicking buttons, you write instructions in files. The cloud reads those files and builds exactly what you described.
+
+**How does a bank or hospital use this?**
+If a hospital's data center has a power failure, they need to rebuild their entire platform in a different location quickly. With Terraform, every server, network connection, and security rule is written in code files stored in GitHub. An engineer runs one command and the entire infrastructure is recreated in minutes — not days.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Terraform** | A tool that reads code files and builds cloud infrastructure — servers, networks, databases — automatically |
+| **ECS (Elastic Container Service)** | Amazon's service for running Docker containers in the cloud |
+| **ALB (Application Load Balancer)** | A service that distributes incoming web requests across multiple servers so no single server gets overwhelmed |
+| **IAM (Identity and Access Management)** | AWS's system for controlling who and what is allowed to do what — like a security badge system |
+| **OIDC** | A secure way for GitHub Actions to get temporary AWS credentials without storing any passwords |
+| **Remote state** | Terraform saves a record of what it built in an S3 bucket, so the whole team shares the same understanding of what exists |
+| **Modules** | Reusable blocks of Terraform code — like a function you can call multiple times with different inputs |
+| **dev / staging / prod** | Three separate environments: dev is for testing, staging is a near-real rehearsal, prod is what real users see |
+
+**Expected result at the end of this version:**
+- `docker compose up --build` starts all three services locally.
+- Terraform scripts deploy the platform to AWS ECS.
+- The app is reachable via the load balancer URL.
+
+---
+
 
 ## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 

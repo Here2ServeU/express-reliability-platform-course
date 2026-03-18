@@ -54,11 +54,40 @@ flowchart LR
 
 ## 5) Project Structure
 
-```text
-express-reliability-platform-v10/
-├── robotics/
-│   ├── demo_robotics.py
-│   └── remediate_robot.py
+## 1) Version Purpose
+
+Run extension labs that combine robotics simulation, AIOps workflows, and quantum-style optimization experiments.
+
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You will build a system that begins recovering from an incident on its own — before an engineer even picks up the phone. Think of a building's automatic sprinkler system: it senses the fire, triggers the alarm, notifies the fire department, AND starts putting out the fire — all automatically, in seconds, without waiting for a human decision. This version pushes your platform toward that level of self-sufficiency.
+
+**How does a bank or hospital use this?**
+The largest financial institutions set a target of sub-5-minute MTTR (Mean Time to Recovery) for critical systems. The only way to achieve that at scale — across hundreds of services running around the clock — is automation. Human response has irreducible latency: someone wakes up, reads the alert, logs in, and diagnoses the problem. Automated remediation compresses that to seconds.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Auto-remediation** | When the system detects a problem and applies a fix automatically — without waiting for a human to act |
+| **MTTR (Mean Time to Recovery)** | The average time between when an incident starts and when the system is back to normal — lower is better |
+| **Recovery validation** | After applying a fix, automatically checking that the system is actually healthy again — not just assuming the fix worked |
+| **Runbook automation** | Taking a manual runbook (step-by-step guide) and turning it into a script that the system can execute itself |
+| **Self-healing** | A system that detects its own failures and recovers without human intervention |
+| **Telemetry** | Data your system continuously sends about its own state — speed, error count, memory use, restart count |
+| **Optimization** | Finding the most efficient way to do something — in this version, applying quantum-inspired algorithms to routing and scheduling problems |
+
+**Expected result at the end of this version:**
+- The end-to-end pipeline runs: telemetry → AIOps analysis → alert → automated remediation step → recovery validation.
+- You can demonstrate the full sequence to a hiring manager or client in a single terminal session.
+- The platform produces a written summary of what it detected, what it did, and whether recovery succeeded.
+
+---
+
+## 2) Chapters Covered
 ├── quantum/
 │   └── demo_quantum.py
 ├── aiops/
