@@ -1,0 +1,32 @@
+version: 1
+rules:
+  - id: error-rate-high
+    condition: error_rate_pct > 1.0
+    score: 30
+    note: Error budget is burning too fast
+
+  - id: latency-p95-high
+    condition: latency_ms > 500
+    score: 30
+    note: User experience degradation risk
+
+  - id: restart-increase
+    condition: restart_count > 0
+    score: 20
+    note: Service instability detected
+
+  - id: multi-service-failure
+    condition: multi_service_failures > 1
+    score: 20
+    note: Blast radius is expanding
+
+severity_bands:
+  low:
+    min: 0
+    max: 39
+  medium:
+    min: 40
+    max: 69
+  high:
+    min: 70
+    max: 100

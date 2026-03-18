@@ -9,11 +9,19 @@ provider "aws" {
 
 resource "aws_s3_bucket" "bootstrap" {
   bucket = "express-reliability-platform-bootstrap-${var.environment_name}"
-  acl    = "private"
   tags = {
     Name        = "ExpressReliabilityPlatformBootstrap"
     Environment = var.environment_name
   }
+}
+
+resource "aws_s3_bucket_public_access_block" "bootstrap" {
+  bucket = aws_s3_bucket.bootstrap.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_iam_role" "bootstrap_role" {
@@ -38,19 +46,36 @@ resource "aws_iam_role" "bootstrap_role" {
 
 resource "aws_s3_bucket" "tf_state" {
   bucket = var.state_bucket_name
-  versioning {
-    enabled = true
-  }
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm = "AES256"
-      }
-    }
-  }
   lifecycle {
     prevent_destroy = true
   }
+}
+
+resource "aws_s3_bucket_versioning" "tf_state" {
+  bucket = aws_s3_bucket.tf_state.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "tf_state" {
+  bucket = aws_s3_bucket.tf_state.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "tf_state" {
+  bucket = aws_s3_bucket.tf_state.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_dynamodb_table" "tf_lock" {
@@ -61,5 +86,7 @@ resource "aws_dynamodb_table" "tf_lock" {
     name = "LockID"
     type = "S"
   }
-  point_in_time_recovery_enabled = true
+  point_in_time_recovery {
+    enabled = true
+  }
 }

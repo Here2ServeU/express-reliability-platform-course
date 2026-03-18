@@ -1,5 +1,19 @@
 # Express Reliability Platform V6 — Infrastructure as Code Discipline
 
+## Builds on V5
+
+Before you start V6, copy your personal V5 repository to your local machine and rename it to V6:
+
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v05.git
+mv express-reliability-platform-v05 express-reliability-platform-v06
+cd express-reliability-platform-v06
+```
+
+Use the main class repository for scripts and canonical structure:
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
 ## 1) Version Purpose
 
 Standardize Terraform usage across environments with clear state, module, and bootstrap patterns.
@@ -45,11 +59,22 @@ express-reliability-platform-v06/
 
 ## 6) Run Steps
 
-1. Configure AWS credentials and region.
-2. Bootstrap remote state resources (if required by your backend setup).
-3. Apply shared environment first.
-4. Apply live environment next.
-5. Use helper script:
+1. Run the local Docker Compose gate first using your latest local stack (from V4):
+
+    ```sh
+    cd ../express-reliability-platform-v04
+    docker compose up --build -d
+    curl http://localhost:8080/api/health
+    docker compose down
+    cd ../express-reliability-platform-v06
+    ```
+
+2. Configure AWS credentials and region.
+3. Bootstrap remote state resources (if required by your backend setup).
+4. Apply shared environment first.
+5. Apply live environment next.
+6. Promote infrastructure updates through `dev -> staging -> prod` using separate state keys/workspaces.
+7. Use helper script:
 
    ```sh
    ./scripts/terraform_init_apply.sh
@@ -74,6 +99,6 @@ express-reliability-platform-v06/
 
 ## 10) Next Version Preview
 
-In V7, you operationalize reliability with runbooks, incident response workflows, and disaster recovery habits.
+In V7, you build on V6 and operationalize reliability with runbooks, incident response workflows, and disaster recovery habits.
 
 
