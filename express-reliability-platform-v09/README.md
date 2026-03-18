@@ -71,11 +71,42 @@ flowchart LR
 
 ## 6) Project Structure
 
-```text
-express-reliability-platform-v09/
-├── aiops/
-│   ├── check_slo_sli.py
-│   └── predict_and_remediate.py
+## 1) Version Purpose
+
+V9 completes the operational intelligence loop. You detect incidents using AIOps, alert your team on Slack, open ITSM tickets automatically in ServiceNow and Jira, and run advanced chaos drills that exercise the full pipeline end-to-end.
+
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+When your system detects a problem, it should not wait for an engineer to notice — it should instantly send a Slack message to the team, open a ticket in the company's incident tracking system, and record everything. This is like a hospital paging system: the moment a patient monitor alarm fires, the right doctor gets paged AND the event is automatically logged in the patient record — all before anyone manually makes a phone call.
+
+**How does a bank or hospital use this?**
+Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) require that every incident is logged in an auditable system within a specific timeframe. Manual ticket creation is slow and error-prone. Automated ITSM integration guarantees every incident is captured — even at 3am when no one is watching — and gives auditors a complete trail.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Slack Incoming Webhook** | A URL that your scripts call to post a message into a Slack channel automatically — no bot account required |
+| **ServiceNow** | An enterprise ticketing platform used by most banks, hospitals, and government agencies to track every incident and change |
+| **Jira** | A project management tool used by engineering teams to track bugs, features, and incidents as "issues" |
+| **ITSM (IT Service Management)** | The discipline of tracking all IT work (incidents, changes, requests) in a structured ticketing system |
+| **REST API** | A standard way to talk to a web service by sending a structured message over the internet and receiving a response |
+| **Chaos drill** | A full end-to-end test: inject a failure → AIOps detects it → Slack fires → ServiceNow ticket opens → Jira issue created |
+| **Incident pipeline** | The sequence of automated steps from detection through alerting through ticketing to remediation |
+| **PDI (Personal Developer Instance)** | A free ServiceNow test environment you use for practice — no cost and no risk to a production system |
+
+**Expected result at the end of this version:**
+- `./chaos/run_chaos_drill.sh` runs four experiments and produces output for each pipeline stage.
+- A Slack message appears in your chosen channel within seconds of an incident detection.
+- A ServiceNow incident ticket and a Jira issue are both created automatically.
+- Every step has `--dry-run` mode so you can test without actually posting or creating tickets.
+
+---
+
+## 2) Chapters Covered
 ├── chaos/
 │   └── run_chaos_drill.sh        <- full pipeline: inject -> score -> alert -> ticket
 ├── itsm/

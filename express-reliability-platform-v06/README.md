@@ -51,11 +51,41 @@ flowchart TD
 
 ## 5) Project Structure
 
-```text
-express-reliability-platform-v06/
-├── environments/
-│   ├── live/
-│   └── shared/
+## 1) Version Purpose
+
+Standardize Terraform usage across environments with clear state, module, and bootstrap patterns.
+
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You will organize your cloud setup code so that any engineer on your team can read it, reproduce it, and safely make changes — without breaking anything. This is like building a professional filing system where every document has a standard location, every change is tracked, and anyone with the right access can recreate the entire setup from scratch.
+
+**How does a bank or hospital use this?**
+In regulated industries, auditors can walk in at any time and ask: "Show us exactly how this environment was set up." Infrastructure as Code gives them a complete, versioned answer. It also means a new engineer on the team can be productive on day one instead of spending weeks learning an ad-hoc setup by trial and error.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Terraform state** | A file Terraform keeps to track what it has already built — so it knows what to add, change, or remove |
+| **Remote backend** | Storing the state file in S3 (not on your laptop) so every team member shares the same truth |
+| **Modules** | Reusable building blocks in Terraform — like a template. Define a VPC module once, use it in every environment |
+| **Bootstrap** | The first infrastructure you create (S3 bucket + DynamoDB table) so Terraform has a place to store its state |
+| **Environment promotion** | Moving infrastructure changes through `dev → staging → prod` in sequence, testing at each step |
+| **Idempotency** | Running the same Terraform command twice gives the same result — nothing breaks if you apply twice |
+| **tfvars** | A file containing values that change between environments (region, instance size, etc.) — keeps code DRY |
+
+**Expected result at the end of this version:**
+- `terraform plan` shows zero unexpected changes after you apply.
+- State is stored remotely in S3 with DynamoDB locking.
+- Modules are reused across `live` and `shared` environments.
+- A second engineer can clone your repo and apply without asking you any questions.
+
+---
+
+## 2) Chapters Covered
 ├── infrastructure/
 │   └── bootstrap/
 ├── modules/

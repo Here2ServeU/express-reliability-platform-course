@@ -18,7 +18,36 @@ Use the main class repository for scripts and canonical structure:
 
 Move from ECS-style orchestration to Kubernetes (EKS), then introduce self-healing and autoscaling concepts.
 
-## 2) Chapters Covered
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You replace the container manager from V3 (ECS) with Kubernetes — a more powerful system that automatically restarts crashed services and scales up when traffic increases. Think of ECS as a person who watches one set of machines. Kubernetes is like an automated building manager who watches hundreds of machines, notices instantly when one fails, starts a replacement, and even calls for extra help when the building is unusually busy.
+
+**How does a bank or hospital use this?**
+Hospital patient portals face unpredictable traffic spikes — a public health announcement can send ten times the normal traffic in minutes. Kubernetes handles this automatically by starting more copies of the service when traffic rises and stopping them when it drops. Banks use it to maintain zero-downtime deployments — new code rolls out gradually while the old version keeps serving traffic.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Kubernetes** | A system that manages containers at scale — starts them, restarts them if they crash, and balances traffic across them |
+| **EKS (Elastic Kubernetes Service)** | Amazon's managed Kubernetes service — Amazon handles the control plane so you only manage your workloads |
+| **Pod** | The smallest deployable unit in Kubernetes — usually one running container |
+| **Deployment** | A Kubernetes instruction that says "keep exactly N copies of this pod running at all times" |
+| **Service (Kubernetes)** | A stable network address that routes traffic to the correct pods — even when pods restart and get new addresses |
+| **Ingress / ALB** | The entry point for external traffic — routes incoming requests to the right Kubernetes service |
+| **HPA (Horizontal Pod Autoscaler)** | Automatically adds more pods when load increases and removes them when load drops |
+| **kubectl** | The command-line tool for controlling a Kubernetes cluster — like a remote control for your cluster |
+
+**Expected result at the end of this version:**
+- `kubectl get nodes` shows healthy nodes in the EKS cluster.
+- `kubectl get pods -A` shows all services running without restarts.
+- Killing a pod manually results in Kubernetes restarting it automatically.
+
+---
+
 
 ## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 

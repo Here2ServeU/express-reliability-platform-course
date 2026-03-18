@@ -53,11 +53,40 @@ flowchart LR
 
 ## 5) Project Structure
 
-```text
-express-reliability-platform-v07/
-├── artifacts/
-│   ├── chaos/
-│   │   └── chaos-engineering.md
+## 1) Version Purpose
+
+Translate infrastructure maturity into operational maturity: runbooks, incident response, SLO/SLI thinking, disaster recovery basics, and chaos engineering.
+
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You will create the emergency procedures your team follows when something breaks at 3am — and then practice breaking things on purpose to make sure those procedures work. Every hospital and fire station keeps a binder of step-by-step procedures for every emergency scenario. This version is how you build that binder for your platform.
+
+**How does a bank or hospital use this?**
+Regulated organizations (banks, hospitals, government agencies) are legally required to have documented incident response plans. Regulators can ask to review your runbooks at any time. Chaos engineering lets you prove the runbooks actually work before a real incident exposes the gaps.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Runbook** | A step-by-step guide for fixing a specific problem — engineers follow it at 3am without needing to think from scratch |
+| **Incident severity (SEV1–SEV3)** | A scale that says how serious a problem is. SEV1 = critical outage. SEV3 = minor issue with a workaround |
+| **SLO breach** | When a performance promise is broken — for example, response time exceeded 500ms for more than 0.1% of requests |
+| **On-call rotation** | A schedule where engineers take turns being the first responder during overnight and weekend hours |
+| **Chaos engineering** | Intentionally causing a controlled failure to test whether your runbooks and alerts actually work |
+| **Blast radius** | How much of the system is affected by a failure — a small blast radius means only one service is impacted |
+| **DR (Disaster Recovery)** | A plan for restoring your entire platform after a catastrophic event — data center outage, ransomware attack, etc. |
+
+**Expected result at the end of this version:**
+- You have at least one runbook document that any engineer can follow without prior context.
+- A chaos drill runs and your platform recovers to within SLO within the documented time target.
+- An on-call rotation schedule exists with clear escalation steps.
+
+---
+
+## 2) Chapters Covered
 │   ├── compliance/
 │   │   └── dr-basics.md
 │   ├── runbooks/

@@ -18,7 +18,36 @@ Use the main class repository for scripts and canonical structure:
 
 Add observability to the platform and practice reliability engineering with controlled stress and failure scenarios.
 
-## 2) Chapters Covered
+---
+
+## Plain Language Context
+
+**What is this version teaching you?**
+You add a live dashboard to your platform so you can see exactly what is happening inside it at any moment — how fast it is responding, how many errors it is producing, and whether it is healthy. Without this, running a platform is like driving a car with no dashboard: you have no idea how fast you are going or when you are about to run out of fuel.
+
+**How does a bank or hospital use this?**
+Banks monitor transaction response times in real time. A sudden spike in latency can indicate fraud traffic, a server overload, or a network failure. A hospital monitoring platform tracks whether patient-record requests are succeeding. When a metric crosses a threshold, engineers get an alert immediately — not an hour later when users start calling.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Prometheus** | A program that collects numbers from your services every few seconds and stores them — like a health monitor taking readings continuously |
+| **Metrics** | Numbers that describe how your system is performing — request rate, error rate, response time, memory usage |
+| **Grafana** | A tool that draws metrics as charts and dashboards — like turning a spreadsheet of numbers into a visual graph |
+| **SLI (Service Level Indicator)** | The actual measured value — for example, the real p95 response time right now |
+| **SLO (Service Level Objective)** | The target you promise — for example, "p95 response time must stay under 500ms" |
+| **p95 (95th percentile)** | The response time that 95% of requests are faster than — so if p95 is 400ms, 95 out of 100 requests finished in 400ms or less |
+| **Alertmanager** | A tool connected to Prometheus that sends notifications when a metric crosses a threshold |
+| **Load generation** | Sending many requests to your system to observe how it behaves under real traffic |
+
+**Expected result at the end of this version:**
+- `http://localhost:9090` shows Prometheus with your services listed as targets.
+- `http://localhost:3001` shows Grafana with a working datasource.
+- You can see metric values change in Grafana while generating load.
+
+---
+
 
 ## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
