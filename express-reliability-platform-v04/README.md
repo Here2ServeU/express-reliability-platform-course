@@ -193,3 +193,136 @@ docker compose down
 ## 10) Next Version Preview
 
 In V5, you build on V4 by moving to Kubernetes on EKS and adding self-healing and autoscaling concepts.
+
+---
+
+## Chapter 14: Basic Monitoring in AWS (Terraform Extension)
+
+### 14.1 What You Are Doing
+
+In this chapter you extend the local observability stack you built (Prometheus + Grafana) into AWS so that the same reliability signals — request errors, CPU load, log output — are also captured at the cloud layer.
+
+You will:
+- Route container logs to **CloudWatch Logs** using the ECS `awslogs` driver.
+- Register an **ECS Cluster** with Container Insights enabled so per-task CPU and memory metrics are published automatically.
+- Create **CloudWatch Metric Alarms** that fire when error counts or CPU utilisation cross reliability thresholds.
+- Wire alarms to an **SNS Topic** so notifications reach an email address of your choice.
+
+This prepares you for production-level systems where you need centralised, durable observability that survives container restarts and is queryable by the whole team — not just whoever is running Grafana locally.
+
+**Plain-language analogy:** Prometheus watches your services from inside the house. CloudWatch watches them from the street — and calls you when something goes wrong, even if your laptop is closed.
+
+---
+
+### 14.2 Terraform Concepts Introduced
+
+| Resource | What It Does |
+|---|---|
+| `aws_cloudwatch_log_group` | Central log destination. Every ECS container sends stdout/stderr here via the `awslogs` Docker log driver. |
+| `aws_ecs_cluster` | Logical group that holds your ECS services. `containerInsights = enabled` publishes automatic CPU/memory metrics. |
+| `aws_sns_topic` | Notification channel. Alarms publish here; subscribers (email, PagerDuty, Slack) receive them. |
+| `aws_sns_topic_subscription` | Wires an email address to the SNS topic; set `var.alarm_email` to activate. |
+| `aws_cloudwatch_metric_alarm` | Watches a specific CloudWatch metric and triggers when it crosses a threshold. |
+
+---
+
+### 14.3 Project Structure with Terraform Scripts
+
+```text
+express-reliability-platform-v04/
+├── apps/
+│   ├── node-api/
+│   ├── flask-api/
+│   └── web-ui/
+├── monitoring/
+│   ├── prometheus.yml
+│   ├── alert.rules.yml
+│   └── grafana-dashboard.json
+├── docker-compose.yml
+├── terraform/
+│   └── main.tf          ← Chapter 14 AWS monitoring resources
+└── README.md
+```
+
+**What `terraform/main.tf` now declares:**
+
+```
+terraform/ 
+└── main.tf
+    ├── provider + version lock
+    ├── variables (region, environment, log_retention_days, alarm_email)
+    ├── aws_cloudwatch_log_group  — /ecs/express-reliability-platform-<env>
+    ├── aws_ecs_cluster           — Container Insights ON
+    ├── aws_sns_topic             — alert notification channel
+    ├── aws_sns_topic_subscription — optional email subscriber
+    ├── aws_cloudwatch_metric_alarm: node_api_high_errors
+    ├── aws_cloudwatch_metric_alarm: ecs_high_cpu
+    └── outputs (log_group_name, ecs_cluster_name, alerts_topic_arn)
+```
+
+---
+
+### 14.4 Run Steps
+
+1. Export AWS credentials:
+
+   ```sh
+   export AWS_ACCESS_KEY_ID=your_key
+   export AWS_SECRET_ACCESS_KEY=your_secret
+   export AWS_DEFAULT_REGION=us-east-1
+   ```
+
+2. Initialise Terraform and download the AWS provider:
+
+   ```sh
+   cd terraform/
+   terraform init
+   ```
+
+3. Preview the changes:
+
+   ```sh
+   terraform plan -var="environment=dev" -var="alarm_email=you@example.com"
+   ```
+
+4. Confirm the plan looks right, then apply:
+
+   ```sh
+   terraform apply -var="environment=dev" -var="alarm_email=you@example.com"
+   ```
+
+5. Confirm the resources exist in AWS:
+   - CloudWatch → Log groups → `/ecs/express-reliability-platform-dev`
+   - ECS → Clusters → `express-reliability-platform-dev`
+   - CloudWatch → Alarms → `erp-dev-node-api-high-errors` and `erp-dev-ecs-high-cpu`
+
+6. Check your inbox and confirm the SNS subscription email.
+
+7. Destroy after validation:
+
+   ```sh
+   terraform destroy -var="environment=dev"
+   ```
+
+---
+
+### 14.5 Validation Checklist
+
+- [ ] `terraform init` completes without errors.
+- [ ] `terraform plan` shows 6 resources to add (log group, cluster, SNS topic, subscription, 2 alarms).
+- [ ] `terraform apply` completes successfully.
+- [ ] CloudWatch log group appears in AWS Console.
+- [ ] ECS cluster appears with Container Insights enabled.
+- [ ] Both CloudWatch alarms are in `OK` or `INSUFFICIENT_DATA` state (not `ALARM`).
+- [ ] SNS subscription confirmation email is received.
+
+---
+
+### 14.6 Troubleshooting
+
+| Symptom | Likely Cause | Fix |
+|---|---|---|
+| `NoCredentialProviders` | AWS credentials not set | Export `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` |
+| `AlreadyExistsException` on cluster | Cluster created previously | Import with `terraform import aws_ecs_cluster.platform <name>` |
+| Alarm stuck in `INSUFFICIENT_DATA` | No ECS tasks running yet | Deploy a task to the cluster so metrics flow |
+| No SNS confirmation email | `alarm_email` not set or wrong | Re-apply with correct `-var="alarm_email=..."` |
