@@ -66,6 +66,18 @@ Banks monitor transaction response times in real time. A sudden spike in latency
 - Dashboards in Grafana for reliability visibility.
 - A repeatable method to test latency/error behavior.
 
+## 3.1) Why Terraform Is Included in V4
+
+Terraform is infrastructure-as-code (IaC): you define infrastructure in versioned files instead of creating it manually in a cloud console.
+
+In V4, Terraform is included as a foundation step so you can:
+
+- Standardize how environments are declared and reproduced.
+- Validate cloud credentials and provider configuration early.
+- Prepare for V5+, where platform infrastructure (VPC/EKS/modules) is managed through Terraform at scale.
+
+V4 is still primarily a local observability build (Compose + Prometheus + Grafana), but the `terraform/` folder gives you a clean transition path from local reliability testing to cloud provisioning workflows.
+
 ## 4) Architecture Diagram (Mermaid)
 
 ```mermaid
@@ -89,8 +101,12 @@ express-reliability-platform-v04/
 │   ├── flask-api/
 │   └── web-ui/
 ├── monitoring/
-│   └── prometheus.yml
+│   ├── prometheus.yml
+│   ├── alert.rules.yml
+│   └── grafana-dashboard.json
 ├── docker-compose.yml
+├── terraform/
+│   └── main.tf
 └── README.md
 ```
 
@@ -110,8 +126,48 @@ express-reliability-platform-v04/
    - Grafana: `http://localhost:3001`
 
 3. Generate load with any HTTP tool (`hey`, `ab`, or browser refresh loops).
-4. Observe latency, request count, and error trends in Grafana.
-5. After local validation passes, promote to cloud in order: `dev -> staging -> prod`.
+4. Import the starter dashboard in Grafana:
+   - Open Grafana (`http://localhost:3001`) and go to **Dashboards -> New -> Import**.
+   - Upload `monitoring/grafana-dashboard.json`.
+   - Select your Prometheus datasource and complete import.
+5. Observe latency, request count, and error trends in Grafana.
+6. After local validation passes, promote to cloud in order: `dev -> staging -> prod`.
+
+### How to Use `monitoring/grafana-dashboard.json`
+
+Use this JSON file as a prebuilt dashboard template so you do not have to create panels manually.
+
+1. Start the stack first:
+
+   ```sh
+   docker compose up --build
+   ```
+
+2. Confirm Prometheus is collecting targets:
+   - Open `http://localhost:9090/targets`.
+   - Verify `node-api` and `flask-api` are `UP`.
+
+3. Configure Prometheus as a Grafana datasource:
+   - Open Grafana at `http://localhost:3001`.
+   - Go to **Connections -> Data sources -> Add data source**.
+   - Choose **Prometheus**.
+   - Set URL to `http://prometheus:9090` (inside Docker network).
+   - Click **Save & test**.
+
+4. Import the dashboard JSON:
+   - Go to **Dashboards -> New -> Import**.
+   - Upload `monitoring/grafana-dashboard.json`.
+   - In the import screen, map `DS_PROMETHEUS` to your Prometheus datasource.
+   - Click **Import**.
+
+5. Validate the dashboard is working:
+   - Open `http://localhost:3000/` and `http://localhost:5000/` several times to generate traffic.
+   - In Grafana, confirm panels show non-empty series (availability, Flask request rate, and process memory).
+
+6. If panels are blank, check these first:
+   - Time range is too narrow: set dashboard range to `Last 15 minutes`.
+   - Datasource mapping issue: re-import and ensure `DS_PROMETHEUS` is mapped correctly.
+   - No traffic yet: hit API endpoints again to produce fresh metrics.
 
 ## 7) Validation Checklist
 
