@@ -91,7 +91,7 @@ resource "aws_ecs_cluster" "platform" {
 
   setting {
     name  = "containerInsights"
-    value = "enabled"   # publishes per-container CPU / memory metrics to CloudWatch
+    value = "enabled" # publishes per-container CPU / memory metrics to CloudWatch
   }
 
   tags = {
@@ -127,7 +127,7 @@ resource "aws_cloudwatch_metric_alarm" "node_api_high_errors" {
   evaluation_periods  = 1
   metric_name         = "HTTPCode_Target_5XX_Count"
   namespace           = "AWS/ApplicationELB"
-  period              = 300  # 5 minutes
+  period              = 300 # 5 minutes
   statistic           = "Sum"
   threshold           = 10
   alarm_description   = "Node API is returning more than 10 HTTP 5xx errors per 5 minutes."
@@ -136,7 +136,7 @@ resource "aws_cloudwatch_metric_alarm" "node_api_high_errors" {
   ok_actions          = [aws_sns_topic.alerts.arn]
 
   dimensions = {
-    LoadBalancer = "PLACEHOLDER_ALB_ARN_SUFFIX"  # replace with real ALB suffix in V5
+    LoadBalancer = "PLACEHOLDER_ALB_ARN_SUFFIX" # replace with real ALB suffix in V5
   }
 }
 
@@ -148,7 +148,7 @@ resource "aws_cloudwatch_metric_alarm" "ecs_high_cpu" {
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
   namespace           = "AWS/ECS"
-  period              = 300  # 5 minutes
+  period              = 300 # 5 minutes
   statistic           = "Average"
   threshold           = 80
   alarm_description   = "ECS cluster average CPU has exceeded 80% for 10 minutes."
