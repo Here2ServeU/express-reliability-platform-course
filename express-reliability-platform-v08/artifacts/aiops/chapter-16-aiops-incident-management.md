@@ -1,4 +1,4 @@
-# Chapter 16: AIOps for Incident Management
+# AIOps for Incident Management
 
 ## Goal
 Use AIOps to detect incidents earlier, summarize impact faster, and guide responders to the right first actions.
