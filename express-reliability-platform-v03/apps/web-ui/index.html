@@ -1,12 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Express Reliability Platform v3</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2S | Express Reliability Platform v3</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-secondary: #121936;
+      --surface: rgba(255, 255, 255, 0.08);
+      --surface-border: rgba(255, 255, 255, 0.12);
+      --text: #ffffff;
+      --muted: #c7d2fe;
+      --accent: #2563eb;
+      --accent-2: #7c3aed;
+      --success: #22c55e;
+      --shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(124, 58, 237, 0.22), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(37, 99, 235, 0.22), transparent 30%),
+        linear-gradient(135deg, var(--bg), var(--bg-secondary));
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 28px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand-badge {
+      display: inline-block;
+      width: fit-content;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: white;
+      font-size: 0.78rem;
+      font-weight: bold;
+      letter-spacing: 0.8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      text-transform: uppercase;
+    }
+
+    .brand-subtitle {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: #dcfce7;
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      padding: 10px 14px;
+      border-radius: 999px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 12px rgba(34, 197, 94, 0.7);
+    }
+
+    .hero {
+      padding: 56px 28px 34px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 2.6rem;
+      line-height: 1.15;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      max-width: 760px;
+      margin: 0 auto;
+      font-size: 1.05rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .highlight {
+      color: #ffffff;
+      font-weight: bold;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
+      padding: 0 28px 34px;
+    }
+
+    .service-card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 24px;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .service-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255,255,255,0.16);
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22);
+    }
+
+    .service-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #bfdbfe;
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    .service-card h2 {
+      font-size: 1.45rem;
+      margin-bottom: 10px;
+    }
+
+    .service-card p {
+      color: var(--muted);
+      line-height: 1.65;
+      margin-bottom: 18px;
+      min-height: 72px;
+    }
+
+    .service-link {
+      display: inline-block;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
+      padding: 12px 18px;
+      border-radius: 12px;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .service-link:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .footer {
+      padding: 22px 28px 30px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .footer strong {
+      color: white;
+    }
+
+    @media (max-width: 800px) {
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+
+      .hero h1 {
+        font-size: 2rem;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .service-card p {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .hero {
+        padding: 42px 20px 28px;
+      }
+
+      .grid,
+      .topbar,
+      .footer {
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+
+      .hero h1 {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h1>Welcome to Express Reliability Platform v3</h1>
-  <p>Node API: <a href="http://localhost:3000">3000</a></p>
-  <p>Flask API: <a href="http://localhost:5000">5000</a></p>
+  <div class="container">
+    <section class="card">
+      <div class="topbar">
+        <div class="brand">
+          <span class="brand-badge">T2S Product</span>
+          <div class="brand-subtitle">Transformed 2 Succeed | Professional Learning and Platform Experience</div>
+        </div>
+
+        <div class="status">
+          <span class="status-dot"></span>
+          Platform Services Available
+        </div>
+      </div>
+
+      <div class="hero">
+        <h1>Express Reliability Platform v3</h1>
+        <p>
+          Welcome to the <span class="highlight">Express Reliability Platform v3</span>, a professional
+          training and demonstration environment developed as a product of
+          <span class="highlight">T2S (Transformed 2 Succeed)</span>. This platform is designed to help learners,
+          engineers, and teams explore modern application reliability through hands-on access to backend services,
+          platform architecture, and practical system validation.
+        </p>
+      </div>
+
+      <div class="grid">
+        <div class="service-card">
+          <div class="service-label">Service Endpoint</div>
+          <h2>Node API</h2>
+          <p>
+            Access the Node.js application interface for API testing, service validation,
+            and integration checks within the Express Reliability Platform environment.
+          </p>
+          <a class="service-link" href="http://localhost:3000" target="_blank" rel="noopener noreferrer">
+            Open Node API
+          </a>
+        </div>
+
+        <div class="service-card">
+          <div class="service-label">Service Endpoint</div>
+          <h2>Flask API</h2>
+          <p>
+            Access the Flask application interface for Python-based service testing,
+            backend communication, and reliability workflow demonstrations.
+          </p>
+          <a class="service-link" href="http://localhost:5000" target="_blank" rel="noopener noreferrer">
+            Open Flask API
+          </a>
+        </div>
+      </div>
+
+      <div class="footer">
+        Built as a professional product experience under <strong>T2S (Transformed 2 Succeed)</strong>.<br />
+        Supporting practical learning, platform engineering awareness, and real-world technical growth.
+      </div>
+    </section>
+  </div>
 </body>
 </html>
