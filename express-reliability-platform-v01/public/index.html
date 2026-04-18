@@ -1,11 +1,540 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Express Reliability Platform V1</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2S Stream | Transformed 2 Succeed</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    body {
+      background-color: #141414;
+      color: #ffffff;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 1000;
+      padding: 18px 40px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.92), rgba(0,0,0,0.25), rgba(0,0,0,0));
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+    }
+
+    .logo {
+      color: #e50914;
+      font-size: 2rem;
+      font-weight: bold;
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    nav {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      font-size: 0.95rem;
+      color: #f5f5f5;
+      transition: color 0.3s ease;
+    }
+
+    nav a:hover {
+      color: #b3b3b3;
+    }
+
+    .header-right {
+      font-size: 0.9rem;
+      color: #e5e5e5;
+      text-align: right;
+      line-height: 1.4;
+    }
+
+    .hero {
+      min-height: 92vh;
+      background:
+        linear-gradient(to top, rgba(20,20,20,1), rgba(20,20,20,0.2)),
+        linear-gradient(to right, rgba(0,0,0,0.85), rgba(0,0,0,0.25)),
+        url('https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1600&q=80')
+        center center / cover no-repeat;
+      display: flex;
+      align-items: center;
+      padding: 0 60px;
+    }
+
+    .hero-content {
+      max-width: 700px;
+      margin-top: 70px;
+    }
+
+    .hero-label {
+      display: inline-block;
+      margin-bottom: 18px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(229, 9, 20, 0.15);
+      border: 1px solid rgba(229, 9, 20, 0.45);
+      color: #ffffff;
+      font-size: 0.85rem;
+      letter-spacing: 0.5px;
+    }
+
+    .hero h1 {
+      font-size: 4rem;
+      line-height: 1.05;
+      margin-bottom: 18px;
+    }
+
+    .hero p {
+      font-size: 1.08rem;
+      line-height: 1.7;
+      color: #e5e5e5;
+      margin-bottom: 24px;
+      max-width: 620px;
+    }
+
+    .hero-meta {
+      color: #c7c7c7;
+      font-size: 0.95rem;
+      margin-bottom: 22px;
+      line-height: 1.6;
+    }
+
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 26px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: opacity 0.3s ease, transform 0.2s ease;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: #ffffff;
+      color: #000000;
+    }
+
+    .btn-secondary {
+      background: rgba(109, 109, 110, 0.7);
+      color: #ffffff;
+    }
+
+    .hero-note {
+      max-width: 650px;
+      padding-left: 14px;
+      border-left: 3px solid #e50914;
+      color: #dddddd;
+      line-height: 1.7;
+      font-size: 0.96rem;
+    }
+
+    main {
+      position: relative;
+      z-index: 10;
+      margin-top: -110px;
+      padding: 0 40px 50px;
+    }
+
+    .featured-strip {
+      background: linear-gradient(135deg, #1b1b1b, #2b0d10);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 34px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    }
+
+    .featured-strip h2 {
+      margin-bottom: 12px;
+      font-size: 1.5rem;
+    }
+
+    .featured-strip p {
+      color: #d7d7d7;
+      line-height: 1.7;
+      max-width: 900px;
+    }
+
+    .row {
+      margin-bottom: 34px;
+    }
+
+    .row h2 {
+      font-size: 1.35rem;
+      margin-bottom: 14px;
+    }
+
+    .row-posters {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      scroll-behavior: smooth;
+    }
+
+    .row-posters::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .row-posters::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 10px;
+    }
+
+    .poster {
+      position: relative;
+      min-width: 230px;
+      height: 130px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #222;
+      flex-shrink: 0;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+
+    .poster:hover {
+      transform: scale(1.08);
+      z-index: 20;
+      box-shadow: 0 14px 32px rgba(0,0,0,0.45);
+    }
+
+    .poster img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .poster-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1));
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 12px;
+    }
+
+    .poster-title {
+      font-size: 0.95rem;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .poster-subtitle {
+      font-size: 0.78rem;
+      color: #d0d0d0;
+      line-height: 1.4;
+    }
+
+    .platform-section {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 10px;
+      line-height: 1.8;
+      color: #dddddd;
+    }
+
+    .platform-section h3 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+      color: #ffffff;
+    }
+
+    footer {
+      text-align: center;
+      color: #9f9f9f;
+      padding: 30px 20px 40px;
+      line-height: 1.7;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 900px) {
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .header-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .header-right {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 768px) {
+      header {
+        padding: 16px 20px;
+      }
+
+      .hero {
+        padding: 0 20px;
+        min-height: 80vh;
+      }
+
+      .hero h1 {
+        font-size: 2.4rem;
+      }
+
+      .hero p {
+        font-size: 1rem;
+      }
+
+      main {
+        padding: 0 20px 40px;
+        margin-top: -60px;
+      }
+
+      .poster {
+        min-width: 180px;
+        height: 105px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <h2>Welcome to Express Reliability Platform — Version 1</h2>
-  <p>This is your first step in learning how to run a real web application locally.</p>
-  <p>Follow the README for step-by-step instructions.</p>
+
+  <header>
+    <div class="header-left">
+      <div class="logo">T2S STREAM</div>
+      <nav>
+        <a href="#">Home</a>
+        <a href="#">Programs</a>
+        <a href="#">Courses</a>
+        <a href="#">Mentorship</a>
+        <a href="#">My List</a>
+      </nav>
+    </div>
+
+    <div class="header-right">
+      Transformed 2 Succeed<br />
+      Rev. Dr. Emmanuel Naweji
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-label">T2S Featured Learning Experience</div>
+      <h1>Build Skills. Renew Your Mind. Transform to Succeed.</h1>
+
+      <p>
+        Welcome to T2S Stream, a video learning platform designed to help students,
+        professionals, leaders, and families grow through practical teaching,
+        digital skills, mentorship, faith-based wisdom, and life transformation.
+      </p>
+
+      <div class="hero-meta">
+        Featured by T2S (Transformed 2 Succeed)<br />
+        Guided by Rev. Dr. Emmanuel Naweji
+      </div>
+
+      <div class="hero-buttons">
+        <button class="btn btn-primary">▶ Watch Now</button>
+        <button class="btn btn-secondary">More Info</button>
+      </div>
+
+      <div class="hero-note">
+        This platform is built as a learning environment where users can explore
+        transformational teachings, skill-building programs, mentorship sessions,
+        leadership development, and practical training for life, work, and purpose.
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="featured-strip">
+      <h2>Now Streaming on T2S Stream</h2>
+      <p>
+        T2S Stream is the media and learning platform of Transformed 2 Succeed.
+        It brings together teaching, coaching, mentorship, career development,
+        faith-centered encouragement, and real-world skill training in one place.
+      </p>
+    </section>
+
+    <section class="row">
+      <h2>Featured Programs</h2>
+      <div class="row-posters">
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=11" alt="Featured Program">
+          <div class="poster-overlay">
+            <div class="poster-title">Career Acceleration</div>
+            <div class="poster-subtitle">Grow with structure, confidence, and direction.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=12" alt="Featured Program">
+          <div class="poster-overlay">
+            <div class="poster-title">Purpose and Calling</div>
+            <div class="poster-subtitle">Teaching for identity, growth, and next steps.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=13" alt="Featured Program">
+          <div class="poster-overlay">
+            <div class="poster-title">Digital Skills Training</div>
+            <div class="poster-subtitle">Learn practical skills through guided sessions.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=14" alt="Featured Program">
+          <div class="poster-overlay">
+            <div class="poster-title">Leadership and Discipline</div>
+            <div class="poster-subtitle">Training for maturity, focus, and excellence.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=15" alt="Featured Program">
+          <div class="poster-overlay">
+            <div class="poster-title">Faith and Transformation</div>
+            <div class="poster-subtitle">Strengthen your spiritual foundation for life.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row">
+      <h2>Continue Learning</h2>
+      <div class="row-posters">
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=21" alt="Continue Learning">
+          <div class="poster-overlay">
+            <div class="poster-title">Mentorship Sessions</div>
+            <div class="poster-subtitle">Personal growth through guided mentorship.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=22" alt="Continue Learning">
+          <div class="poster-overlay">
+            <div class="poster-title">Book Writing Support</div>
+            <div class="poster-subtitle">Turn your story into a message that serves others.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=23" alt="Continue Learning">
+          <div class="poster-overlay">
+            <div class="poster-title">Professional Branding</div>
+            <div class="poster-subtitle">Present your work with clarity and confidence.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=24" alt="Continue Learning">
+          <div class="poster-overlay">
+            <div class="poster-title">Biblical Leadership</div>
+            <div class="poster-subtitle">Lead with humility, wisdom, and conviction.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=25" alt="Continue Learning">
+          <div class="poster-overlay">
+            <div class="poster-title">Life Systems</div>
+            <div class="poster-subtitle">Build habits that support long-term success.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row">
+      <h2>Popular on T2S Stream</h2>
+      <div class="row-posters">
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=31" alt="Popular on T2S Stream">
+          <div class="poster-overlay">
+            <div class="poster-title">Vision and Execution</div>
+            <div class="poster-subtitle">Move from ideas to disciplined action.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=32" alt="Popular on T2S Stream">
+          <div class="poster-overlay">
+            <div class="poster-title">Mindset Renewal</div>
+            <div class="poster-subtitle">Rebuild your thinking for lasting change.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=33" alt="Popular on T2S Stream">
+          <div class="poster-overlay">
+            <div class="poster-title">Young Leaders Track</div>
+            <div class="poster-subtitle">Develop courage, values, and purpose early.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=34" alt="Popular on T2S Stream">
+          <div class="poster-overlay">
+            <div class="poster-title">Family and Responsibility</div>
+            <div class="poster-subtitle">Teaching on stewardship and healthy leadership.</div>
+          </div>
+        </div>
+        <div class="poster">
+          <img src="https://picsum.photos/500/280?random=35" alt="Popular on T2S Stream">
+          <div class="poster-overlay">
+            <div class="poster-title">Success with Purpose</div>
+            <div class="poster-subtitle">Align ambition with service, faith, and impact.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="platform-section">
+      <h3>About T2S Stream</h3>
+      <p>
+        T2S Stream is a learning and media platform for Transformed 2 Succeed.
+        It is designed to deliver transformational content in a modern, engaging,
+        and organized way. The goal is to make teaching, mentorship, and life-changing
+        guidance accessible through a platform experience that feels structured,
+        premium, and easy to use.
+      </p>
+      <p>
+        This version can be used as a homepage demo for your website, course platform,
+        ministry media platform, or student learning portal under the guidance of
+        Rev. Dr. Emmanuel Naweji.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    T2S Stream by Transformed 2 Succeed<br />
+    Guided by Rev. Dr. Emmanuel Naweji
+  </footer>
+
 </body>
 </html>
