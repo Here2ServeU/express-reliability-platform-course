@@ -1,9 +1,16 @@
 #!/bin/bash
-# Create ECR repositories for each service
 set -e
-AWS_REGION="us-east-1"
+REGION="us-east-1"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-for repo in node-api flask-api web-ui; do
-  aws ecr create-repository --repository-name $repo --region $AWS_REGION || echo "$repo already exists"
-  echo "ECR repository created: $repo"
+echo "Account ID: $ACCOUNT_ID"
+
+for SVC in flask-api node-api web-ui; do
+  echo "Creating ECR repo: reliability-platform/$SVC"
+  aws ecr create-repository \
+    --repository-name "reliability-platform/${SVC}" \
+    --region $REGION \
+    --image-scanning-configuration scanOnPush=true \
+    2>/dev/null || echo "  Already exists - skipping"
+  echo "  URI: ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/reliability-platform/${SVC}"
 done
+echo "ECR repos ready."

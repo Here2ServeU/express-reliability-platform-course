@@ -1,11 +1,25 @@
 #!/bin/bash
-# Build, tag, and push Docker images to ECR
 set -e
-AWS_REGION="us-east-1"
+REGION="us-east-1"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-for service in node-api flask-api web-ui; do
-  docker build -t $service ./apps/$service
-  docker tag $service:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$service:latest
-  aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-  docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$service:latest
+ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/reliability-platform"
+
+echo '--- Authenticating Docker to ECR ---'
+aws ecr get-login-password --region $REGION | \
+  docker login --username AWS --password-stdin \
+  ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
+
+echo '--- Building, tagging, and pushing all images ---'
+for SVC in flask-api node-api web-ui; do
+  echo "Building $SVC..."
+  docker build -t ${SVC}:latest ./apps/${SVC}
+
+  echo "Tagging $SVC..."
+  docker tag ${SVC}:latest ${ECR_BASE}/${SVC}:latest
+
+  echo "Pushing $SVC..."
+  docker push ${ECR_BASE}/${SVC}:latest
+
+  echo "Done: $SVC"
 done
+echo "All three images in ECR."
