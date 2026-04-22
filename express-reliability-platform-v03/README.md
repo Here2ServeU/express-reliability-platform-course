@@ -1,118 +1,85 @@
-# Express Reliability Platform V3 — Orchestration + Identity Foundations
+# Express Reliability Platform V3 - Your First AWS Deployment
 
-## Builds on V2
+## Version Purpose
 
-Before you start V3, copy your personal V2 repository to your local machine and rename it to V3:
+In Version 2, the platform ran on your laptop. In Version 3, you deploy the same three-service platform to AWS manually so you understand every moving part before Version 4 automates the flow.
 
-```sh
-git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v02.git
-mv express-reliability-platform-v02 express-reliability-platform-v03
-cd express-reliability-platform-v03
-```
+By the end of V3, you will:
 
-Use the main class repository as your source for scripts and canonical project structure:
+- Configure the AWS CLI.
+- Create ECR repositories.
+- Build, tag, and push Docker images.
+- Create an IAM task execution role.
+- Create an ECS cluster and Fargate services.
+- Find public task IP addresses.
+- Validate the platform from the internet.
+- Clean up every cloud resource created by this version.
 
-- https://github.com/Here2ServeU/express-reliability-platform-course
+## Key AWS Terms
 
-## 1) Version Purpose
-
-Coordinate all services together locally, then introduce Terraform best practices before cloud deployment to ECS behind an Application Load Balancer.
-
----
-
-## Plain Language Context
-
-**What is this version teaching you?**
-You will write code that tells Amazon's cloud to build servers, networks, and load balancers for you — automatically. Instead of logging into a website and clicking buttons, you write instructions in files. The cloud reads those files and builds exactly what you described.
-
-**How does a bank or hospital use this?**
-If a hospital's data center has a power failure, they need to rebuild their entire platform in a different location quickly. With Terraform, every server, network connection, and security rule is written in code files stored in GitHub. An engineer runs one command and the entire infrastructure is recreated in minutes — not days.
-
-**Key terms in plain language:**
-
-| Term | What It Means |
+| Term | Plain Language Meaning |
 |---|---|
-| **Terraform** | A tool that reads code files and builds cloud infrastructure — servers, networks, databases — automatically |
-| **ECS (Elastic Container Service)** | Amazon's service for running Docker containers in the cloud |
-| **ALB (Application Load Balancer)** | A service that distributes incoming web requests across multiple servers so no single server gets overwhelmed |
-| **IAM (Identity and Access Management)** | AWS's system for controlling who and what is allowed to do what — like a security badge system |
-| **OIDC** | A secure way for GitHub Actions to get temporary AWS credentials without storing any passwords |
-| **Remote state** | Terraform saves a record of what it built in an S3 bucket, so the whole team shares the same understanding of what exists |
-| **Modules** | Reusable blocks of Terraform code — like a function you can call multiple times with different inputs |
-| **dev / staging / prod** | Three separate environments: dev is for testing, staging is a near-real rehearsal, prod is what real users see |
+| AWS | Amazon Web Services, the cloud provider used in this version. |
+| Region | A geographic cluster of AWS data centers. V3 uses `us-east-1`. |
+| IAM | Identity and Access Management. Who can do what in AWS. |
+| ECR | Elastic Container Registry. Private Docker image storage in AWS. |
+| ECS | Elastic Container Service. Runs Docker containers in AWS. |
+| Fargate | ECS mode where AWS manages the underlying servers. |
+| Task Definition | Blueprint for one container: image, CPU, memory, ports, logs. |
+| Service | Keeps the requested number of tasks running. |
+| Cluster | Logical namespace for ECS services. |
+| Security Group | Cloud firewall controlling inbound and outbound traffic. |
+| VPC | Your isolated AWS network. |
+| Public IP | Internet-reachable address assigned to a Fargate task. |
+| CloudWatch Logs | AWS log storage for container output. |
+| Task Execution Role | IAM role ECS uses to pull images and write logs. |
 
-**Expected result at the end of this version:**
-- `docker compose up --build` starts all three services locally.
-- Terraform scripts deploy the platform to AWS ECS.
-- The app is reachable via the load balancer URL.
+## Cost Reminder
 
----
+ECS Fargate tasks cost money while running. In this version you run three tasks, which is a small hourly cost during practice, but leaving them running for days can become real money. Run `./scripts/cleanup_v3.sh` after every practice session.
 
-
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
-
-1. Understand: Read architecture, Terraform foundations, and deployment flow.
-2. Build: Complete local Compose, Terraform, IAM/OIDC, and ECS steps in order.
-3. Test: Validate endpoints, Terraform plan quality, and cloud health checks.
-4. Break: Trigger one controlled failure (for example, stop one service/task).
-5. Fix: Use logs, health checks, and cloud diagnostics to restore service.
-6. Explain: Document what failed, why it failed, and what fixed it.
-7. Automate: Add scripts/runbooks for repeatable deployment and recovery.
-8. Improve: Re-run pipeline checks and tighten least-privilege/security controls.
-
-## 3) What You Will Build
-
-- A 3-service local stack with one command.
-- Terraform foundations: modules, environments, variables, backend bootstrap, and remote state management.
-- IAM/OIDC setup for secure CI/CD access.
-- ECS deployment flow supported by scripts in `scripts/`.
-
-## 3.1) Terraform Foundations (Start Here in V3)
-
-Use these best practices from V3 onward:
-
-1. Keep reusable logic in `modules/`.
-2. Keep environment-specific roots in `environments/`.
-3. Use `*.tfvars` for environment values, never hard-code account-specific values.
-4. Bootstrap remote backend resources first (state bucket and lock table).
-5. Store Terraform state remotely and isolate state per environment.
-6. Promote changes in order: `dev -> staging -> prod`.
-
-## 4) Architecture Diagram (Mermaid)
-
-```mermaid
-flowchart LR
-    User[Browser] --> ALB[AWS ALB]
-    ALB --> ECS[ECS Services]
-    ECS --> Node[Node API]
-    ECS --> Flask[Flask API]
-    ECS --> UI[Web UI]
-    GH[GitHub Actions] --> OIDC[OIDC Role Assumption]
-    OIDC --> ECR[ECR Images]
-    ECR --> ECS
-```
-
-## 5) Project Structure
+## Project Structure
 
 ```text
 express-reliability-platform-v03/
 ├── apps/
-│   ├── node-api/
 │   ├── flask-api/
+│   ├── node-api/
 │   └── web-ui/
 ├── docker-compose.yml
 ├── scripts/
-│   ├── provision_iam_oidc.sh
 │   ├── create_ecr_repos.sh
 │   ├── build_tag_push_ecr.sh
-│   ├── create_ecs_cluster_and_tasks.py
-│   └── deploy_to_ecs.sh
+│   ├── deploy_ecs.sh
+│   ├── get_public_ips.sh
+│   └── cleanup_v3.sh
 └── README.md
 ```
 
-## 6) Run Steps
+## Setup
 
-### Part 1 — Local Compose (Mandatory Test Gate)
+Install the AWS CLI, then configure credentials:
+
+```sh
+aws configure
+```
+
+Use:
+
+- Default region name: `us-east-1`
+- Default output format: `json`
+
+Validate authentication:
+
+```sh
+aws sts get-caller-identity
+```
+
+Expected: JSON containing `UserId`, `Account`, and `Arn`.
+
+## Local Test Gate
+
+Before deploying to AWS, confirm the platform still works locally:
 
 ```sh
 docker compose up --build
@@ -124,60 +91,103 @@ Endpoints:
 - Flask API: `http://localhost:5000`
 - Web UI: `http://localhost:8080`
 
-Stop stack:
+Stop the stack:
 
 ```sh
 docker compose down
 ```
 
-Do not move to cloud until local Compose checks pass.
+## AWS Deployment Steps
 
-### Part 2 — Terraform Workflow (Best Practice Pattern)
+Run from the `express-reliability-platform-v03` directory.
 
-1. Bootstrap backend resources for remote state (one-time).
-2. Initialize Terraform in your target environment.
-3. Run `terraform fmt`, `terraform validate`, and `terraform plan`.
-4. Apply in `dev` first, then promote unchanged plan pattern to `staging`, then `prod`.
-5. Keep separate remote state keys/workspaces per environment.
-
-### Part 3 — IAM + OIDC Foundation
-
-1. Create AWS IAM users/groups with least privilege.
-2. Configure GitHub OIDC trust for your repository.
-3. Use `scripts/provision_iam_oidc.sh` as your bootstrap helper.
-
-### Part 4 — ECS + ALB Deployment
-
-Run scripts in order:
+Create the ECR repositories:
 
 ```sh
 ./scripts/create_ecr_repos.sh
-./scripts/build_tag_push_ecr.sh
-python3 scripts/create_ecs_cluster_and_tasks.py
-./scripts/deploy_to_ecs.sh
 ```
 
-## 7) Validation Checklist
+Build, tag, and push all three images:
 
-- [ ] Compose starts all 3 services.
-- [ ] Local endpoints return expected responses.
-- [ ] Terraform validation and plan are clean in `dev`.
-- [ ] Remote state backend is configured and lock protection works.
-- [ ] ECR repositories are created.
-- [ ] ECS services become healthy and reachable through ALB.
-- [ ] OIDC-based deployment authentication works from CI/CD.
+```sh
+./scripts/build_tag_push_ecr.sh
+```
 
-## 8) Troubleshooting
+Create IAM, networking, ECS task definitions, and Fargate services:
 
-- Compose fails: run `docker compose logs` and fix the first service error.
-- AWS auth errors: verify role trust policy and region configuration.
-- ECS health check fails: confirm container port mappings and task definition.
+```sh
+./scripts/deploy_ecs.sh
+```
 
-## 9) Cleanup
+Wait about 90 seconds, then find public task IPs:
 
-- Local: `docker compose down`.
-- Cloud: remove ECS services/tasks, ALB, and test ECR images when done.
+```sh
+./scripts/get_public_ips.sh
+```
 
-## 10) Next Version Preview
+Open the web UI public IP in a browser:
 
-In V4, you build on V3 by adding Prometheus + Grafana and begin reliability simulation through stress and failure scenarios, while keeping the same local Compose gate and cloud promotion flow.
+```text
+http://WEB_UI_IP
+```
+
+## Validation Checklist
+
+- [ ] `aws sts get-caller-identity` returns your AWS account.
+- [ ] ECR repos exist for `reliability-platform/flask-api`, `reliability-platform/node-api`, and `reliability-platform/web-ui`.
+- [ ] Each ECR repo has a `latest` image tag.
+- [ ] ECS cluster `reliability-platform-v03` is `ACTIVE`.
+- [ ] Services `flask-api`, `node-api`, and `web-ui` each show running `1` and desired `1`.
+- [ ] `http://WEB_UI_IP/` returns the reliability platform HTML.
+
+Useful validation commands:
+
+```sh
+aws ecr describe-repositories --region us-east-1 --query 'repositories[*].repositoryName'
+aws ecr list-images --repository-name reliability-platform/node-api --region us-east-1 --query 'imageIds[*].imageTag'
+aws ecs describe-clusters --clusters reliability-platform-v03 --region us-east-1 --query 'clusters[0].status'
+aws ecs describe-services --cluster reliability-platform-v03 --services flask-api node-api web-ui --region us-east-1 --query 'services[*].{n:serviceName,r:runningCount,d:desiredCount}'
+```
+
+## Troubleshooting
+
+Task not starting:
+
+```sh
+aws ecs list-tasks --cluster reliability-platform-v03 --region us-east-1 --desired-status STOPPED
+aws ecs describe-services --cluster reliability-platform-v03 --services flask-api --region us-east-1 --query 'services[0].events[:5]'
+```
+
+Cannot pull image:
+
+```sh
+aws ecr list-images --repository-name reliability-platform/flask-api --region us-east-1
+aws iam list-attached-role-policies --role-name ecsExecRole-v03
+```
+
+Access denied:
+
+```sh
+aws configure list
+aws sts get-caller-identity
+```
+
+Connection refused or blank page:
+
+- Confirm the task is running.
+- Confirm the security group allows inbound ports `80`, `3000`, and `5000`.
+- Check CloudWatch log groups under `/ecs/v03/SERVICE_NAME`.
+
+## Cleanup
+
+Run cleanup immediately after each practice session:
+
+```sh
+./scripts/cleanup_v3.sh
+```
+
+This scales services to zero, deletes ECS services, deletes the ECS cluster, deletes ECR repositories and images, deletes the task execution role, and prunes local Docker resources.
+
+## Next Version Preview
+
+Version 4 replaces the manual AWS commands with Terraform, so deployment and cleanup become repeatable infrastructure-as-code workflows.
