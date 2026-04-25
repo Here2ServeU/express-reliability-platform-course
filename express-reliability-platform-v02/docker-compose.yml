@@ -1,27 +1,28 @@
 services:
+
   flask-api:
-    build:
-      context: ./apps/flask-api
+    build: ./apps/flask-api
     container_name: flask-api
-    expose:
-      - "5000"
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
 
   node-api:
-    build:
-      context: ./apps/node-api
+    build: ./apps/node-api
     container_name: node-api
     environment:
       FLASK_BASE_URL: http://flask-api:5000
+    ports:
+      - "3000:3000"
     depends_on:
       - flask-api
-    expose:
-      - "3000"
+    restart: unless-stopped
 
   web-ui:
-    build:
-      context: ./apps/web-ui
+    build: ./apps/web-ui
     container_name: web-ui
-    depends_on:
-      - node-api
     ports:
       - "8080:80"
+    depends_on:
+      - node-api
+    restart: unless-stopped

@@ -1,4 +1,4 @@
-# Express Reliability Platform V7 — Enterprise Reliability Operations
+# Express Reliability Platform V7 — Organized Infrastructure and CI/CD
 
 ## Builds on V6
 
@@ -16,191 +16,189 @@ Use the main class repository for scripts and canonical structure:
 
 ## 1) Version Purpose
 
-Translate infrastructure maturity into operational maturity: runbooks, incident response, SLO/SLI thinking, disaster recovery basics, and chaos engineering.
+In Version 6, all your Terraform lives in one folder. That works when you are the only engineer. In a real company with ten engineers, one person changing the EKS node size can accidentally destroy the VPC networking. Or two people run `terraform apply` simultaneously and corrupt the state.
 
-## 2) Chapters Covered
+Version 7 separates infrastructure into independent **layers** — network in one folder, compute in another. Each layer has its own state file. A problem in one layer cannot affect another. Version 7 also adds **GitHub Actions** so every `git push` automatically deploys your platform without any manual commands.
 
-- Chapter 14: Runbooks + Incident Response (SLOs/SLIs, on-call mindset, DR basics)
-- Chapter 15: Chaos Engineering (controlled failure testing, resilience validation, and recovery confidence)
-
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
-
-1. Understand: Review incident lifecycle, SLO/SLI, DR, and chaos safety rules.
-2. Build: Prepare runbooks, on-call, and DR artifacts.
-3. Test: Execute incident and chaos drills in controlled scope.
-4. Break: Introduce one safe fault at a time.
-5. Fix: Restore service using runbooks, logs, metrics, and alerts.
-6. Explain: Document what failed, why it failed, and what fixed it.
-7. Automate: Improve drill scripts, alerts, and runbook actions.
-8. Improve: Reduce recovery time and strengthen reliability guardrails.
-
-## 3) What You Will Build
-
-- A practical incident response workflow tied to your platform environments.
-- Operational checklists that guide detection, triage, mitigation, and recovery.
-- A chaos engineering playbook to run safe experiments locally and in cloud environments.
-
-## 4) Architecture Diagram (Mermaid)
-
-```mermaid
-flowchart LR
-    Alert[Alert Signal] --> Triage[Incident Triage]
-    Triage --> Runbook[Runbook Steps]
-    Runbook --> Mitigation[Mitigation Action]
-    Mitigation --> Verify[Verify SLI Recovery]
-    Verify --> Postmortem[Post-Incident Review]
-```
-
-## 5) Project Structure
-
-## 1) Version Purpose
-
-Translate infrastructure maturity into operational maturity: runbooks, incident response, SLO/SLI thinking, disaster recovery basics, and chaos engineering.
+**V7 Goal:** Separate Terraform into `shared` (VPC, network) and `live` (EKS, apps) layers. Connect them with remote state data sources. Automate the complete deployment with a three-job GitHub Actions pipeline.
 
 ---
 
 ## Plain Language Context
 
-**What is this version teaching you?**
-You will create the emergency procedures your team follows when something breaks at 3am — and then practice breaking things on purpose to make sure those procedures work. Every hospital and fire station keeps a binder of step-by-step procedures for every emergency scenario. This version is how you build that binder for your platform.
+**The skyscraper construction analogy.** Building a skyscraper takes years. First the foundation — concrete piles driven deep into bedrock. Then the structural steel frame. Then floors. Then interior finishings. Each phase builds on the previous one, and each floor is independent: you can renovate the 30th floor without touching the 15th floor or the foundation.
 
-**How does a bank or hospital use this?**
-Regulated organizations (banks, hospitals, government agencies) are legally required to have documented incident response plans. Regulators can ask to review your runbooks at any time. Chaos engineering lets you prove the runbooks actually work before a real incident exposes the gaps.
+Cloud infrastructure should work the same way. The VPC (your network foundation) is built once and changed rarely. The EKS cluster (a floor) is rebuilt more frequently as you iterate. The application layer (tenant improvements) changes every deployment. Each layer is independent, with clear interfaces between them. Problems in one layer cannot cascade to others.
 
 **Key terms in plain language:**
 
-| Term | What It Means |
+| Term | Plain Language Meaning |
 |---|---|
-| **Runbook** | A step-by-step guide for fixing a specific problem — engineers follow it at 3am without needing to think from scratch |
-| **Incident severity (SEV1–SEV3)** | A scale that says how serious a problem is. SEV1 = critical outage. SEV3 = minor issue with a workaround |
-| **SLO breach** | When a performance promise is broken — for example, response time exceeded 500ms for more than 0.1% of requests |
-| **On-call rotation** | A schedule where engineers take turns being the first responder during overnight and weekend hours |
-| **Chaos engineering** | Intentionally causing a controlled failure to test whether your runbooks and alerts actually work |
-| **Blast radius** | How much of the system is affected by a failure — a small blast radius means only one service is impacted |
-| **DR (Disaster Recovery)** | A plan for restoring your entire platform after a catastrophic event — data center outage, ransomware attack, etc. |
+| **Layer separation** | Each Terraform folder manages one layer. Each has its own state file. Changes to one cannot corrupt another. |
+| **Shared layer** | The network foundation: VPC, subnets, internet gateway. Built once. Referenced by everything else. |
+| **Live layer** | The compute layer: EKS cluster, ALB, node groups. Rebuilt frequently as you iterate. |
+| **Remote state** | A Terraform data source that reads outputs from another layer's S3 state file. |
+| **State isolation** | Each layer's state lives at a different S3 key. Destroying `live` state does not affect `shared` state. |
+| **Promotion order** | Always deploy bottom-up: `shared` first, then `live`. Always destroy top-down: `live` first, then `shared`. |
+| **GitHub Actions** | GitHub's built-in CI/CD. Runs YAML-defined workflows triggered by `git push`. |
+| **Workflow** | A `.github/workflows/FILENAME.yml` file defining jobs and their steps. |
+| **Job** | One unit of work in a workflow. Runs on a fresh Ubuntu VM. Can depend on other jobs. |
+| **Step** | One action within a job. Either a shell command (`run:`) or a reusable action (`uses:`). |
+| **needs: deploy-shared** | This job waits for `deploy-shared` to succeed before starting. Enforces correct order. |
+| **OIDC authentication** | Passwordless AWS auth. GitHub gets a token AWS trusts. No keys stored in GitHub. |
+| **id-token: write** | Permission required for OIDC. Allows the job to request a GitHub identity token. |
+| **secrets.AWS_ROLE_ARN** | A GitHub Secret holding the IAM role ARN. Set in Repository → Settings → Secrets. |
 
 **Expected result at the end of this version:**
-- You have at least one runbook document that any engineer can follow without prior context.
-- A chaos drill runs and your platform recovers to within SLO within the documented time target.
-- An on-call rotation schedule exists with clear escalation steps.
+
+- S3 holds two independent state files: `shared/terraform.tfstate` and `live/terraform.tfstate`.
+- `terraform -chdir=terraform/shared output` returns `vpc_id` and subnet IDs.
+- `terraform -chdir=terraform/live output` returns `cluster_name` and `cluster_endpoint` sourced from `shared` via remote state.
+- A `git push` to `main` runs three GitHub Actions jobs in sequence: `deploy-shared → deploy-live → deploy-apps`.
+- `terraform -chdir=terraform/shared destroy` **fails** while `live` is still alive — proving state isolation is enforced.
 
 ---
 
 ## 2) Chapters Covered
-│   ├── compliance/
-│   │   └── dr-basics.md
-│   ├── runbooks/
-│   │   └── incident-sev1-api-latency.md
-│   └── sre/
-│       ├── oncall-rotation.md
-│       └── slo-sli-catalog.md
-├── environments/
+
+- Chapter 25: Layer Separation and the Shared Network
+- Chapter 26: Live Layer and GitHub Actions CI/CD
+- Chapter 27: Testing Destroy Order and Module Architecture
+- Chapter 28: Validate and Clean Up
+
+## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. **Understand:** Read layer separation, remote state, and destroy-order rules.
+2. **Build:** `terraform apply` on `shared`, then on `live`; deploy Helm charts into the `platform` namespace.
+3. **Test:** Verify two distinct state files in S3, outputs wire through remote state, and the pipeline runs green.
+4. **Break:** Attempt `terraform destroy` on `shared` while `live` depends on it — confirm Terraform refuses.
+5. **Fix:** Destroy in the correct order (Helm → live → shared).
+6. **Explain:** Capture why layer isolation matters and what remote state actually does at the file-system level.
+7. **Automate:** Let the three-job GitHub Actions pipeline own the deploy path. No local `terraform apply` on `main`.
+8. **Improve:** Tighten IAM role trust policy, add plan-only PR workflows, split envs further (`dev`, `staging`, `prod`).
+
+## 3) What You Will Build
+
+- `terraform/shared/` — a VPC with 2 public and 2 private subnets across 2 AZs, IGW, and public route table. Exports `vpc_id` and subnet IDs.
+- `terraform/live/` — an EKS cluster launched inside `shared`'s VPC using a `terraform_remote_state` data source.
+- `terraform/modules/eks/` — a reusable EKS module consumed by `live` (inputs: `cluster_name`, `vpc_id`, `subnet_ids`, `node_count`, `instance_type`).
+- `.github/workflows/deploy.yml` — a three-job pipeline (`deploy-shared → deploy-live → deploy-apps`) authenticating to AWS via OIDC.
+- `scripts/cleanup_v7.sh` — a teardown script that enforces the mandatory reverse order.
+
+## 4) Architecture Diagram (Mermaid)
+
+```mermaid
+flowchart LR
+    Push[git push main] --> GHA[GitHub Actions]
+    GHA --> J1[deploy-shared]
+    J1 --> S3s[(S3: shared/terraform.tfstate)]
+    J1 --> VPC[VPC + Subnets + IGW]
+    J1 --> J2[deploy-live]
+    J2 --> S3l[(S3: live/terraform.tfstate)]
+    J2 --> EKS[EKS via modules/eks]
+    EKS -->|terraform_remote_state| VPC
+    J2 --> J3[deploy-apps]
+    J3 --> Helm[helm upgrade --install]
+    Helm --> NS[Namespace: platform]
+```
+
+## 5) Project Structure
+
+```text
+express-reliability-platform-v07/
+├── terraform/
+│   ├── shared/
+│   │   └── main.tf            ← VPC, subnets, IGW, route table + outputs
 │   ├── live/
-│   └── shared/
-├── infrastructure/
-│   └── bootstrap/
-├── modules/
-│   ├── alb/
-│   ├── eks/
-│   ├── iam/
-│   └── vpc/
+│   │   └── main.tf            ← reads shared via remote state; uses modules/eks
+│   └── modules/
+│       └── eks/
+│           ├── main.tf        ← cluster, IAM roles, managed node group
+│           ├── variables.tf
+│           └── outputs.tf
+├── helm/
+│   ├── flask-api/
+│   ├── node-api/
+│   └── web-ui/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml         ← three-job pipeline with OIDC
 ├── scripts/
-│   ├── chaos_cloud_test.sh
-│   ├── chaos_local_test.sh
-│   └── terraform_init_apply.sh
+│   └── cleanup_v7.sh
 └── README.md
 ```
 
 ## 6) Run Steps
 
-1. Run the local Docker Compose gate first using your latest local stack (from V4):
+### Local apply (first time or when iterating)
 
-    ```sh
-    cd ../express-reliability-platform-v04
-    docker compose up --build -d
-    curl http://localhost:8080/api/health
-    docker compose down
-    cd ../express-reliability-platform-v07
-    ```
+```sh
+# Bottom-up build order — shared MUST be applied before live.
+terraform -chdir=terraform/shared init
+terraform -chdir=terraform/shared apply -auto-approve
 
-2. Deploy platform baseline with Terraform helper script.
-3. Promote any infrastructure changes in order: `dev -> staging -> prod`.
-4. Define and review SLI targets in `artifacts/sre/slo-sli-catalog.md`.
-5. Define on-call escalation in `artifacts/sre/oncall-rotation.md`.
-6. Review DR basics in `artifacts/compliance/dr-basics.md`.
-7. Practice one incident drill end-to-end using `artifacts/runbooks/incident-sev1-api-latency.md`:
-   - detect
-   - classify
-   - mitigate
-   - recover
-   - document
+terraform -chdir=terraform/live init
+terraform -chdir=terraform/live apply -auto-approve
 
-## 7) Chapter 15: Chaos Engineering
+CLUSTER=$(terraform -chdir=terraform/live output -raw cluster_name)
+aws eks --region us-east-1 update-kubeconfig --name "$CLUSTER"
 
-Use `artifacts/chaos/chaos-engineering.md` as your guide.
+helm upgrade --install flask-api helm/flask-api --namespace platform --create-namespace
+helm upgrade --install node-api  helm/node-api  --namespace platform --create-namespace
+helm upgrade --install web-ui    helm/web-ui    --namespace platform --create-namespace
 
-### 7.1 Local Chaos Test (Docker Compose)
+kubectl get pods -n platform
+```
 
-1. Start your local platform stack.
-2. Run a controlled local chaos test:
+### Automated apply (every `git push` to `main`)
 
-    ```sh
-    chmod +x scripts/chaos_local_test.sh
-    ./scripts/chaos_local_test.sh node-api 30
-    ```
+Set one GitHub Secret before the first push:
 
-3. Validate expected behavior:
-    - Health endpoint still responds: `http://localhost:8080/api/health`
-    - Alerts and logs show the injected stress period.
-    - Recovery time matches your SLO targets.
+- `Repository → Settings → Secrets and variables → Actions → New repository secret`
+- Name: `AWS_ROLE_ARN`
+- Value: ARN of an IAM role with a trust policy allowing your GitHub repo to assume it via OIDC.
 
-### 7.2 Cloud Chaos Test (dev -> staging -> prod)
+Then:
 
-1. Start in `dev` only.
-2. Run the cloud chaos checklist helper:
+```sh
+git add .
+git commit -m "V7 - organized layers with CI/CD"
+git push origin main
+```
 
-    ```sh
-    chmod +x scripts/chaos_cloud_test.sh
-    ./scripts/chaos_cloud_test.sh dev
-    ```
+Watch the run at `Repository → Actions`. You should see three green jobs in order: `deploy-shared → deploy-live → deploy-apps`.
 
-3. Capture evidence: latency, error rate, and recovery time.
-4. If stable in `dev`, repeat in `staging`.
-5. Run in `prod` only with approval and rollback owner assigned.
+## 7) Validation Checklist — Six Checks
 
-### 7.3 Chaos Experiment Safety Rules
+All six checks must pass before moving on to V8.
 
-- Run one experiment at a time.
-- Keep blast radius small.
-- Keep rollback steps ready before test start.
-- Stop test immediately if impact exceeds guardrails.
+- [ ] **Check 1 — Separate state files in S3:** `aws s3 ls s3://reliability-platform-tfstate-$ACCOUNT/ --recursive | grep tfstate` lists both `shared/terraform.tfstate` and `live/terraform.tfstate`.
+- [ ] **Check 2 — Shared outputs available:** `terraform -chdir=terraform/shared output` shows `vpc_id`, `public_subnet_ids`, `private_subnet_ids`.
+- [ ] **Check 3 — Live used shared's VPC:** `terraform -chdir=terraform/live output` shows `cluster_name` and `cluster_endpoint`.
+- [ ] **Check 4 — GitHub Actions pipeline ran:** Three jobs (`deploy-shared → deploy-live → deploy-apps`) show green checkmarks on the `main` branch.
+- [ ] **Check 5 — State isolation proof:** `terraform -chdir=terraform/shared destroy -auto-approve` **fails** with an error showing `live` resources still reference `shared`'s VPC.
+- [ ] **Check 6 — Module works:** `terraform -chdir=terraform/live state list | grep module` lists `module.eks.*` resources.
 
-## 8) Validation Checklist
+## 8) Troubleshooting
 
-- [ ] SLO/SLI targets are documented and measurable.
-- [ ] On-call rotation and escalation timeline are documented.
-- [ ] At least one runbook exists for a high-impact incident.
-- [ ] DR basics are documented with RTO and RPO targets.
-- [ ] Drill execution time and communication timeline are captured.
-- [ ] Recovery is validated against objective metrics.
-- [ ] At least one local chaos experiment is executed and documented.
-- [ ] At least one cloud chaos experiment is executed in `dev` and reviewed.
+- **`Error acquiring the state lock`:** Another apply is in flight. Wait, or release with `terraform force-unlock <LOCK_ID>` only after confirming no active run.
+- **`data.terraform_remote_state.shared.outputs.vpc_id is null`:** `shared` has not been applied yet, or the `key`/`bucket` in the remote state block does not match the `shared` backend.
+- **GitHub Actions job: `Error: Could not assume role`:** The `AWS_ROLE_ARN` secret is missing, or the role's trust policy does not allow your repo + branch via GitHub OIDC.
+- **`deploy-apps` job: `kubectl` cannot connect:** The `aws eks update-kubeconfig` step failed — check the cluster name matches the `live` output.
+- **`terraform destroy` on `shared` fails with VPC dependency errors:** Correct. Destroy `live` first. This is the state isolation guarantee working as designed.
 
-## 9) Troubleshooting
+## 9) Cleanup — Mandatory Reverse Order
 
-- Alert fatigue: tighten thresholds and prioritize critical alerts first.
-- Slow incident response: simplify runbook steps and assign clear ownership.
-- Noisy metrics: standardize labels and time windows for SLI measurement.
-- Chaos test too risky: reduce scope to one service and shorten test duration.
-- Recovery too slow after chaos test: verify autoscaling and health-check settings.
+**Destroy order is mandatory: Helm → live → shared.**
+Never destroy `shared` before `live`. `live` reads `shared`'s remote state during its own destroy; destroying `shared` first causes `live`'s destroy to fail with confusing errors.
 
-## 10) Cleanup
+```sh
+chmod +x scripts/cleanup_v7.sh
+./scripts/cleanup_v7.sh
+```
 
-- Remove temporary test resources and close all drill tickets/issues.
-- Archive chaos experiment evidence with timestamps and metrics snapshots.
+The script uninstalls Helm releases, deletes the `platform` namespace, destroys `live`, destroys `shared`, and cleans up the kubectl context. The bootstrap S3 bucket and DynamoDB table are intentionally preserved for V8–V10.
 
-## 11) Next Version Preview
+## 10) Next Version Preview
 
-In V8, you build on V7 and introduce AIOps patterns for risk scoring, pattern detection, and faster incident summaries.
-
-
+In V8, you layer AIOps patterns on top of this CI/CD foundation — risk scoring on deploys, pattern detection across incidents, and auto-generated incident summaries pulled from logs and metrics.
