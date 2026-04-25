@@ -1,0 +1,78 @@
+name: Deploy Platform
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+
+  deploy-shared:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Deploy Shared Layer
+        run: |
+          terraform -chdir=terraform/shared init
+          terraform -chdir=terraform/shared apply -auto-approve
+
+  deploy-live:
+    runs-on: ubuntu-latest
+    needs: deploy-shared
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Deploy Live Layer
+        run: |
+          terraform -chdir=terraform/live init
+          terraform -chdir=terraform/live apply -auto-approve
+
+  deploy-apps:
+    runs-on: ubuntu-latest
+    needs: deploy-live
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Install Helm
+        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name reliability-platform-cluster --region us-east-1
+
+      - name: Deploy Helm Charts
+        run: |
+          helm upgrade --install flask-api helm/flask-api --namespace platform --create-namespace
+          helm upgrade --install node-api  helm/node-api  --namespace platform --create-namespace
+          helm upgrade --install web-ui    helm/web-ui    --namespace platform --create-namespace
+
+      - name: Verify Deployment
+        run: kubectl get pods -n platform
