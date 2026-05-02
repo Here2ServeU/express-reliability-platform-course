@@ -8,12 +8,26 @@ By the end of V3, you will:
 
 - Configure the AWS CLI.
 - Create ECR repositories.
-- Build, tag, and push Docker images.
+- Build, tag, and push Docker images for `linux/amd64` (Fargate's default).
+- Provision a **dedicated VPC** with public subnets, an Internet Gateway, and a route table.
 - Create an IAM task execution role.
-- Create an ECS cluster and Fargate services.
+- Pre-create CloudWatch log groups.
+- Create an ECS cluster, task definitions, and Fargate services.
 - Find public task IP addresses.
-- Validate the platform from the internet.
-- Clean up every cloud resource created by this version.
+- Validate the platform from the terminal and a web browser.
+- Clean up every cloud resource created by this version, including the VPC.
+
+## What's New in V3 (Latest Updates)
+
+| Update | Why |
+|---|---|
+| Dedicated VPC (`reliability-platform-v03-vpc`, CIDR `10.42.0.0/16`) | Some AWS accounts have no default VPC; building our own removes that dependency. |
+| Public subnets across up to 3 AZs | Spread tasks across availability zones for redundancy. |
+| Pre-created CloudWatch log groups | `AmazonECSTaskExecutionRolePolicy` doesn't grant `logs:CreateLogGroup`, so `awslogs-create-group=true` would fail at task startup. |
+| `docker build --platform linux/amd64` | Fargate runs `linux/amd64`; without this flag, Apple Silicon Macs produce arm64 images that Fargate can't pull. |
+| Idempotent deploy + cleanup scripts | Re-running either script is safe — existing resources are reused or skipped. |
+| `--force-new-deployment` on service updates | Bumps services onto the latest task definition revision automatically. |
+| IAM-role propagation wait | New roles take ~10s to be usable; the script waits before registering task definitions. |
 
 ## Key AWS Terms
 
@@ -29,7 +43,11 @@ By the end of V3, you will:
 | Service | Keeps the requested number of tasks running. |
 | Cluster | Logical namespace for ECS services. |
 | Security Group | Cloud firewall controlling inbound and outbound traffic. |
-| VPC | Your isolated AWS network. |
+| VPC | Your isolated AWS network. V3 creates a dedicated one. |
+| Subnet | A range of IP addresses inside a VPC, scoped to one Availability Zone. |
+| Internet Gateway (IGW) | The component that lets a VPC route traffic to/from the internet. |
+| Route Table | Rules that direct subnet traffic (e.g., `0.0.0.0/0 → IGW`). |
+| ENI | Elastic Network Interface. Fargate attaches one per task. |
 | Public IP | Internet-reachable address assigned to a Fargate task. |
 | CloudWatch Logs | AWS log storage for container output. |
 | Task Execution Role | IAM role ECS uses to pull images and write logs. |
@@ -101,82 +119,215 @@ docker compose down
 
 Run from the `express-reliability-platform-v03` directory.
 
-Create the ECR repositories:
+**1. Create the ECR repositories:**
 
 ```sh
 ./scripts/create_ecr_repos.sh
 ```
 
-Build, tag, and push all three images:
+**2. Build, tag, and push all three images** (forces `linux/amd64` for Fargate):
 
 ```sh
 ./scripts/build_tag_push_ecr.sh
 ```
 
-Create IAM, networking, ECS task definitions, and Fargate services:
+> On Apple Silicon, builds go through QEMU emulation and take noticeably longer than native arm64 builds — this is expected.
+
+**3. Provision VPC, IAM, log groups, ECS cluster, task definitions, and Fargate services:**
 
 ```sh
 ./scripts/deploy_ecs.sh
 ```
 
-Wait about 90 seconds, then find public task IPs:
+The script is idempotent and prints each step's progress. It will:
+
+1. Ensure the ECS service-linked role exists.
+2. Create or reuse VPC `reliability-platform-v03-vpc` (`10.42.0.0/16`).
+3. Create or reuse the Internet Gateway.
+4. Create or reuse one public subnet per AZ (up to three: `10.42.1.0/24`, `10.42.2.0/24`, `10.42.3.0/24`).
+5. Create or reuse a route table with `0.0.0.0/0 → IGW`, associated with all subnets.
+6. Create or reuse the ECS cluster.
+7. Create or reuse the security group (opens `80`, `3000`, `5000`).
+8. Create or reuse the IAM task execution role.
+9. Wait for IAM propagation.
+10. Pre-create CloudWatch log groups (`/ecs/v03/flask-api`, `/ecs/v03/node-api`, `/ecs/v03/web-ui`).
+11. Register task definitions and create or update services with `--force-new-deployment`.
+12. Print a summary table of services.
+
+**4. Wait about 90 seconds, then fetch the public IPs:**
 
 ```sh
 ./scripts/get_public_ips.sh
 ```
 
-Open the web UI public IP in a browser:
+## Validate from the Terminal
 
-```text
-http://WEB_UI_IP
+**Service health (does AWS think the platform is up?):**
+
+```sh
+aws ecs describe-services \
+  --cluster reliability-platform-v03 \
+  --services flask-api node-api web-ui \
+  --region us-east-1 \
+  --query 'services[].{name:serviceName,desired:desiredCount,running:runningCount,pending:pendingCount,status:status}' \
+  --output table
 ```
+
+You want `running == desired == 1` and `status == ACTIVE` for all three.
+
+**Resolve all three public IPs at once:**
+
+```sh
+for SVC in flask-api node-api web-ui; do
+  TASK=$(aws ecs list-tasks --cluster reliability-platform-v03 \
+    --service-name $SVC --region us-east-1 \
+    --query 'taskArns[0]' --output text)
+  ENI=$(aws ecs describe-tasks --cluster reliability-platform-v03 \
+    --tasks $TASK --region us-east-1 \
+    --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
+    --output text)
+  IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI \
+    --region us-east-1 \
+    --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+  case $SVC in
+    web-ui)    echo "$SVC:    http://$IP/" ;;
+    flask-api) echo "$SVC: http://$IP:5000/" ;;
+    node-api)  echo "$SVC:  http://$IP:3000/" ;;
+  esac
+done
+```
+
+**Reachability test (HTTP 2xx == healthy):**
+
+```sh
+curl -sfv http://<web-ui-ip>/
+curl -sfv http://<flask-api-ip>:5000/
+curl -sfv http://<node-api-ip>:3000/
+```
+
+**Live application logs:**
+
+```sh
+aws logs tail /ecs/v03/flask-api --since 5m --region us-east-1 --follow
+aws logs tail /ecs/v03/node-api  --since 5m --region us-east-1 --follow
+aws logs tail /ecs/v03/web-ui    --since 5m --region us-east-1 --follow
+```
+
+After hitting an endpoint with curl or a browser, request lines should appear in the log stream.
+
+**Architecture sanity check** (confirms the amd64 fix worked):
+
+```sh
+aws ecs describe-tasks --cluster reliability-platform-v03 \
+  --tasks $(aws ecs list-tasks --cluster reliability-platform-v03 \
+    --service-name flask-api --region us-east-1 \
+    --query 'taskArns[0]' --output text) \
+  --region us-east-1 \
+  --query 'tasks[0].{lastStatus:lastStatus,health:healthStatus}'
+```
+
+`lastStatus: RUNNING` means the image was pulled and the container started successfully.
+
+## Validate from the Browser
+
+The script in the previous section prints clickable URLs. Open them in any browser:
+
+| Service | URL pattern | What to expect |
+|---|---|---|
+| **web-ui** | `http://<web-ui-ip>/` | Rendered HTML page (the user-facing site). |
+| **flask-api** | `http://<flask-api-ip>:5000/` | JSON response from the root route. |
+| **node-api** | `http://<node-api-ip>:3000/` | JSON response from the root route. |
+
+Common endpoints worth trying:
+
+- `http://<flask-api-ip>:5000/health`
+- `http://<node-api-ip>:3000/health`
+
+> Public IPs are **ephemeral**. Every time ECS replaces a task (deploy, crash, manual stop), the new task gets a new public IP. For stable URLs, you would put an Application Load Balancer in front of the services — that's the kind of thing V4+ adds.
+
+### What to do if a page doesn't load
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Site can't be reached / timeout | Security group blocking, or task not running yet | Re-check service health; wait 60-90s after deploy |
+| Connection refused | App is binding to `127.0.0.1` instead of `0.0.0.0` inside the container | Update the app's listen address |
+| Page loads but missing data | Cross-service call failing inside the VPC | Check CloudWatch logs on the calling service |
+| 4xx/5xx | Application-level error | Check CloudWatch logs |
 
 ## Validation Checklist
 
 - [ ] `aws sts get-caller-identity` returns your AWS account.
-- [ ] ECR repos exist for `reliability-platform/flask-api`, `reliability-platform/node-api`, and `reliability-platform/web-ui`.
-- [ ] Each ECR repo has a `latest` image tag.
+- [ ] VPC `reliability-platform-v03-vpc` exists and has 2-3 public subnets associated with a route table that routes `0.0.0.0/0` to the IGW.
+- [ ] ECR repos exist for `reliability-platform/flask-api`, `reliability-platform/node-api`, and `reliability-platform/web-ui`, each with a `latest` tag built for `linux/amd64`.
+- [ ] CloudWatch log groups `/ecs/v03/flask-api`, `/ecs/v03/node-api`, `/ecs/v03/web-ui` exist.
 - [ ] ECS cluster `reliability-platform-v03` is `ACTIVE`.
-- [ ] Services `flask-api`, `node-api`, and `web-ui` each show running `1` and desired `1`.
-- [ ] `http://WEB_UI_IP/` returns the reliability platform HTML.
-
-Useful validation commands:
-
-```sh
-aws ecr describe-repositories --region us-east-1 --query 'repositories[*].repositoryName'
-aws ecr list-images --repository-name reliability-platform/node-api --region us-east-1 --query 'imageIds[*].imageTag'
-aws ecs describe-clusters --clusters reliability-platform-v03 --region us-east-1 --query 'clusters[0].status'
-aws ecs describe-services --cluster reliability-platform-v03 --services flask-api node-api web-ui --region us-east-1 --query 'services[*].{n:serviceName,r:runningCount,d:desiredCount}'
-```
+- [ ] Services `flask-api`, `node-api`, and `web-ui` each show `running=1` and `desired=1`.
+- [ ] `curl -sf http://<web-ui-ip>/` returns 2xx.
+- [ ] Opening the web-ui URL in a browser renders the platform HTML.
+- [ ] CloudWatch logs show request lines after you hit an endpoint.
 
 ## Troubleshooting
 
-Task not starting:
+**Task fails to start with `CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`:**
+
+You're on Apple Silicon and built without `--platform linux/amd64`. Re-run `./scripts/build_tag_push_ecr.sh` (it now passes the flag), then force a redeploy:
 
 ```sh
-aws ecs list-tasks --cluster reliability-platform-v03 --region us-east-1 --desired-status STOPPED
-aws ecs describe-services --cluster reliability-platform-v03 --services flask-api --region us-east-1 --query 'services[0].events[:5]'
+for SVC in flask-api node-api web-ui; do
+  aws ecs update-service --cluster reliability-platform-v03 \
+    --service $SVC --force-new-deployment --region us-east-1 > /dev/null
+done
 ```
 
-Cannot pull image:
+**Task fails to start with `AccessDeniedException: logs:CreateLogGroup`:**
+
+This means a log group is missing. Pre-create them:
+
+```sh
+for SVC in flask-api node-api web-ui; do
+  aws logs create-log-group --log-group-name "/ecs/v03/$SVC" --region us-east-1 2>/dev/null || true
+done
+```
+
+Then bounce the services with `--force-new-deployment`.
+
+**`ServiceSchedulerInitiated` stop code:**
+
+Not an error — this is the scheduler stopping an old task as part of a normal deployment cycle. Check `runningCount` on the service; if it's `1`, the new task is healthy.
+
+**Service stuck at `running=0, pending=1`:**
+
+```sh
+aws ecs describe-services \
+  --cluster reliability-platform-v03 --services flask-api \
+  --region us-east-1 \
+  --query 'services[0].events[0:5]'
+```
+
+The most recent event message tells you why. Common causes: image pull failure, log group missing, subnet has no public IP route.
+
+**Cannot pull image (image exists in ECR but pull fails):**
 
 ```sh
 aws ecr list-images --repository-name reliability-platform/flask-api --region us-east-1
 aws iam list-attached-role-policies --role-name ecsExecRole-v03
 ```
 
-Access denied:
+The execution role must have `AmazonECSTaskExecutionRolePolicy` attached.
+
+**Access denied on AWS calls:**
 
 ```sh
 aws configure list
 aws sts get-caller-identity
 ```
 
-Connection refused or blank page:
+**Browser shows blank page or won't connect:**
 
-- Confirm the task is running.
-- Confirm the security group allows inbound ports `80`, `3000`, and `5000`.
-- Check CloudWatch log groups under `/ecs/v03/SERVICE_NAME`.
+- Confirm the task is `RUNNING`, not just `PENDING`.
+- Confirm the security group has inbound rules for `80`, `3000`, and `5000`.
+- Confirm the task's subnet has `map-public-ip-on-launch=true` (the deploy script sets this).
+- Check CloudWatch log groups under `/ecs/v03/<service-name>` for application errors.
 
 ## Cleanup
 
@@ -186,7 +337,33 @@ Run cleanup immediately after each practice session:
 ./scripts/cleanup_v3.sh
 ```
 
-This scales services to zero, deletes ECS services, deletes the ECS cluster, deletes ECR repositories and images, deletes the task execution role, and prunes local Docker resources.
+The cleanup script tears down (in dependency order):
+
+1. Scales services to zero.
+2. Deletes ECS services.
+3. Deletes the ECS cluster.
+4. Deletes CloudWatch log groups (`/ecs/v03/*`).
+5. Deletes ECR repositories and all images.
+6. Detaches and deletes the IAM task execution role.
+7. Waits for Fargate ENIs to drain.
+8. Deletes the security group.
+9. Disassociates and deletes route tables.
+10. Deletes subnets.
+11. Detaches and deletes the Internet Gateway.
+12. Deletes the VPC.
+13. Prunes local Docker resources.
+
+After cleanup, verify nothing was left behind:
+
+```sh
+aws ecs list-clusters --region us-east-1
+aws ec2 describe-vpcs --filters Name=tag:Name,Values=reliability-platform-v03-vpc \
+  --query 'Vpcs[].VpcId' --output text --region us-east-1
+aws ecr describe-repositories --region us-east-1 \
+  --query 'repositories[?starts_with(repositoryName, `reliability-platform/`)].repositoryName'
+```
+
+All three commands should return empty / no matches.
 
 ## Next Version Preview
 
