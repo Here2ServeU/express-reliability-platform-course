@@ -1,6 +1,6 @@
 # Express Reliability Platform V3 - Your First AWS Deployment
 
-## Version Purpose
+## 1) Version Purpose
 
 In Version 2, the platform ran on your laptop. In Version 3, you deploy the same three-service platform to AWS manually so you understand every moving part before Version 4 automates the flow.
 
@@ -17,7 +17,7 @@ By the end of V3, you will:
 - Validate the platform from the terminal and a web browser.
 - Clean up every cloud resource created by this version, including the VPC.
 
-## What's New in V3 (Latest Updates)
+## 2) What's New in V3 (Latest Updates)
 
 | Update | Why |
 |---|---|
@@ -29,7 +29,7 @@ By the end of V3, you will:
 | `--force-new-deployment` on service updates | Bumps services onto the latest task definition revision automatically. |
 | IAM-role propagation wait | New roles take ~10s to be usable; the script waits before registering task definitions. |
 
-## Key AWS Terms
+## 3) Key AWS Terms
 
 | Term | Plain Language Meaning |
 |---|---|
@@ -52,11 +52,11 @@ By the end of V3, you will:
 | CloudWatch Logs | AWS log storage for container output. |
 | Task Execution Role | IAM role ECS uses to pull images and write logs. |
 
-## Cost Reminder
+## 4) Cost Reminder
 
 ECS Fargate tasks cost money while running. In this version you run three tasks, which is a small hourly cost during practice, but leaving them running for days can become real money. Run `./scripts/cleanup_v3.sh` after every practice session.
 
-## Project Structure
+## 5) Project Structure
 
 ```text
 express-reliability-platform-v03/
@@ -74,7 +74,7 @@ express-reliability-platform-v03/
 └── README.md
 ```
 
-## Setup
+## 6) Setup
 
 Install the AWS CLI, then configure credentials:
 
@@ -95,7 +95,7 @@ aws sts get-caller-identity
 
 Expected: JSON containing `UserId`, `Account`, and `Arn`.
 
-## Local Test Gate
+## 7) Local Test Gate
 
 Before deploying to AWS, confirm the platform still works locally:
 
@@ -115,7 +115,7 @@ Stop the stack:
 docker compose down
 ```
 
-## AWS Deployment Steps
+## 8) AWS Deployment Steps
 
 Run from the `express-reliability-platform-v03` directory.
 
@@ -160,7 +160,7 @@ The script is idempotent and prints each step's progress. It will:
 ./scripts/get_public_ips.sh
 ```
 
-## Validate from the Terminal
+## 9) Validate from the Terminal
 
 **Service health (does AWS think the platform is up?):**
 
@@ -228,7 +228,7 @@ aws ecs describe-tasks --cluster reliability-platform-v03 \
 
 `lastStatus: RUNNING` means the image was pulled and the container started successfully.
 
-## Validate from the Browser
+## 10) Validate from the Browser
 
 The script in the previous section prints clickable URLs. Open them in any browser:
 
@@ -254,7 +254,7 @@ Common endpoints worth trying:
 | Page loads but missing data | Cross-service call failing inside the VPC | Check CloudWatch logs on the calling service |
 | 4xx/5xx | Application-level error | Check CloudWatch logs |
 
-## Validation Checklist
+## 11) Validation Checklist
 
 - [ ] `aws sts get-caller-identity` returns your AWS account.
 - [ ] VPC `reliability-platform-v03-vpc` exists and has 2-3 public subnets associated with a route table that routes `0.0.0.0/0` to the IGW.
@@ -266,7 +266,7 @@ Common endpoints worth trying:
 - [ ] Opening the web-ui URL in a browser renders the platform HTML.
 - [ ] CloudWatch logs show request lines after you hit an endpoint.
 
-## Troubleshooting
+## 12) Troubleshooting
 
 **Task fails to start with `CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`:**
 
@@ -329,7 +329,7 @@ aws sts get-caller-identity
 - Confirm the task's subnet has `map-public-ip-on-launch=true` (the deploy script sets this).
 - Check CloudWatch log groups under `/ecs/v03/<service-name>` for application errors.
 
-## Cleanup
+## 13) Cleanup
 
 Run cleanup immediately after each practice session:
 
@@ -365,6 +365,54 @@ aws ecr describe-repositories --region us-east-1 \
 
 All three commands should return empty / no matches.
 
-## Next Version Preview
+## 14) Next Version Preview
 
 Version 4 replaces the manual AWS commands with Terraform, so deployment and cleanup become repeatable infrastructure-as-code workflows.
+
+---
+
+## 15) Web UI Guide — `apps/web-ui/index.html`
+
+### Platform Continuity
+
+The V3 UI keeps the same V2 regulated readiness console and evolves it with cloud promotion checks. Students should experience this as the same platform growing, not as a separate app.
+
+### What the V3 UI Does
+
+The V3 `index.html` is the cloud promotion readiness console. It shows how the V2 platform starts becoming suitable for regulated cloud environments by checking:
+
+- Reliability of the promotion path from local work to cloud environments.
+- Cost awareness for dev, staging, and production targets.
+- Security maturity through IAM, OIDC, and avoidance of long-lived static keys.
+- Intelligence maturity through early telemetry and deployment signals.
+
+### What It Is Used For
+
+Use the V3 UI when explaining whether a bank or hospital workload is ready to move from local development into cloud-hosted environments. Students can use it during demos to show that regulated delivery is not only about "does the app run?" but also "can we prove identity, environment separation, and release evidence?"
+
+The UI is useful for:
+
+- Practicing release gate conversations.
+- Explaining dev, staging, and prod readiness.
+- Connecting cloud deployment work to regulated audit expectations.
+- Showing how V3 prepares the platform for V4 observability.
+
+### How to Read the Results
+
+The UI generates a JSON scorecard with four domain scores and a readiness band.
+
+| Field | Meaning |
+|---|---|
+| `version` | Confirms this is the V3 cloud promotion assessment. |
+| `platform` | The workload or application being evaluated. |
+| `environment` | The selected target environment: `dev`, `staging`, or `prod`. |
+| `readiness_score` | Overall score from 0 to 100. |
+| `readiness_band` | Plain-language result such as `controlled pilot` or `production ready`. |
+| `domains.security_compliance` | Strongly affected by identity maturity and release evidence. |
+| `next` | The next capability students should build in V4. |
+
+Read the result this way:
+
+- A high score means the platform has a credible cloud promotion story.
+- A lower security score usually means IAM, OIDC, or release evidence needs attention.
+- A lower reliability score usually means the environment gate is not ready for regulated workloads.

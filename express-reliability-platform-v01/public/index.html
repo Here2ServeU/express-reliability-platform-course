@@ -3,538 +3,319 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T2S Stream | Transformed 2 Succeed</title>
+  <title>T2S Express Reliability Platform | V1</title>
   <style>
+    :root {
+      --bg: #f6f8fb;
+      --ink: #172033;
+      --muted: #5d6b82;
+      --line: #d9e2ee;
+      --panel: #ffffff;
+      --primary: #2457a6;
+      --accent: #087f8c;
+      --shadow: 0 14px 34px rgba(23, 32, 51, 0.1);
+    }
+
     * {
-      margin: 0;
-      padding: 0;
       box-sizing: border-box;
-      font-family: Arial, Helvetica, sans-serif;
     }
 
     body {
-      background-color: #141414;
-      color: #ffffff;
-    }
-
-    a {
-      text-decoration: none;
-      color: inherit;
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
     }
 
     header {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      z-index: 1000;
-      padding: 18px 40px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.92), rgba(0,0,0,0.25), rgba(0,0,0,0));
-    }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 30px;
-    }
-
-    .logo {
-      color: #e50914;
-      font-size: 2rem;
-      font-weight: bold;
-      letter-spacing: 1px;
-      white-space: nowrap;
-    }
-
-    nav {
-      display: flex;
-      gap: 18px;
-      flex-wrap: wrap;
-    }
-
-    nav a {
-      font-size: 0.95rem;
-      color: #f5f5f5;
-      transition: color 0.3s ease;
-    }
-
-    nav a:hover {
-      color: #b3b3b3;
-    }
-
-    .header-right {
-      font-size: 0.9rem;
-      color: #e5e5e5;
-      text-align: right;
-      line-height: 1.4;
-    }
-
-    .hero {
-      min-height: 92vh;
-      background:
-        linear-gradient(to top, rgba(20,20,20,1), rgba(20,20,20,0.2)),
-        linear-gradient(to right, rgba(0,0,0,0.85), rgba(0,0,0,0.25)),
-        url('https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?auto=format&fit=crop&w=1600&q=80')
-        center center / cover no-repeat;
-      display: flex;
-      align-items: center;
-      padding: 0 60px;
-    }
-
-    .hero-content {
-      max-width: 700px;
-      margin-top: 70px;
-    }
-
-    .hero-label {
-      display: inline-block;
-      margin-bottom: 18px;
-      padding: 8px 14px;
-      border-radius: 999px;
-      background: rgba(229, 9, 20, 0.15);
-      border: 1px solid rgba(229, 9, 20, 0.45);
-      color: #ffffff;
-      font-size: 0.85rem;
-      letter-spacing: 0.5px;
-    }
-
-    .hero h1 {
-      font-size: 4rem;
-      line-height: 1.05;
-      margin-bottom: 18px;
-    }
-
-    .hero p {
-      font-size: 1.08rem;
-      line-height: 1.7;
-      color: #e5e5e5;
-      margin-bottom: 24px;
-      max-width: 620px;
-    }
-
-    .hero-meta {
-      color: #c7c7c7;
-      font-size: 0.95rem;
-      margin-bottom: 22px;
-      line-height: 1.6;
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-bottom: 26px;
-    }
-
-    .btn {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: opacity 0.3s ease, transform 0.2s ease;
-    }
-
-    .btn:hover {
-      opacity: 0.9;
-      transform: translateY(-1px);
-    }
-
-    .btn-primary {
+      border-bottom: 1px solid var(--line);
       background: #ffffff;
-      color: #000000;
     }
 
-    .btn-secondary {
-      background: rgba(109, 109, 110, 0.7);
-      color: #ffffff;
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
     }
 
-    .hero-note {
-      max-width: 650px;
-      padding-left: 14px;
-      border-left: 3px solid #e50914;
-      color: #dddddd;
-      line-height: 1.7;
-      font-size: 0.96rem;
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 0;
+    }
+
+    .brand {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand span,
+    .muted,
+    .eyebrow {
+      color: var(--muted);
+    }
+
+    .badge,
+    .pill {
+      border: 1px solid rgba(8, 127, 140, 0.24);
+      border-radius: 8px;
+      background: rgba(8, 127, 140, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+      padding: 6px 10px;
     }
 
     main {
-      position: relative;
-      z-index: 10;
-      margin-top: -110px;
-      padding: 0 40px 50px;
+      padding: 30px 0 44px;
     }
 
-    .featured-strip {
-      background: linear-gradient(135deg, #1b1b1b, #2b0d10);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 34px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+    h1 {
+      max-width: 860px;
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.04;
+      letter-spacing: 0;
     }
 
-    .featured-strip h2 {
-      margin-bottom: 12px;
-      font-size: 1.5rem;
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.24rem;
     }
 
-    .featured-strip p {
-      color: #d7d7d7;
-      line-height: 1.7;
-      max-width: 900px;
+    p {
+      margin-top: 0;
     }
 
-    .row {
-      margin-bottom: 34px;
+    .hero {
+      padding: 26px 0 10px;
     }
 
-    .row h2 {
-      font-size: 1.35rem;
-      margin-bottom: 14px;
+    .hero p {
+      max-width: 820px;
+      color: var(--muted);
+      font-size: 1.05rem;
     }
 
-    .row-posters {
-      display: flex;
-      gap: 12px;
-      overflow-x: auto;
-      padding-bottom: 10px;
-      scroll-behavior: smooth;
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+      gap: 22px;
+      align-items: start;
     }
 
-    .row-posters::-webkit-scrollbar {
-      height: 8px;
-    }
-
-    .row-posters::-webkit-scrollbar-thumb {
-      background: #333;
-      border-radius: 10px;
-    }
-
-    .poster {
-      position: relative;
-      min-width: 230px;
-      height: 130px;
+    section,
+    aside,
+    .metric,
+    .item {
+      background: var(--panel);
+      border: 1px solid var(--line);
       border-radius: 8px;
-      overflow: hidden;
-      background: #222;
-      flex-shrink: 0;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+      box-shadow: var(--shadow);
     }
 
-    .poster:hover {
-      transform: scale(1.08);
-      z-index: 20;
-      box-shadow: 0 14px 32px rgba(0,0,0,0.45);
+    section,
+    aside {
+      padding: 22px;
     }
 
-    .poster img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric {
+      min-height: 116px;
+      padding: 15px;
+      box-shadow: none;
+    }
+
+    .metric span {
       display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
     }
 
-    .poster-overlay {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.1));
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
+    .metric strong {
+      display: block;
+      margin: 8px 0 4px;
+      color: var(--primary);
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .roadmap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 70px 1fr;
+      gap: 12px;
       padding: 12px;
+      box-shadow: none;
     }
 
-    .poster-title {
-      font-size: 0.95rem;
-      font-weight: bold;
-      margin-bottom: 4px;
+    .item strong {
+      color: var(--primary);
     }
 
-    .poster-subtitle {
-      font-size: 0.78rem;
-      color: #d0d0d0;
-      line-height: 1.4;
+    .item.active {
+      border-color: rgba(8, 127, 140, 0.5);
+      background: rgba(8, 127, 140, 0.06);
     }
 
-    .platform-section {
-      background: #1a1a1a;
-      border-radius: 12px;
-      padding: 24px;
-      margin-top: 10px;
-      line-height: 1.8;
-      color: #dddddd;
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
     }
 
-    .platform-section h3 {
-      font-size: 1.35rem;
-      margin-bottom: 12px;
+    a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border-radius: 8px;
       color: #ffffff;
+      background: var(--accent);
+      font-weight: 800;
+      text-decoration: none;
+      padding: 10px 14px;
     }
 
-    footer {
-      text-align: center;
-      color: #9f9f9f;
-      padding: 30px 20px 40px;
-      line-height: 1.7;
-      font-size: 0.92rem;
+    .secondary {
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #ffffff;
+    }
+
+    code {
+      border-radius: 6px;
+      background: #edf3f8;
+      padding: 2px 5px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     @media (max-width: 900px) {
-      header {
+      .topbar,
+      .grid,
+      .metrics {
+        grid-template-columns: 1fr;
         flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-      }
-
-      .header-left {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-      }
-
-      .header-right {
-        text-align: left;
-      }
-    }
-
-    @media (max-width: 768px) {
-      header {
-        padding: 16px 20px;
-      }
-
-      .hero {
-        padding: 0 20px;
-        min-height: 80vh;
-      }
-
-      .hero h1 {
-        font-size: 2.4rem;
-      }
-
-      .hero p {
-        font-size: 1rem;
-      }
-
-      main {
-        padding: 0 20px 40px;
-        margin-top: -60px;
-      }
-
-      .poster {
-        min-width: 180px;
-        height: 105px;
+        align-items: stretch;
       }
     }
   </style>
 </head>
 <body>
-
   <header>
-    <div class="header-left">
-      <div class="logo">T2S STREAM</div>
-      <nav>
-        <a href="#">Home</a>
-        <a href="#">Programs</a>
-        <a href="#">Courses</a>
-        <a href="#">Mentorship</a>
-        <a href="#">My List</a>
-      </nav>
-    </div>
-
-    <div class="header-right">
-      Transformed 2 Succeed<br />
-      Rev. Dr. Emmanuel Naweji
+    <div class="shell topbar">
+      <div class="brand">
+        <strong>T2S | Transformed 2 Succeed</strong>
+        <span>Express Reliability Platform for fintech and healthcare</span>
+      </div>
+      <span class="badge">Version 1: Local Foundation</span>
     </div>
   </header>
 
-  <section class="hero">
-    <div class="hero-content">
-      <div class="hero-label">T2S Featured Learning Experience</div>
-      <h1>Build Skills. Renew Your Mind. Transform to Succeed.</h1>
-
+  <main class="shell">
+    <div class="hero">
+      <p class="eyebrow">The first working service in the regulated platform journey</p>
+      <h1>Local Reliability Foundation</h1>
       <p>
-        Welcome to T2S Stream, a video learning platform designed to help students,
-        professionals, leaders, and families grow through practical teaching,
-        digital skills, mentorship, faith-based wisdom, and life transformation.
+        V1 proves that the student can run a simple Express service locally, check its health endpoint,
+        and push the first working baseline to GitHub before the platform grows into V2 through capstone.
       </p>
-
-      <div class="hero-meta">
-        Featured by T2S (Transformed 2 Succeed)<br />
-        Guided by Rev. Dr. Emmanuel Naweji
-      </div>
-
-      <div class="hero-buttons">
-        <button class="btn btn-primary">▶ Watch Now</button>
-        <button class="btn btn-secondary">More Info</button>
-      </div>
-
-      <div class="hero-note">
-        This platform is built as a learning environment where users can explore
-        transformational teachings, skill-building programs, mentorship sessions,
-        leadership development, and practical training for life, work, and purpose.
-      </div>
     </div>
-  </section>
 
-  <main>
-    <section class="featured-strip">
-      <h2>Now Streaming on T2S Stream</h2>
-      <p>
-        T2S Stream is the media and learning platform of Transformed 2 Succeed.
-        It brings together teaching, coaching, mentorship, career development,
-        faith-centered encouragement, and real-world skill training in one place.
+    <div class="grid">
+      <section>
+        <h2>V1 Foundation Check</h2>
+        <p class="muted">
+          This page does not score the full regulated platform yet. It confirms the first building block:
+          a working local service that can be opened, explained, stopped, restarted, and version controlled.
+        </p>
+
+        <div class="metrics">
+          <div class="metric">
+            <span>Reliability</span>
+            <strong>45</strong>
+            <small>Local service and health route</small>
+          </div>
+          <div class="metric">
+            <span>Cost</span>
+            <strong>30</strong>
+            <small>No cloud spend yet</small>
+          </div>
+          <div class="metric">
+            <span>Security</span>
+            <strong>35</strong>
+            <small>Git and local discipline begin</small>
+          </div>
+          <div class="metric">
+            <span>Intelligence</span>
+            <strong>20</strong>
+            <small>Automation comes later</small>
+          </div>
+        </div>
+
+        <p>
+          Health endpoint: <code>/health</code>. Expected response includes
+          <code>"status":"ok"</code> and <code>"version":"v1"</code>.
+        </p>
+
+        <div class="actions">
+          <a class="button" href="/health">Check Health</a>
+          <a class="button secondary" href="https://github.com/Here2ServeU/express-reliability-platform-course">Course Repository</a>
+        </div>
+      </section>
+
+      <aside>
+        <h2>Program Path</h2>
+        <div class="roadmap">
+          <div class="item active"><strong>V1</strong><span>Local Express app, health endpoint, GitHub baseline.</span></div>
+          <div class="item"><strong>V2</strong><span>Dockerized web UI, Node API, Flask API, simple readiness score.</span></div>
+          <div class="item"><strong>V3</strong><span>Cloud promotion, IAM, OIDC, environment gates.</span></div>
+          <div class="item"><strong>V4</strong><span>Prometheus, Grafana, monitoring, evidence.</span></div>
+          <div class="item"><strong>V5</strong><span>Kubernetes probes, scaling, self-healing.</span></div>
+          <div class="item"><strong>V6</strong><span>Terraform modules and FinOps governance.</span></div>
+          <div class="item"><strong>V7</strong><span>Runbooks, SLOs, incident response.</span></div>
+          <div class="item"><strong>V8</strong><span>AIOps risk scoring and summaries.</span></div>
+          <div class="item"><strong>V9</strong><span>ITSM, Slack, Jira, ServiceNow, chaos.</span></div>
+          <div class="item"><strong>V10</strong><span>Healthcare telemetry and predictive remediation.</span></div>
+          <div class="item"><strong>Capstone</strong><span>Student-owned regulated platform portfolio.</span></div>
+        </div>
+      </aside>
+    </div>
+
+    <section style="margin-top:22px">
+      <h2>Why V1 Matters</h2>
+      <p class="muted">
+        Every bank or hospital platform begins with the same discipline: run it locally, know how to test it,
+        know how to stop and recover it, and keep the code in a professional repository. V1 is the workbench
+        before the platform becomes containerized, observable, governed, intelligent, and audit-ready.
       </p>
-    </section>
-
-    <section class="row">
-      <h2>Featured Programs</h2>
-      <div class="row-posters">
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=11" alt="Featured Program">
-          <div class="poster-overlay">
-            <div class="poster-title">Career Acceleration</div>
-            <div class="poster-subtitle">Grow with structure, confidence, and direction.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=12" alt="Featured Program">
-          <div class="poster-overlay">
-            <div class="poster-title">Purpose and Calling</div>
-            <div class="poster-subtitle">Teaching for identity, growth, and next steps.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=13" alt="Featured Program">
-          <div class="poster-overlay">
-            <div class="poster-title">Digital Skills Training</div>
-            <div class="poster-subtitle">Learn practical skills through guided sessions.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=14" alt="Featured Program">
-          <div class="poster-overlay">
-            <div class="poster-title">Leadership and Discipline</div>
-            <div class="poster-subtitle">Training for maturity, focus, and excellence.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=15" alt="Featured Program">
-          <div class="poster-overlay">
-            <div class="poster-title">Faith and Transformation</div>
-            <div class="poster-subtitle">Strengthen your spiritual foundation for life.</div>
-          </div>
-        </div>
+      <div class="pill-row">
+        <span class="pill">Local Express service</span>
+        <span class="pill">Health endpoint</span>
+        <span class="pill">GitHub ownership</span>
+        <span class="pill">Course foundation</span>
       </div>
-    </section>
-
-    <section class="row">
-      <h2>Continue Learning</h2>
-      <div class="row-posters">
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=21" alt="Continue Learning">
-          <div class="poster-overlay">
-            <div class="poster-title">Mentorship Sessions</div>
-            <div class="poster-subtitle">Personal growth through guided mentorship.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=22" alt="Continue Learning">
-          <div class="poster-overlay">
-            <div class="poster-title">Book Writing Support</div>
-            <div class="poster-subtitle">Turn your story into a message that serves others.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=23" alt="Continue Learning">
-          <div class="poster-overlay">
-            <div class="poster-title">Professional Branding</div>
-            <div class="poster-subtitle">Present your work with clarity and confidence.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=24" alt="Continue Learning">
-          <div class="poster-overlay">
-            <div class="poster-title">Biblical Leadership</div>
-            <div class="poster-subtitle">Lead with humility, wisdom, and conviction.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=25" alt="Continue Learning">
-          <div class="poster-overlay">
-            <div class="poster-title">Life Systems</div>
-            <div class="poster-subtitle">Build habits that support long-term success.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="row">
-      <h2>Popular on T2S Stream</h2>
-      <div class="row-posters">
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=31" alt="Popular on T2S Stream">
-          <div class="poster-overlay">
-            <div class="poster-title">Vision and Execution</div>
-            <div class="poster-subtitle">Move from ideas to disciplined action.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=32" alt="Popular on T2S Stream">
-          <div class="poster-overlay">
-            <div class="poster-title">Mindset Renewal</div>
-            <div class="poster-subtitle">Rebuild your thinking for lasting change.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=33" alt="Popular on T2S Stream">
-          <div class="poster-overlay">
-            <div class="poster-title">Young Leaders Track</div>
-            <div class="poster-subtitle">Develop courage, values, and purpose early.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=34" alt="Popular on T2S Stream">
-          <div class="poster-overlay">
-            <div class="poster-title">Family and Responsibility</div>
-            <div class="poster-subtitle">Teaching on stewardship and healthy leadership.</div>
-          </div>
-        </div>
-        <div class="poster">
-          <img src="https://picsum.photos/500/280?random=35" alt="Popular on T2S Stream">
-          <div class="poster-overlay">
-            <div class="poster-title">Success with Purpose</div>
-            <div class="poster-subtitle">Align ambition with service, faith, and impact.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="platform-section">
-      <h3>About T2S Stream</h3>
-      <p>
-        T2S Stream is a learning and media platform for Transformed 2 Succeed.
-        It is designed to deliver transformational content in a modern, engaging,
-        and organized way. The goal is to make teaching, mentorship, and life-changing
-        guidance accessible through a platform experience that feels structured,
-        premium, and easy to use.
-      </p>
-      <p>
-        This version can be used as a homepage demo for your website, course platform,
-        ministry media platform, or student learning portal under the guidance of
-        Rev. Dr. Emmanuel Naweji.
-      </p>
     </section>
   </main>
-
-  <footer>
-    T2S Stream by Transformed 2 Succeed<br />
-    Guided by Rev. Dr. Emmanuel Naweji
-  </footer>
-
 </body>
 </html>

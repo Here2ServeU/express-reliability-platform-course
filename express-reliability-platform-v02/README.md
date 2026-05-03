@@ -6,7 +6,7 @@ Version 2 is a containerized three-service platform designed for local reliabili
 
 ---
 
-## Plain Language Context
+## 2) Plain Language Context
 
 **What is this version teaching you?**
 You will wrap your three services inside Docker containers so they all start with one command and run identically on any computer. This is like putting each ingredient of a recipe into a labeled package, then bundling all the packages into one box — anyone can open the box and follow the same instructions.
@@ -32,7 +32,7 @@ Financial institutions and hospitals require that code behaves identically in de
 
 ---
 
-## Builds on V1
+## 3) Builds on V1
 
 Before you start V2, copy your personal V1 repository to your local machine and rename it to V2:
 
@@ -48,11 +48,10 @@ Class repository (scripts and canonical structure):
 
 - https://github.com/Here2ServeU/express-reliability-platform-course
 
-## 2) Chapters Covered
 
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
-1. Understand: Read `Version Purpose` and `Chapters Covered`.
+1. Understand: Read `Version Purpose` and `Plain Language Context`.
 2. Build: Complete the container setup steps in order.
 3. Test: Validate UI and API endpoints from this README.
 4. Break: Stop one service container intentionally (for example, `docker compose stop flask-api`).
@@ -61,19 +60,19 @@ Class repository (scripts and canonical structure):
 7. Automate: Add script-based checks for startup and health validation.
 8. Improve: Re-run end-to-end checks and update reliability guardrails.
 
-## 3) What You Will Build
+## 5) What You Will Build
 
 - `node-api` (Express): receives `/health` and `/score` requests
 - `flask-api` (Flask): computes a simple risk score used by `node-api`
 
-## 4) Use Cases (V2)
+## 6) Use Cases (V2)
 
 - Local reliability demo for interview, classroom, or architecture walkthroughs.
 - Integration testing across UI, Node, and Flask layers using one `docker compose` stack.
 - API observability and troubleshooting practice with container logs and health checks.
 - Safe sandbox for trying resilience ideas (timeouts, retries, fallback behavior) before production systems.
 
-## 5) Architecture Diagram (Mermaid)
+## 7) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -82,7 +81,7 @@ flowchart LR
   Node --> Flask[flask-api :5000]
 ```
 
-## 6) Project Structure
+## 8) Project Structure
 
 ```text
 express-reliability-platform-v02/
@@ -103,7 +102,7 @@ express-reliability-platform-v02/
 └── README.md
 ```
 
-## 7) Linux Prerequisites
+## 9) Linux Prerequisites
 
 Install:
 - Docker Engine
@@ -114,7 +113,7 @@ Optional tools used in troubleshooting:
 - `lsof`
 - `wget`
 
-## 8) Quick Start (Linux)
+## 10) Quick Start (Linux)
 
 1. Move into the v02 directory:
 
@@ -154,7 +153,7 @@ Expected example response:
 }
 ```
 
-## 9) Promotion Path
+## 11) Promotion Path
 
 V2 is your local test gate with Docker Compose.
 
@@ -162,7 +161,7 @@ V2 is your local test gate with Docker Compose.
 2. Commit your changes.
 3. Move to V3 to start Terraform and cloud promotion with `dev -> staging -> prod`.
 
-## 10) Day-2 Operations
+## 12) Day-2 Operations
 
 Check running services:
 
@@ -185,7 +184,7 @@ Stop everything:
 docker compose down
 ```
 
-## 11) Service-Level Validation
+## 13) Service-Level Validation
 
 Run a request through full stack:
 
@@ -200,7 +199,7 @@ docker exec node-api wget -qO- http://flask-api:5000/health
 docker exec node-api wget -qO- "http://flask-api:5000/score?input=reliability"
 ```
 
-## 12) Troubleshooting
+## 14) Troubleshooting
 
 Port `8080` already in use:
 
@@ -218,6 +217,15 @@ lsof -i :5000
 kill -9 <PID>
 ```
 
+On macOS, port `5000` is often used by Control Center / AirPlay Receiver. This V2 Compose file maps Flask to host port `5001` while keeping container port `5000` unchanged:
+
+```yaml
+ports:
+  - "5001:5000"
+```
+
+Use `http://localhost:5001` from your browser or host terminal when calling Flask directly. Inside Docker, services still call `http://flask-api:5000`.
+
 API fails even though containers are up:
 
 ```sh
@@ -234,7 +242,7 @@ docker system prune -af
 docker compose up --build -d
 ```
 
-## 13) Cleanup
+## 15) Cleanup
 
 ```sh
 docker compose down --remove-orphans
@@ -242,7 +250,7 @@ docker image prune -f
 ```
 
 ---
-## 14) Linux Command Reference
+## 16) Linux Command Reference
 
 This section explains every Linux command used in this README.
 
@@ -323,3 +331,59 @@ This section explains every Linux command used in this README.
 `docker image prune -f`
 - Removes dangling/unused images to reclaim storage.
 - `-f`: skips interactive confirmation.
+
+---
+
+## 17) Web UI Guide — `apps/web-ui/index.html`
+
+### Platform Continuity
+
+V2 is the baseline user experience for the course platform. The `index.html` introduces the regulated readiness console, the four scoring domains, the V2 -> V10 -> Capstone growth path, the market-inspired capability map, and the capstone creator preview. Later versions keep this same platform shell and add one new maturity layer at a time.
+
+### What the V2 UI Does
+
+The V2 `index.html` is the first version of the T2S regulated platform readiness console. It gives students a simple browser-based way to explain what the platform is checking for in fintech and healthcare environments:
+
+- Reliability: availability, latency, and incident posture.
+- Cost efficiency: cloud spend discipline and utilization awareness.
+- Security and compliance: evidence, access, and audit controls.
+- Intelligence: early AI, AIOps, and MLOps maturity.
+
+The page also keeps the original V2 backend integration through the **Call V2 API Score** button. That button calls:
+
+```text
+/api/score?input=<platform-name>
+```
+
+### What It Is Used For
+
+Use the V2 UI to introduce the platform concept to students, interviewers, or clients before the system becomes more advanced in later versions. It is intentionally simple: students enter a platform name, choose a few readiness options, and generate a JSON scorecard.
+
+This version is useful for:
+
+- Demonstrating the UI -> Node API -> Flask API request path.
+- Explaining why regulated organizations care about reliability, cost, security, and intelligent operations.
+- Showing the full V2 -> V10 -> Capstone learning path from the first working UI.
+
+### How to Read the Results
+
+The readiness output is JSON so students can practice reading structured operational evidence.
+
+Key fields:
+
+| Field | Meaning |
+|---|---|
+| `readiness_score` | Overall score from 0 to 100 across the four domains. |
+| `readiness_grade` | Plain-language interpretation such as `controlled pilot` or `production ready`. |
+| `domains.reliability` | How ready the platform is from a stability and availability perspective. |
+| `domains.cost_efficiency` | Whether spend and utilization look controlled. |
+| `domains.security_compliance` | Whether audit evidence and security controls are strong enough. |
+| `domains.intelligence_aiops_mlops` | Whether the platform has automation, AIOps, or MLOps maturity. |
+| `next_student_builds` | What students will add in later versions. |
+
+Suggested interpretation:
+
+- `85-100`: Strong candidate for production-style discussion.
+- `70-84`: Good controlled pilot; document remaining gaps.
+- `55-69`: Needs targeted improvement before regulated use.
+- `<55`: High risk; fix reliability, evidence, or automation gaps first.

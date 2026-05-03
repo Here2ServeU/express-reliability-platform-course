@@ -6,7 +6,7 @@ Build and run your first working reliability service on your computer, then crea
 
 ---
 
-## Plain Language Context
+## 2) Plain Language Context
 
 **What is this version teaching you?**
 You are setting up your workbench. Before any engineer at any company writes a single line of server code, they run it on their own computer first to prove it works. That is exactly what you will do here.
@@ -34,9 +34,9 @@ Every new engineer joining a bank's technology team runs the platform locally on
 ---
 
 
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+## 3) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
-1. Understand: Read `Version Purpose` and `Chapters Covered`.
+1. Understand: Read `Version Purpose` and `Plain Language Context`.
 2. Build: Complete the `Run Steps` exactly in order.
 3. Test: Use the `Validation Checklist` and confirm expected output.
 4. Break: Trigger one controlled failure (for example, stop the app process).
@@ -45,12 +45,12 @@ Every new engineer joining a bank's technology team runs the platform locally on
 7. Automate: Add or improve scripts/checks so recovery is repeatable.
 8. Improve: Re-run tests and tighten reliability and security settings.
 
-## 3) What You Will Build
+## 4) What You Will Build
 
 - A local Node.js Express service that responds in a browser.
 - A personal GitHub repository for your V1 working baseline.
 
-## 4) Architecture Diagram (Mermaid)
+## 5) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -58,7 +58,7 @@ flowchart LR
     App --> Static[public/index.html]
 ```
 
-## 5) Project Structure
+## 6) Project Structure
 
 ```text
 express-reliability-platform-v01/
@@ -69,7 +69,7 @@ express-reliability-platform-v01/
 └── README.md
 ```
 
-## 6) Run Steps
+## 7) Run Steps
 
 1. Install tools: Node.js LTS, Git, and VS Code.
 2. Open a terminal in this folder.
@@ -87,7 +87,13 @@ express-reliability-platform-v01/
 
 5. Open [http://localhost:3000](http://localhost:3000).
 
-## 7) GitHub Account Setup and First Push
+6. Stop the server
+
+   ```
+   Ctrl + C
+   ```
+
+## 8) GitHub Account Setup and First Push
 
 This section walks you from zero to a live GitHub repository. Complete it in order even if you already have a GitHub account — it also covers authentication best practices required for later versions.
 
@@ -215,7 +221,7 @@ Once V1 is pushed, set a branch protection rule so you never accidentally force-
 
 This is standard practice in every professional engineering team.
 
-## 8) Validation Checklist
+## 9) Validation Checklist
 
 - [ ] `npm install` runs successfully with no errors.
 - [ ] `npm start` starts the server without errors.
@@ -226,7 +232,7 @@ This is standard practice in every professional engineering team.
 - [ ] `git log --oneline` shows your first commit.
 - [ ] Branch protection rule is set on `main`.
 
-## 9) Troubleshooting
+## 10) Troubleshooting
 
 - **Port in use:** stop the process on port 3000 (`lsof -i :3000` then `kill -9 <PID>`), then run again.
 - **`npm` command not found:** reinstall Node.js LTS from [https://nodejs.org](https://nodejs.org).
@@ -234,10 +240,59 @@ This is standard practice in every professional engineering team.
 - **`remote: Repository not found`:** double-check the repository URL and that you created the repository in Step 4 before pushing.
 - **Two-factor authentication prompt in browser:** GitHub 2FA does not affect SSH-based pushes — you only need the SSH key configured in Step 3.
 
-## 10) Cleanup
+## 11) Cleanup
 
 - Press `Ctrl + C` to stop the local server.
 
-## 11) Next Version Preview
+## 12) Next Version Preview
 
 In V2, you package this app with Docker and evolve from a single app into a 3-service platform structure (Node API, Flask API, Web UI).
+
+---
+
+## 13) Web UI Guide — `public/index.html`
+
+### What the V1 UI Does
+
+The V1 `public/index.html` is the local foundation page for the whole T2S Express Reliability Platform course. It introduces the student to the regulated platform journey before the app becomes a multi-service system in V2.
+
+The page shows:
+
+- A V1 foundation check for the first Express service.
+- The `/health` endpoint students use to prove the service is running.
+- The full V1 -> V10 -> Capstone path.
+- Why local development, restart discipline, and GitHub ownership matter before cloud, Kubernetes, AIOps, and compliance work begin.
+
+### What It Is Used For
+
+Use the V1 UI to confirm the student can run the first service locally and explain what it does. This is the workbench stage of the course: students learn how to start the app, open it in a browser, test health, stop it, restart it, and push it to GitHub.
+
+This UI is useful for:
+
+- First-day validation that Node.js and Express are working.
+- Explaining the course journey from local app to regulated platform.
+- Demonstrating the difference between a simple local service and the later readiness consoles.
+- Giving students a clean first portfolio screen before V2 introduces Docker and multiple services.
+
+### How to Read the Page
+
+V1 does not produce a full JSON readiness scorecard yet. Instead, it uses static foundation scores to show that the platform is just beginning.
+
+| Area | Meaning in V1 |
+|---|---|
+| Reliability | The local app runs and exposes `/health`. |
+| Cost | There is no cloud spend yet. |
+| Security | Git, GitHub, and local discipline begin here. |
+| Intelligence | AIOps and automation are introduced later in the course. |
+
+Click **Check Health** to open `/health`. A healthy V1 service returns JSON similar to:
+
+```json
+{
+  "status": "ok",
+  "service": "web-service",
+  "version": "v1"
+}
+```
+
+If the health endpoint works, the student is ready to move to V2 and containerize the platform.

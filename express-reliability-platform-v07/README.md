@@ -1,6 +1,6 @@
 # Express Reliability Platform V7 — Organized Infrastructure and CI/CD
 
-## Builds on V6
+## 1) Builds on V6
 
 Before you start V7, copy your personal V6 repository to your local machine and rename it to V7:
 
@@ -14,7 +14,7 @@ Use the main class repository for scripts and canonical structure:
 
 - https://github.com/Here2ServeU/express-reliability-platform-course
 
-## 1) Version Purpose
+## 2) Version Purpose
 
 In Version 6, all your Terraform lives in one folder. That works when you are the only engineer. In a real company with ten engineers, one person changing the EKS node size can accidentally destroy the VPC networking. Or two people run `terraform apply` simultaneously and corrupt the state.
 
@@ -24,7 +24,7 @@ Version 7 separates infrastructure into independent **layers** — network in on
 
 ---
 
-## Plain Language Context
+## 3) Plain Language Context
 
 **The skyscraper construction analogy.** Building a skyscraper takes years. First the foundation — concrete piles driven deep into bedrock. Then the structural steel frame. Then floors. Then interior finishings. Each phase builds on the previous one, and each floor is independent: you can renovate the 30th floor without touching the 15th floor or the foundation.
 
@@ -59,14 +59,7 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 
 ---
 
-## 2) Chapters Covered
-
-- Chapter 25: Layer Separation and the Shared Network
-- Chapter 26: Live Layer and GitHub Actions CI/CD
-- Chapter 27: Testing Destroy Order and Module Architecture
-- Chapter 28: Validate and Clean Up
-
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
 1. **Understand:** Read layer separation, remote state, and destroy-order rules.
 2. **Build:** `terraform apply` on `shared`, then on `live`; deploy Helm charts into the `platform` namespace.
@@ -77,7 +70,7 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 7. **Automate:** Let the three-job GitHub Actions pipeline own the deploy path. No local `terraform apply` on `main`.
 8. **Improve:** Tighten IAM role trust policy, add plan-only PR workflows, split envs further (`dev`, `staging`, `prod`).
 
-## 3) What You Will Build
+## 5) What You Will Build
 
 - `terraform/shared/` — a VPC with 2 public and 2 private subnets across 2 AZs, IGW, and public route table. Exports `vpc_id` and subnet IDs.
 - `terraform/live/` — an EKS cluster launched inside `shared`'s VPC using a `terraform_remote_state` data source.
@@ -85,7 +78,7 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 - `.github/workflows/deploy.yml` — a three-job pipeline (`deploy-shared → deploy-live → deploy-apps`) authenticating to AWS via OIDC.
 - `scripts/cleanup_v7.sh` — a teardown script that enforces the mandatory reverse order.
 
-## 4) Architecture Diagram (Mermaid)
+## 6) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -102,7 +95,7 @@ flowchart LR
     Helm --> NS[Namespace: platform]
 ```
 
-## 5) Project Structure
+## 7) Project Structure
 
 ```text
 express-reliability-platform-v07/
@@ -128,7 +121,7 @@ express-reliability-platform-v07/
 └── README.md
 ```
 
-## 6) Run Steps
+## 8) Run Steps
 
 ### Local apply (first time or when iterating)
 
@@ -168,7 +161,7 @@ git push origin main
 
 Watch the run at `Repository → Actions`. You should see three green jobs in order: `deploy-shared → deploy-live → deploy-apps`.
 
-## 7) Validation Checklist — Six Checks
+## 9) Validation Checklist — Six Checks
 
 All six checks must pass before moving on to V8.
 
@@ -179,7 +172,7 @@ All six checks must pass before moving on to V8.
 - [ ] **Check 5 — State isolation proof:** `terraform -chdir=terraform/shared destroy -auto-approve` **fails** with an error showing `live` resources still reference `shared`'s VPC.
 - [ ] **Check 6 — Module works:** `terraform -chdir=terraform/live state list | grep module` lists `module.eks.*` resources.
 
-## 8) Troubleshooting
+## 10) Troubleshooting
 
 - **`Error acquiring the state lock`:** Another apply is in flight. Wait, or release with `terraform force-unlock <LOCK_ID>` only after confirming no active run.
 - **`data.terraform_remote_state.shared.outputs.vpc_id is null`:** `shared` has not been applied yet, or the `key`/`bucket` in the remote state block does not match the `shared` backend.
@@ -187,7 +180,7 @@ All six checks must pass before moving on to V8.
 - **`deploy-apps` job: `kubectl` cannot connect:** The `aws eks update-kubeconfig` step failed — check the cluster name matches the `live` output.
 - **`terraform destroy` on `shared` fails with VPC dependency errors:** Correct. Destroy `live` first. This is the state isolation guarantee working as designed.
 
-## 9) Cleanup — Mandatory Reverse Order
+## 11) Cleanup — Mandatory Reverse Order
 
 **Destroy order is mandatory: Helm → live → shared.**
 Never destroy `shared` before `live`. `live` reads `shared`'s remote state during its own destroy; destroying `shared` first causes `live`'s destroy to fail with confusing errors.
@@ -199,6 +192,52 @@ chmod +x scripts/cleanup_v7.sh
 
 The script uninstalls Helm releases, deletes the `platform` namespace, destroys `live`, destroys `shared`, and cleans up the kubectl context. The bootstrap S3 bucket and DynamoDB table are intentionally preserved for V8–V10.
 
-## 10) Next Version Preview
+## 12) Next Version Preview
 
 In V8, you layer AIOps patterns on top of this CI/CD foundation — risk scoring on deploys, pattern detection across incidents, and auto-generated incident summaries pulled from logs and metrics.
+
+---
+
+## 13) Web UI Guide — `apps/web-ui/index.html`
+
+### Platform Continuity
+
+The V7 UI keeps the same V2 regulated readiness console and evolves it with incident operations, SLOs, runbooks, and recovery evidence checks. Students should experience this as the same platform growing, not as a separate app.
+
+### What the V7 UI Does
+
+The V7 `index.html` is the operational excellence console. It shows whether the platform team can detect, explain, escalate, fix, and prove recovery during an incident.
+
+The page checks:
+
+- Reliability through SLOs, SLIs, and tested runbooks.
+- Cost efficiency through incident cost visibility and reduced operational waste.
+- Security and compliance through auditable response evidence.
+- Intelligence readiness through structured incident data that can feed AIOps in V8.
+
+### What It Is Used For
+
+Use the V7 UI when students begin talking like platform operators, not only builders. A regulated organization needs a repeatable operating model: who responds, what runbook is followed, what evidence is captured, and how recovery is validated.
+
+This UI is useful for:
+
+- Practicing incident-readiness walkthroughs.
+- Explaining SLO and SLI ownership.
+- Connecting runbooks to audit evidence.
+- Preparing students for automated AIOps triage in V8.
+
+### How to Read the Results
+
+The UI generates an incident operations scorecard.
+
+| Field | Meaning |
+|---|---|
+| `scenario` | The incident scenario being evaluated. |
+| `readiness_score` | Overall operational readiness score. |
+| `readiness_band` | Plain-language result of the assessment. |
+| `domains.reliability` | Drops when runbooks or SLOs are missing. |
+| `domains.cost_efficiency` | Reflects how well incidents are controlled and documented. |
+| `domains.security_compliance` | Drops when evidence is missing or incomplete. |
+| `domains.intelligence_aiops_mlops` | Improves when incident data is structured and ready for automation. |
+
+For regulated environments, a strong V7 result should show tested runbooks, defined SLOs, and complete recovery evidence.

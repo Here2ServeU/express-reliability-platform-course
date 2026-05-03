@@ -1,6 +1,6 @@
 # Express Reliability Platform V6 — Kubernetes: The Self-Healing Platform
 
-## Builds on V5
+## 1) Builds on V5
 
 Before you start V6, copy your personal V5 repository to your local machine and rename it to V6:
 
@@ -14,7 +14,7 @@ Use the main class repository for scripts and canonical structure:
 
 - https://github.com/Here2ServeU/express-reliability-platform-course
 
-## 1) Version Purpose
+## 2) Version Purpose
 
 ECS keeps your containers running. But its health check runs every 30 seconds. For 30 seconds, broken requests can still reach a crashed container. And a container that is running but internally stuck — an infinite loop, a deadlock — keeps receiving traffic even though it cannot process requests.
 
@@ -24,7 +24,7 @@ Kubernetes is fundamentally different. Its liveness probe runs every 10 seconds.
 
 ---
 
-## Plain Language Context
+## 3) Plain Language Context
 
 **The flight operations center analogy.** A large airline has hundreds of aircraft, thousands of pilots, and millions of passengers. Managing all of that manually — assigning pilots to flights, replacing grounded aircraft, rerouting delayed flights — would be impossible. The airline uses a flight operations center with complete visibility into every aircraft, every route, every delay. When something goes wrong, the operations center responds immediately and automatically.
 
@@ -71,14 +71,7 @@ Kubernetes is the flight operations center for your containers. It has complete 
 
 ---
 
-## 2) Chapters Covered
-
-- Chapter 21: Kubernetes Concepts and EKS Setup
-- Chapter 22: Helm Charts and Self-Healing
-- Chapter 23: Probes, Rolling Updates, and Scaling
-- Chapter 24: Validate and Clean Up
-
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
 1. **Understand:** Read the three guarantees Kubernetes makes and how probes drive self-healing.
 2. **Build:** Apply `terraform/eks`, connect `kubectl`, deploy the three Helm charts into the `platform` namespace.
@@ -89,14 +82,14 @@ Kubernetes is the flight operations center for your containers. It has complete 
 7. **Automate:** Use `helm upgrade --install` for idempotent deploys; use `kubectl rollout` for safe updates and rollbacks.
 8. **Improve:** Tune probe `initialDelaySeconds`, `periodSeconds`, and resource requests/limits.
 
-## 3) What You Will Build
+## 5) What You Will Build
 
 - An EKS cluster (control plane + 2 t3.medium worker nodes) provisioned by Terraform.
 - Three Helm charts (`flask-api`, `node-api`, `web-ui`) with embedded liveness and readiness probes.
 - A `platform` namespace running 6 pods with self-healing enabled.
 - A cleanup script that uninstalls all releases and destroys EKS without touching the V5 bootstrap state.
 
-## 4) Architecture Diagram (Mermaid)
+## 6) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -110,7 +103,7 @@ flowchart LR
     Node  -->|readinessProbe /health every 5s| Route[Route traffic only to ready pods]
 ```
 
-## 5) Project Structure
+## 7) Project Structure
 
 ```text
 express-reliability-platform-v06/
@@ -135,7 +128,7 @@ express-reliability-platform-v06/
 └── README.md
 ```
 
-## 6) Run Steps
+## 8) Run Steps
 
 ### Install kubectl and Helm
 
@@ -237,7 +230,7 @@ kill %1
 
 **Expected:** `{"service":"node-api","status":"ok"}`.
 
-## 7) Validation Checklist — Seven Checks
+## 9) Validation Checklist — Seven Checks
 
 All seven checks must pass before moving on to V7.
 
@@ -249,7 +242,7 @@ All seven checks must pass before moving on to V7.
 - [ ] **Check 6 — Rolling update works:** `helm upgrade` + `kubectl rollout status` reports `successfully rolled out`.
 - [ ] **Check 7 — Rollback works:** `kubectl rollout undo` completes and pods return to `Running 1/1`.
 
-## 8) Troubleshooting
+## 10) Troubleshooting
 
 - **Nodes `NotReady`:** Wait 5 more minutes; inspect with `kubectl describe node NODE_NAME`.
 - **`server: connection refused` on `kubectl`:** `aws eks update-kubeconfig` was not run, or the cluster is still provisioning.
@@ -258,7 +251,7 @@ All seven checks must pass before moving on to V7.
 - **Pod `Pending`:** Node has insufficient resources. `kubectl describe pod POD_NAME -n platform` shows the scheduling error.
 - **`helm upgrade` hangs waiting for pods:** Readiness probe is failing — check probe path, port, and `initialDelaySeconds`.
 
-## 9) Cleanup
+## 11) Cleanup
 
 EKS is not free. Two `t3.medium` nodes ≈ \$0.08/hour, control plane ≈ \$0.10/hour — about \$4.30/day. Always destroy after a practice session.
 
@@ -269,6 +262,53 @@ chmod +x scripts/cleanup_v6.sh
 
 The script uninstalls all Helm releases, deletes the `platform` namespace, runs `terraform -chdir=terraform/eks destroy` (10–15 minutes), and removes the EKS context from `~/.kube/config`. It intentionally leaves the bootstrap S3 bucket + DynamoDB table in place so V7–V10 can reuse them.
 
-## 10) Next Version Preview
+## 12) Next Version Preview
 
 In V7, you build on this Kubernetes foundation and operationalize reliability with runbooks, on-call rotations, and disaster-recovery drills — turning Kubernetes' automatic self-healing into a complete incident response workflow.
+
+---
+
+## 13) Web UI Guide — `apps/web-ui/index.html`
+
+### Platform Continuity
+
+The V6 UI keeps the same V2 regulated readiness console and evolves it with Terraform, FinOps, and infrastructure governance checks. Students should experience this as the same platform growing, not as a separate app.
+
+### What the V6 UI Does
+
+The V6 `index.html` is the infrastructure governance console. It explains how Terraform, reusable modules, environment separation, tagging, and change review make the platform repeatable and auditable.
+
+The page checks:
+
+- Reliability through repeatable infrastructure and stable environments.
+- Cost efficiency through owner, application, and environment tags.
+- Security and compliance through reviewed Terraform plans and controlled changes.
+- Intelligence readiness through structured infrastructure data that can later support policy and automation.
+
+### What It Is Used For
+
+Use the V6 UI to teach students that regulated infrastructure must be reproducible. A bank or hospital should not rely on manually created cloud resources that no one can explain later.
+
+This UI is useful for:
+
+- Explaining why Terraform modules matter.
+- Connecting FinOps tagging to real cloud cost accountability.
+- Showing how PR-reviewed plans become audit evidence.
+- Preparing students for V7 incident operations.
+
+### How to Read the Results
+
+The UI generates an infrastructure governance scorecard.
+
+| Field | Meaning |
+|---|---|
+| `version` | Confirms this is the V6 governance assessment. |
+| `platform` | The infrastructure foundation being evaluated. |
+| `readiness_score` | Overall infrastructure readiness score. |
+| `readiness_band` | Plain-language assessment of whether the platform is ready. |
+| `domains.reliability` | Improves when infrastructure is modular and repeatable. |
+| `domains.cost_efficiency` | Drops when cost allocation tags are missing. |
+| `domains.security_compliance` | Drops when Terraform changes are not reviewed. |
+| `domains.intelligence_aiops_mlops` | Improves when infrastructure data is structured and policy-ready. |
+
+For regulated environments, weak tagging is a FinOps risk, and weak change review is an audit risk.
