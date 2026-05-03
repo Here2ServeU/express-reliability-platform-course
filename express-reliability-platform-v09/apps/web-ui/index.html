@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T2S Express Reliability Platform | V4</title>
+  <title>T2S Express Reliability Platform | V9</title>
   <style>
     :root {
       --bg: #f7f9fc;
@@ -72,7 +72,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 4: Observability</span>
+      <span class="badge">Version 9: ITSM and Chaos</span>
     </div>
   </header>
 
@@ -85,39 +85,39 @@
 
     <div class="workspace">
       <section aria-labelledby="assessment-title">
-        <h2 id="assessment-title">V4 Readiness Assessment</h2>
-        <p class="muted">V4 keeps the same platform console and adds observability: health checks, Prometheus, Grafana, latency posture, and dashboard evidence.</p>
+        <h2 id="assessment-title">V9 Readiness Assessment</h2>
+        <p class="muted">V9 keeps the same platform console and adds enterprise incident workflow: Slack, ServiceNow, Jira, chaos drills, and recovery validation.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">80</strong><small>Health and latency signals</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">72</strong><small>Utilization visibility</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">76</strong><small>Dashboard evidence</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">64</strong><small>Telemetry for AIOps</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">90</strong><small>Chaos-tested recovery</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">84</strong><small>Reduced response toil</small></div>
+          <div class="metric"><span>Security</span><strong id="securityScore">90</strong><small>Auditable ITSM records</small></div>
+          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">90</strong><small>AIOps plus workflow</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
-            Platform or application
-            <input id="platformInput" value="patient-claims-dashboard" autocomplete="off" />
+            Chaos experiment
+            <input id="platformInput" value="latency-sev2-drill" autocomplete="off" />
           </label>
           <label>
-            Dashboard status
-            <select id="dash"><option value="ready">Prometheus and Grafana ready</option><option value="partial">Partial dashboards</option><option value="none">No dashboards</option></select>
+            Alerting
+            <select id="alert"><option value="slack">Slack configured</option><option value="dry">Dry-run only</option><option value="none">No alerting</option></select>
           </label>
           <label>
-            Latency posture
-            <select id="latency"><option value="good">p95 below target</option><option value="warn">p95 near target</option><option value="bad">p95 above target</option></select>
+            ITSM coverage
+            <select id="itsm"><option value="both">ServiceNow and Jira</option><option value="one">One ticketing tool</option><option value="none">No ITSM</option></select>
           </label>
           <label>
-            Evidence quality
-            <select id="evidence"><option value="complete">Screenshots and metrics captured</option><option value="partial">Some evidence</option><option value="missing">No evidence</option></select>
+            Recovery proof
+            <select id="recovery"><option value="complete">Recovery validated</option><option value="partial">Partial validation</option><option value="missing">No validation</option></select>
           </label>
           <div class="actions">
-            <button type="submit">Run V4 Readiness Check</button>
+            <button type="submit">Run V9 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate observability readiness.</pre>
+        <pre id="output">Ready to evaluate ITSM and chaos readiness.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
@@ -125,12 +125,12 @@
         <div class="versions">
           <div class="version"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></div>
           <div class="version"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></div>
-          <div class="version current"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
+          <div class="version"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
           <div class="version"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></div>
           <div class="version"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></div>
           <div class="version"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></div>
           <div class="version"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
-          <div class="version"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
+          <div class="version current"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
           <div class="version"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></div>
           <div class="version"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></div>
         </div>
@@ -139,7 +139,7 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V4, the platform adds <strong>Observability and dashboard evidence</strong>.</p>
+      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V9, the platform adds <strong>ITSM, alerting, and chaos workflow</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -160,10 +160,10 @@
         <span class="pill">FinOps guardrails</span>
         <span class="pill">AIOps triage</span>
         <span class="pill">MLOps readiness</span>
-        <span class="pill">Prometheus targets</span>
-        <span class="pill">Grafana dashboard</span>
-        <span class="pill">Metric evidence</span>
-        <span class="pill">Stress and failure visibility</span>
+        <span class="pill">Slack alert</span>
+        <span class="pill">ServiceNow ticket</span>
+        <span class="pill">Jira issue</span>
+        <span class="pill">Chaos drill</span>
       </div>
 
       <div class="creator-panel">
@@ -196,13 +196,13 @@
       const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
       const extra = {};
 
-      const dash = document.getElementById("dash").value;
-      const latency = document.getElementById("latency").value;
-      const evidence = document.getElementById("evidence").value;
-      const reliability = clamp(86 - (latency === "bad" ? 22 : latency === "warn" ? 8 : 0) - (dash === "none" ? 14 : dash === "partial" ? 6 : 0));
-      const cost = clamp(80 - (dash === "none" ? 12 : dash === "partial" ? 5 : 0));
-      const security = clamp(82 - (evidence === "missing" ? 22 : evidence === "partial" ? 8 : 0));
-      const intelligence = clamp(70 + (dash === "ready" ? 8 : 0) - (evidence === "missing" ? 10 : 0));
+      const alert = document.getElementById("alert").value;
+      const itsm = document.getElementById("itsm").value;
+      const recovery = document.getElementById("recovery").value;
+      const reliability = clamp(94 - (recovery === "missing" ? 30 : recovery === "partial" ? 12 : 0));
+      const cost = clamp(88 - (alert === "none" ? 12 : alert === "dry" ? 5 : 0));
+      const security = clamp(94 - (itsm === "none" ? 34 : itsm === "one" ? 12 : 0) - (recovery === "missing" ? 8 : 0));
+      const intelligence = clamp(94 - (alert === "none" ? 14 : 0) - (itsm === "none" ? 12 : 0));
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
@@ -212,10 +212,10 @@
 
       output.textContent = JSON.stringify({
         platform,
-        version: "v4",
+        version: "v9",
         readiness_score: total,
         readiness_grade: grade(total),
-        focus: "Observability and dashboard evidence",
+        focus: "ITSM, alerting, and chaos workflow",
         domains: {
           reliability,
           cost_efficiency: cost,
@@ -223,12 +223,12 @@
           intelligence_aiops_mlops: intelligence
         },
         version_adds: [
-          "Prometheus targets",
-          "Grafana dashboard",
-          "Metric evidence",
-          "Stress and failure visibility"
+          "Slack alert",
+          "ServiceNow ticket",
+          "Jira issue",
+          "Chaos drill"
 ],
-        next: "Move to V5 for Kubernetes probes, scaling, and self-healing.",
+        next: "Move to V10 for healthcare telemetry, cyber-physical reliability, and predictive remediation.",
         ...extra
       }, null, 2);
     }

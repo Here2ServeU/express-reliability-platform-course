@@ -1,6 +1,6 @@
 # Express Reliability Platform V9 — Operational Intelligence + ITSM Integration
 
-## Builds on V8
+## 1) Builds on V8
 
 Before you start V9, copy your personal V8 repository to your local machine and rename it to V9:
 
@@ -14,16 +14,25 @@ Use the main class repository for scripts and canonical structure:
 
 - https://github.com/Here2ServeU/express-reliability-platform-course
 
-## 1) Version Purpose
+## 2) Version Purpose
 
 V9 completes the operational intelligence loop. You detect incidents using AIOps, alert your team on Slack, open ITSM tickets automatically in ServiceNow and Jira, and run advanced chaos drills that exercise the full pipeline end-to-end.
 
-## 2) Chapters Covered
+## 3) Plain Language Context
 
-- Chapter 17: Cyber-Physical Reliability — Robotics + IoMT Telemetry + Auto-Response
-- Chapter 18: Slack Alerting + ITSM Integration + Advanced Chaos Engineering
+**What is this version teaching you?**
+When your system detects a problem, it should not wait for an engineer to notice — it should instantly send a Slack message to the team, open a ticket in the company's incident tracking system, and record everything. This is like a hospital paging system: the moment a patient monitor alarm fires, the right doctor gets paged AND the event is automatically logged in the patient record — all before anyone manually makes a phone call.
 
-## Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+**How does a bank or hospital use this?**
+Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) require that every incident is logged in an auditable system within a specific timeframe. Manual ticket creation is slow and error-prone. Automated ITSM integration guarantees every incident is captured — even at 3am when no one is watching — and gives auditors a complete trail.
+
+**Expected result at the end of this version:**
+- `./chaos/run_chaos_drill.sh` runs four experiments and produces output for each pipeline stage.
+- A Slack message appears in your chosen channel within seconds of an incident detection.
+- A ServiceNow incident ticket and a Jira issue are both created automatically.
+- Every step has `--dry-run` mode so you can test without actually posting or creating tickets.
+
+## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
 1. Understand: Review the full pipeline — simulation → AIOps → Slack → ITSM → runbook.
 2. Build: Configure Slack webhook, ITSM credentials, and chaos drill scripts.
@@ -34,7 +43,7 @@ V9 completes the operational intelligence loop. You detect incidents using AIOps
 7. Automate: Wire chaos drills into CI/CD so every deployment is tested.
 8. Improve: Tune detection thresholds and reduce false-positive ticket noise.
 
-## 3) What You Will Build
+## 5) What You Will Build
 
 - A real Slack webhook integration that fires rich alerts from AIOps evidence files.
 - Automated ServiceNow incident ticket creation tied to AIOps risk scoring.
@@ -42,7 +51,7 @@ V9 completes the operational intelligence loop. You detect incidents using AIOps
 - An advanced chaos drill script that runs the full pipeline in one command.
 - Telemetry simulation workflows covering latency, error rates, CPU stress, and pod kills.
 
-## 4) Concepts Explained (Simple Language)
+## 6) Concepts Explained (Simple Language)
 
 - **Slack Incoming Webhook**: a URL you paste into a curl or Python request; Slack posts the message to a channel. No bot token needed.
 - **ITSM (IT Service Management)**: the practice of tracking incidents, changes, and requests in a ticketing system like ServiceNow or Jira so nothing is lost and every incident has an audit trail.
@@ -52,7 +61,7 @@ V9 completes the operational intelligence loop. You detect incidents using AIOps
 - **Blast radius**: the number of services or users affected when a failure spreads.
 - **Full pipeline drill**: one command that injects a failure, scores it, alerts via Slack, and opens ITSM tickets — proving every layer is connected.
 
-## 5) Architecture Diagram (Mermaid)
+## 7) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
@@ -69,44 +78,10 @@ flowchart LR
     Fix --> Validate[Recovery Validation]
 ```
 
-## 6) Project Structure
+## 8) Project Structure
 
-## 1) Version Purpose
-
-V9 completes the operational intelligence loop. You detect incidents using AIOps, alert your team on Slack, open ITSM tickets automatically in ServiceNow and Jira, and run advanced chaos drills that exercise the full pipeline end-to-end.
-
----
-
-## Plain Language Context
-
-**What is this version teaching you?**
-When your system detects a problem, it should not wait for an engineer to notice — it should instantly send a Slack message to the team, open a ticket in the company's incident tracking system, and record everything. This is like a hospital paging system: the moment a patient monitor alarm fires, the right doctor gets paged AND the event is automatically logged in the patient record — all before anyone manually makes a phone call.
-
-**How does a bank or hospital use this?**
-Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) require that every incident is logged in an auditable system within a specific timeframe. Manual ticket creation is slow and error-prone. Automated ITSM integration guarantees every incident is captured — even at 3am when no one is watching — and gives auditors a complete trail.
-
-**Key terms in plain language:**
-
-| Term | What It Means |
-|---|---|
-| **Slack Incoming Webhook** | A URL that your scripts call to post a message into a Slack channel automatically — no bot account required |
-| **ServiceNow** | An enterprise ticketing platform used by most banks, hospitals, and government agencies to track every incident and change |
-| **Jira** | A project management tool used by engineering teams to track bugs, features, and incidents as "issues" |
-| **ITSM (IT Service Management)** | The discipline of tracking all IT work (incidents, changes, requests) in a structured ticketing system |
-| **REST API** | A standard way to talk to a web service by sending a structured message over the internet and receiving a response |
-| **Chaos drill** | A full end-to-end test: inject a failure → AIOps detects it → Slack fires → ServiceNow ticket opens → Jira issue created |
-| **Incident pipeline** | The sequence of automated steps from detection through alerting through ticketing to remediation |
-| **PDI (Personal Developer Instance)** | A free ServiceNow test environment you use for practice — no cost and no risk to a production system |
-
-**Expected result at the end of this version:**
-- `./chaos/run_chaos_drill.sh` runs four experiments and produces output for each pipeline stage.
-- A Slack message appears in your chosen channel within seconds of an incident detection.
-- A ServiceNow incident ticket and a Jira issue are both created automatically.
-- Every step has `--dry-run` mode so you can test without actually posting or creating tickets.
-
----
-
-## 2) Chapters Covered
+```text
+express-reliability-platform-v09/
 ├── chaos/
 │   └── run_chaos_drill.sh        <- full pipeline: inject -> score -> alert -> ticket
 ├── itsm/
@@ -126,7 +101,7 @@ Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) 
 └── README.md
 ```
 
-## 7) Step-by-Step Guide (Local and Cloud)
+## 9) Step-by-Step Guide (Local and Cloud)
 
 ### Step A — Understand
 
@@ -333,7 +308,7 @@ terraform -chdir=environments/live apply -var-file=live.tfvars
 ./chaos/run_chaos_drill.sh INC-CLOUD-001 node-api error_rate
 ```
 
-## 8) Validation Checklist
+## 10) Validation Checklist
 
 - [ ] All simulation scripts run without errors.
 - [ ] AIOps scripts produce scored output.
@@ -346,7 +321,7 @@ terraform -chdir=environments/live apply -var-file=live.tfvars
 - [ ] Jira issue created with correct severity and labels.
 - [ ] `dr/runbook.txt` steps were executed and documented.
 
-## 9) Troubleshooting
+## 11) Troubleshooting
 
 - **Python package errors**: create a virtual environment (`python3 -m venv venv && source venv/bin/activate`).
 - **Slack not sending**: verify `SLACK_WEBHOOK_URL` is exported and points to an active webhook. Run `--dry-run` first.
@@ -355,7 +330,7 @@ terraform -chdir=environments/live apply -var-file=live.tfvars
 - **No evidence file**: confirm `scripts/aiops_score_and_summarize.sh` has execute permission and the output directory is writable.
 - **Chaos drill exits early**: run each step manually to isolate which stage fails.
 
-## 10) Cleanup
+## 12) Cleanup
 
 ```sh
 cd ../express-reliability-platform-v04
@@ -367,7 +342,52 @@ terraform -chdir=environments/shared destroy -var-file=shared.tfvars
 
 Archive all evidence files and document lessons learned.
 
-## 11) Next Version Preview
+## 13) Next Version Preview
 
 In V10, you build post-book extension labs covering robotics simulation, quantum-augmented optimization, and full auto-remediation workflows that combine everything from V1 through V9.
 
+---
+
+## 14) Web UI Guide — `apps/web-ui/index.html`
+
+### Platform Continuity
+
+The V9 UI keeps the same V2 regulated readiness console and evolves it with ITSM, Slack, Jira, ServiceNow, chaos, and recovery validation checks. Students should experience this as the same platform growing, not as a separate app.
+
+### What the V9 UI Does
+
+The V9 `index.html` is the operational intelligence console. It evaluates the full incident workflow from signal to action:
+
+- Chaos experiment or failure scenario.
+- Slack alerting readiness.
+- ServiceNow and Jira ITSM coverage.
+- Recovery validation and audit evidence.
+
+The page shows how AIOps becomes useful in a real enterprise workflow: detect the issue, alert the team, open tickets, run the drill, and prove recovery.
+
+### What It Is Used For
+
+Use the V9 UI to explain how regulated organizations make incidents auditable. Banks and hospitals cannot rely on informal chat messages or memory after an outage. Every incident needs a record, owner, severity, response path, and recovery proof.
+
+This UI is useful for:
+
+- Demonstrating Slack alert and ITSM readiness.
+- Explaining ServiceNow and Jira incident records.
+- Practicing chaos drill readiness conversations.
+- Preparing students for V10 healthcare telemetry and predictive remediation.
+
+### How to Read the Results
+
+The UI generates an incident pipeline scorecard.
+
+| Field | Meaning |
+|---|---|
+| `experiment` | The chaos or incident drill being evaluated. |
+| `readiness_score` | Overall incident workflow readiness. |
+| `readiness_band` | Plain-language status of the workflow. |
+| `domains.reliability` | Drops when recovery validation is missing. |
+| `domains.cost_efficiency` | Drops when alerting is missing or manual. |
+| `domains.security_compliance` | Drops when ITSM coverage or recovery proof is weak. |
+| `domains.intelligence_aiops_mlops` | Reflects how well AIOps connects to workflow automation. |
+
+A strong V9 result should show configured alerting, ServiceNow and Jira coverage, and complete recovery validation.

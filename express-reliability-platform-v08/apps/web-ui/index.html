@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T2S Express Reliability Platform | V4</title>
+  <title>T2S Express Reliability Platform | V8</title>
   <style>
     :root {
       --bg: #f7f9fc;
@@ -72,7 +72,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 4: Observability</span>
+      <span class="badge">Version 8: AIOps</span>
     </div>
   </header>
 
@@ -85,39 +85,39 @@
 
     <div class="workspace">
       <section aria-labelledby="assessment-title">
-        <h2 id="assessment-title">V4 Readiness Assessment</h2>
-        <p class="muted">V4 keeps the same platform console and adds observability: health checks, Prometheus, Grafana, latency posture, and dashboard evidence.</p>
+        <h2 id="assessment-title">V8 Readiness Assessment</h2>
+        <p class="muted">V8 keeps the same platform console and adds AIOps triage: incident signal intake, risk scoring, severity bands, and recommended first action.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">80</strong><small>Health and latency signals</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">72</strong><small>Utilization visibility</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">76</strong><small>Dashboard evidence</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">64</strong><small>Telemetry for AIOps</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">88</strong><small>Signal-based severity</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">82</strong><small>Reduced alert toil</small></div>
+          <div class="metric"><span>Security</span><strong id="securityScore">86</strong><small>Evidence files</small></div>
+          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">88</strong><small>AIOps summary</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
-            Platform or application
-            <input id="platformInput" value="patient-claims-dashboard" autocomplete="off" />
+            Service
+            <input id="platformInput" value="node-api" autocomplete="off" />
           </label>
           <label>
-            Dashboard status
-            <select id="dash"><option value="ready">Prometheus and Grafana ready</option><option value="partial">Partial dashboards</option><option value="none">No dashboards</option></select>
+            p95 latency
+            <select id="latency"><option value="normal">Normal</option><option value="elevated">Elevated</option><option value="critical">Critical</option></select>
           </label>
           <label>
-            Latency posture
-            <select id="latency"><option value="good">p95 below target</option><option value="warn">p95 near target</option><option value="bad">p95 above target</option></select>
+            Error rate
+            <select id="errors"><option value="low">Under 1%</option><option value="medium">1% to 5%</option><option value="high">Over 5%</option></select>
           </label>
           <label>
-            Evidence quality
-            <select id="evidence"><option value="complete">Screenshots and metrics captured</option><option value="partial">Some evidence</option><option value="missing">No evidence</option></select>
+            Blast radius
+            <select id="blast"><option value="single">Single service</option><option value="multi">Multiple services</option><option value="customer">Customer-facing outage</option></select>
           </label>
           <div class="actions">
-            <button type="submit">Run V4 Readiness Check</button>
+            <button type="submit">Run V8 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate observability readiness.</pre>
+        <pre id="output">Ready to evaluate AIOps incident risk.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
@@ -125,11 +125,11 @@
         <div class="versions">
           <div class="version"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></div>
           <div class="version"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></div>
-          <div class="version current"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
+          <div class="version"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
           <div class="version"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></div>
           <div class="version"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></div>
           <div class="version"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></div>
-          <div class="version"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
+          <div class="version current"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
           <div class="version"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
           <div class="version"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></div>
           <div class="version"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></div>
@@ -139,7 +139,7 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V4, the platform adds <strong>Observability and dashboard evidence</strong>.</p>
+      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V8, the platform adds <strong>AIOps incident intelligence</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -160,10 +160,10 @@
         <span class="pill">FinOps guardrails</span>
         <span class="pill">AIOps triage</span>
         <span class="pill">MLOps readiness</span>
-        <span class="pill">Prometheus targets</span>
-        <span class="pill">Grafana dashboard</span>
-        <span class="pill">Metric evidence</span>
-        <span class="pill">Stress and failure visibility</span>
+        <span class="pill">Risk score</span>
+        <span class="pill">Severity band</span>
+        <span class="pill">Incident summary</span>
+        <span class="pill">Slack-ready alert</span>
       </div>
 
       <div class="creator-panel">
@@ -196,13 +196,19 @@
       const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
       const extra = {};
 
-      const dash = document.getElementById("dash").value;
       const latency = document.getElementById("latency").value;
-      const evidence = document.getElementById("evidence").value;
-      const reliability = clamp(86 - (latency === "bad" ? 22 : latency === "warn" ? 8 : 0) - (dash === "none" ? 14 : dash === "partial" ? 6 : 0));
-      const cost = clamp(80 - (dash === "none" ? 12 : dash === "partial" ? 5 : 0));
-      const security = clamp(82 - (evidence === "missing" ? 22 : evidence === "partial" ? 8 : 0));
-      const intelligence = clamp(70 + (dash === "ready" ? 8 : 0) - (evidence === "missing" ? 10 : 0));
+      const errors = document.getElementById("errors").value;
+      const blast = document.getElementById("blast").value;
+      let risk = 2;
+      risk += latency === "critical" ? 3 : latency === "elevated" ? 1 : 0;
+      risk += errors === "high" ? 3 : errors === "medium" ? 1 : 0;
+      risk += blast === "customer" ? 3 : blast === "multi" ? 2 : 0;
+      const reliability = clamp(96 - risk * 6);
+      const cost = clamp(88 - risk * 3);
+      const security = clamp(90 - (risk >= 7 ? 8 : 0));
+      const intelligence = clamp(92 + (risk >= 7 ? 4 : 0));
+      extra.incident_risk_score = Math.min(10, risk);
+      extra.severity = risk >= 9 ? "critical" : risk >= 7 ? "high" : risk >= 4 ? "medium" : "low";
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
@@ -212,10 +218,10 @@
 
       output.textContent = JSON.stringify({
         platform,
-        version: "v4",
+        version: "v8",
         readiness_score: total,
         readiness_grade: grade(total),
-        focus: "Observability and dashboard evidence",
+        focus: "AIOps incident intelligence",
         domains: {
           reliability,
           cost_efficiency: cost,
@@ -223,12 +229,12 @@
           intelligence_aiops_mlops: intelligence
         },
         version_adds: [
-          "Prometheus targets",
-          "Grafana dashboard",
-          "Metric evidence",
-          "Stress and failure visibility"
+          "Risk score",
+          "Severity band",
+          "Incident summary",
+          "Slack-ready alert"
 ],
-        next: "Move to V5 for Kubernetes probes, scaling, and self-healing.",
+        next: "Move to V9 for Slack, ServiceNow, Jira, and chaos drill integration.",
         ...extra
       }, null, 2);
     }
