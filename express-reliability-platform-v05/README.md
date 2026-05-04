@@ -58,7 +58,7 @@ Banks watch transaction latency in real time — a sudden spike can mean fraud, 
 
 **Expected result at the end of this version:**
 - `http://localhost:9090/targets` shows `node-api` and `flask-api` as **UP**.
-- `http://localhost:3001` shows a Grafana dashboard with request rate, p95 latency, error rate, and service health panels.
+- `http://localhost:3001` shows a Grafana dashboard with request rate, p95 latency, error rate, and service health panels (either the starter `grafana-dashboard.json` you build by hand, or the production-grade `grafana-dashboard-golden-signals.json` imported via the Grafana UI).
 - `http://localhost:9090/alerts` lists three alert rules (ServiceDown, HighErrorRate, HighLatency), all **inactive**.
 - Stopping `flask-api` causes the `ServiceDown` alert to fire within ~35 seconds.
 - After AWS deploy, the ALB DNS name returns the V5 Web UI in a browser.
@@ -133,6 +133,8 @@ express-reliability-platform-v05/
 │   ├── alert.rules.yml       ← ServiceDown, HighErrorRate, HighLatency
 │   ├── alertmanager/
 │   │   └── alertmanager.yml
+│   ├── grafana-dashboard.json              ← starter dashboard (4 panels)
+│   └── grafana-dashboard-golden-signals.json ← production-grade dashboard (Fortune 500 layout)
 │   └── grafana-dashboard.json
 ├── docker-compose.yml        ← 3 apps + prometheus + grafana + alertmanager
 ├── scripts/
@@ -189,7 +191,9 @@ express-reliability-platform-v05/
    - URL: `http://prometheus:9090` (NOT `localhost` — Grafana resolves by container name inside Docker)
    - **Save and test**
 
-5. Build the dashboard (four panels — PromQL queries below):
+5. Build the dashboard. You have two options — pick one (or import both and compare):
+
+   **Option A — Build from scratch (learning path).** Create four panels using the queries below. This is the exercise: you'll learn what each PromQL expression does by typing it.
 
    | Panel | Query |
    |---|---|
@@ -199,6 +203,19 @@ express-reliability-platform-v05/
    | Service Health (Stat)  | `up{job=~"node-api\|flask-api"}` |
 
    Save as **Platform Overview**.
+
+   **Option B — Import the production-grade dashboard (reference path).** In Grafana go to **Dashboards → New → Import → Upload JSON file** and pick [monitoring/grafana-dashboard-golden-signals.json](express-reliability-platform-v05/monitoring/grafana-dashboard-golden-signals.json). When prompted, select your Prometheus data source. This dashboard mirrors what SRE teams at Fortune 500 companies actually run:
+
+   - **SLO summary row** — four glanceable stat tiles (Service Health, Traffic, p95 Latency, Error %) with green/yellow/red thresholds baked in.
+   - **Templated `$job` variable** — one dropdown filters every panel; works for any service, no query edits required.
+   - **`$__rate_interval`** instead of hard-coded `[5m]` — Grafana auto-picks the rate window based on your zoom level.
+   - **p50 / p95 / p99 latency** in one panel so you can see tail latency, not just the median.
+   - **Latency heatmap** — surfaces bimodal distributions that a single p95 number hides.
+   - **Stacked status-code mix** (2xx / 3xx / 4xx / 5xx) with fixed colors so error spikes are visible at a glance.
+   - **Deploy annotations** — orange vertical lines mark every container restart, so a latency spike that lined up with a deploy is obvious.
+   - **Saturation row** — process memory and CPU per service, completing the four golden signals.
+
+   The starter file [monitoring/grafana-dashboard.json](express-reliability-platform-v05/monitoring/grafana-dashboard.json) is still there as the V4-style reference.
 
 6. Prove the alerting pipeline works:
 
@@ -267,6 +284,20 @@ You can deploy in two ways:
 - **Path B — Scripted:** one command end to end. Use this on subsequent deploys.
 
 ## 13) Path A — Manual Deployment
+
+### 13.1) Phase 1 — Bootstrap (state backend)
+
+Creates the S3 bucket and DynamoDB lock table that Terraform will use for state.
+
+```sh
+terraform -chdir=terraform/bootstrap init
+terraform -chdir=terraform/bootstrap apply
+```
+
+Note the two outputs: `state_bucket` (e.g. `reliability-platform-tfstate-123456789012`) and `account_id`.
+
+> **If you already ran V4's bootstrap:** the bucket and DynamoDB table from V4 are reused. Terraform sees no changes.
+
 
 ### 13.1) Phase 1 — Bootstrap (state backend)
 
@@ -442,6 +473,36 @@ This is a **full teardown** — local + AWS. The script:
 7. `terraform destroy` on the Bootstrap stack — removes the S3 bucket and the DynamoDB lock table.
 8. Verifies: lists ECS clusters, ALBs, ECR repos, state buckets, and the lock table — all should be empty/missing.
 9. **Local Terraform artifacts cleanup** — removes `.terraform/`, `.terraform.lock.hcl`, `terraform.tfstate*`, and `tfplan` files from both `terraform/bootstrap/` and `terraform/platform/`. These survive `terraform destroy` and would otherwise contain stale references to destroyed resources.
+
+> **Heads up:** V4 and V5 use the same project name (`reliability-platform`), so they share ECR repository names. The defensive sweep in step 4 will remove any `reliability-platform/*` repos found in the region, including ones a parallel V4 deploy created. If V4 is still deployed, run V4 cleanup first.
+
+> **What this means for V6+:** the bootstrap state backend is destroyed, so the first thing V6 does is re-bootstrap. Re-running `./scripts/tf_deploy.sh` for any later version will recreate the S3 bucket and DynamoDB lock table from scratch.
+
+---
+
+## 18) Next Version Preview
+
+In V6, you replace ECS with Kubernetes on EKS — a system that self-heals (automatically restarts crashed pods) and auto-scales (adds more pods when traffic rises). The monitoring stack (Prometheus, Grafana, Alertmanager) moves into the cluster as well, with the V5 dashboards and alert rules as the starting point.
+
+---
+
+## 19) Web UI Guide — `apps/web-ui/index.html`
+
+### Platform Continuity
+
+The V5 UI keeps the same V2 regulated readiness console and evolves it with Kubernetes runtime checks. Students should experience this as the same platform growing, not as a separate app.
+
+### What the V5 UI Does
+
+The V5 `index.html` is the Kubernetes reliability console. It shows how the platform becomes more resilient by evaluating runtime controls that regulated organizations expect before trusting critical workloads.
+
+The page checks:
+
+- Reliability through readiness probes, liveness probes, replicas, and self-healing.
+- Cost efficiency through scaling posture and autoscaling guardrails.
+- Security and compliance through namespace isolation and least-privilege runtime boundaries.
+- Intelligence readiness through runtime signals that later feed AIOps.
+
 
 > **Heads up:** V4 and V5 use the same project name (`reliability-platform`), so they share ECR repository names. The defensive sweep in step 4 will remove any `reliability-platform/*` repos found in the region, including ones a parallel V4 deploy created. If V4 is still deployed, run V4 cleanup first.
 
