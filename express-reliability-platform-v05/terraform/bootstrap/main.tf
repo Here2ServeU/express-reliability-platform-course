@@ -18,6 +18,18 @@ data "aws_caller_identity" "current" {}
 resource "aws_s3_bucket" "tf_state" {
   bucket = "reliability-platform-tfstate-${data.aws_caller_identity.current.account_id}"
 
+  # Versioning is enabled on this bucket (next resource), so a plain
+  # `terraform destroy` would 409 with BucketNotEmpty — versions and delete
+  # markers survive `aws s3 rm`. force_destroy = true tells the AWS provider
+  # to drain every version and delete-marker before calling DeleteBucket,
+  # which is what we want for a course-managed state backend.
+  #
+  # Trade-off: anyone running `terraform destroy` on this stack wipes every
+  # version of every state file the bucket holds. That's fine here because
+  # this bucket only ever stores reliability-platform state for the same
+  # account, but don't copy this pattern to a shared/prod state bucket.
+  force_destroy = true
+
   tags = {
     Name      = "TerraformState"
     ManagedBy = "terraform"
