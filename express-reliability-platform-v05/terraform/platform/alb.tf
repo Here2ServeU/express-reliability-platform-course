@@ -66,7 +66,13 @@ resource "aws_ecs_service" "services" {
     }
   }
 
-  depends_on = [aws_lb_listener.http]
+  # docker_registry_image.services is empty when build_images = false (Option 1,
+  # bash flow), so this is a no-op. When build_images = true (Option 2) it
+  # makes the ECS service wait until Terraform has pushed the image to ECR.
+  depends_on = [
+    aws_lb_listener.http,
+    docker_registry_image.services,
+  ]
 
   tags = {
     Service = each.key

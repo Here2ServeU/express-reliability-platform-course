@@ -21,3 +21,19 @@ variable "cpu" {
 variable "memory" {
   default = "512"
 }
+
+# Option 2 toggle — when true, Terraform itself builds, tags, and pushes the
+# service images via the kreuzwerker/docker provider (see images.tf). When
+# false (the default), images are pushed by scripts/build_push_images.sh
+# before `terraform apply` runs.
+variable "build_images" {
+  type        = bool
+  default     = false
+  description = "Set to true to build/tag/push images via Terraform instead of the bash script."
+}
+
+variable "image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Tag applied to images built by Terraform when build_images = true."
+}

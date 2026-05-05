@@ -100,30 +100,55 @@ docker system prune -f
 if [ -n "$STATE_BUCKET" ] && [ "$STATE_BUCKET" != "null" ]; then
   echo "=== Step 5: Empty state bucket s3://${STATE_BUCKET} (all versions + delete markers) ==="
   # The state bucket has versioning enabled. terraform destroy on a non-empty
-  # versioned bucket fails, so we empty every version and delete-marker first.
+  # versioned bucket fails, so we empty every version AND every delete-marker
+  # before destroy.
+  #
+  # The JMESPath flattens [Versions, DeleteMarkers] together so a single
+  # batch drains both types — earlier versions of this script queried each
+  # type separately, which broke for buckets where the first 1000 listing
+  # entries were all one type (the other type's loop would see 0 and exit
+  # while leaving entries on later pages).
+  #
+  # --no-paginate + --max-keys 1000 gives us exactly one API response per
+  # iteration. After delete-objects removes those, the next iteration's
+  # listing call returns the next ≤1000 surviving entries — the loop
+  # terminates only when the bucket is fully empty.
 
-  VERSIONS=$(aws s3api list-object-versions \
-    --bucket "$STATE_BUCKET" \
-    --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
-    --output json 2>/dev/null)
-  if [ -n "$VERSIONS" ] && [ "$VERSIONS" != "null" ] && \
-     [ "$(echo "$VERSIONS" | grep -o '"Key"' | wc -l)" -gt 0 ]; then
-    aws s3api delete-objects --bucket "$STATE_BUCKET" --delete "$VERSIONS" >/dev/null
-    echo '  deleted all object versions'
-  fi
+  drain_bucket() {
+    local bucket="$1"
+    local total=0
+    while : ; do
+      local chunk count
+      chunk=$(aws s3api list-object-versions --bucket "$bucket" --region "$REGION" \
+        --no-paginate \
+        --max-keys 1000 \
+        --query '{Objects: [Versions, DeleteMarkers][][].{Key:Key,VersionId:VersionId}}' \
+        --output json 2>/dev/null)
+      count=$(echo "$chunk" | grep -c '"Key"' || true)
+      [ "$count" -eq 0 ] && break
+      if ! aws s3api delete-objects --bucket "$bucket" --region "$REGION" \
+            --delete "$chunk" >/dev/null 2>&1; then
+        echo "  WARN: delete-objects failed on a batch of ${count}; continuing"
+        break
+      fi
+      total=$((total + count))
+      echo "  deleted batch of ${count} (running total: ${total})"
+    done
+    echo "  drained ${total} object(s) total"
+  }
 
-  MARKERS=$(aws s3api list-object-versions \
-    --bucket "$STATE_BUCKET" \
-    --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' \
-    --output json 2>/dev/null)
-  if [ -n "$MARKERS" ] && [ "$MARKERS" != "null" ] && \
-     [ "$(echo "$MARKERS" | grep -o '"Key"' | wc -l)" -gt 0 ]; then
-    aws s3api delete-objects --bucket "$STATE_BUCKET" --delete "$MARKERS" >/dev/null
-    echo '  deleted all delete markers'
-  fi
+  drain_bucket "$STATE_BUCKET"
 fi
 
 echo '=== Step 6: Destroy bootstrap (S3 state bucket + DynamoDB lock table) ==='
+# Re-init in case the bootstrap directory was wiped by a prior partial cleanup.
+terraform -chdir=terraform/bootstrap init -input=false >/dev/null 2>&1
+# Apply first so force_destroy=true (added in main.tf) is recorded in state.
+# Without this, an older state file would still say force_destroy=false and
+# the provider's own bucket-drain logic would not run, so a destroy against a
+# non-empty bucket would 409. This apply is a no-op for AWS resources — it
+# only updates Terraform's record of the resource attributes.
+terraform -chdir=terraform/bootstrap apply -auto-approve >/dev/null 2>&1 || true
 terraform -chdir=terraform/bootstrap destroy -auto-approve
 
 echo '=== Step 7: Verify cleanup ==='
