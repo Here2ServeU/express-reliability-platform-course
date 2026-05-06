@@ -1,5 +1,9 @@
 terraform {
   backend "s3" {
+    # NOTE: Terraform doesn't allow variables in `backend` blocks, so the bucket
+    # name has the account ID baked in literally. Either edit YOUR_ACCOUNT_ID
+    # below to match your AWS account, or pass `-backend-config="bucket=..."`
+    # at `terraform init` time (which is what scripts/tf_deploy_v6.sh does).
     bucket         = "reliability-platform-v06-tfstate-YOUR_ACCOUNT_ID"
     key            = "eks/v6/terraform.tfstate"
     region         = "us-east-1"

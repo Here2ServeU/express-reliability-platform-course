@@ -19,3 +19,9 @@ variable "version_suffix" {
   default     = "v06"
   description = "Namespacing suffix for resource names. Keep it short — bucket names cap at 63 chars."
 }
+
+variable "services" {
+  type        = list(string)
+  default     = ["flask-api", "node-api", "web-ui"]
+  description = "Service names — one ECR repo is created per entry, named <project_name>/<service>."
+}

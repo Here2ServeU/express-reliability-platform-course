@@ -15,8 +15,9 @@ REGION="us-east-1"
 NAMESPACE="platform"
 
 echo '=== V6 Cleanup ==='
-echo 'This destroys the EKS cluster, the V6 bootstrap state bucket, and the V6'
-echo 'lock table. V5 bootstrap and ECR are kept intact.'
+echo 'This destroys the EKS cluster, the V6 bootstrap state bucket, the V6'
+echo 'lock table, and the V6 ECR repos (with all pushed images). V5 bootstrap'
+echo 'and V5 ECR (if present) are kept intact.'
 echo
 
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text 2>/dev/null)
