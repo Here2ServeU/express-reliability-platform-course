@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: 730335276920.dkr.ecr.us-east-1.amazonaws.com/reliability-platform/flask-api
+  repository: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/reliability-platform/flask-api
   tag: latest
   pullPolicy: Always
 

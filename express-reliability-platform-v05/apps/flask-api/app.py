@@ -8,6 +8,10 @@ def home():
     c.inc()
     return 'Flask API v4 running!'
 
+@app.route('/health')
+def health():
+    return {'status': 'ok', 'service': 'flask-api'}, 200
+
 @app.route('/metrics')
 def metrics():
     return generate_latest(c), 200, {'Content-Type': CONTENT_TYPE_LATEST}
