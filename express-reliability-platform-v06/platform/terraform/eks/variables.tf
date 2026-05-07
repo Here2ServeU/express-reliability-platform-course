@@ -1,55 +1,96 @@
 variable "aws_region" {
   type        = string
   default     = "us-east-1"
-  description = "AWS region the EKS cluster lives in. Must match the bootstrap region."
+  description = "AWS region. Must match the bootstrap region (state bucket lives there)."
 }
+
+# ----------------------------------------------------------------------------
+# Identity / naming
+# ----------------------------------------------------------------------------
 
 variable "project_name" {
   type        = string
-  default     = "reliability-platform-v06"
-  description = "Used as a prefix for VPC, IGW, subnets, route table, etc. tags."
+  default     = "reliability-platform"
+  description = "Logical project name. Becomes part of resource Name tags and the App tag."
 }
 
-variable "cluster_name" {
+variable "version_suffix" {
   type        = string
-  default     = "reliability-platform-cluster"
-  description = "EKS cluster name. Worker subnets get the kubernetes.io/cluster/<this> tag."
+  default     = "v06"
+  description = "Course version. Combined with env to namespace IAM roles, the cluster, and budgets across this account."
 }
+
+variable "environment" {
+  type        = string
+  description = "Deployment environment (dev, staging, prod). Drives sizing, CIDR, budget, and the Environment tag. Pass via -var-file=environments/<env>.tfvars."
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "environment must be one of: dev, staging, prod."
+  }
+}
+
+variable "owner" {
+  type        = string
+  default     = "platform-team"
+  description = "Team or person responsible for the stack. Goes into the Owner tag — this is who FinOps and on-call escalate to."
+}
+
+variable "cost_center" {
+  type        = string
+  default     = "platform-eng"
+  description = "Cost-center label for chargeback/showback reports. Goes into the CostCenter tag."
+}
+
+# ----------------------------------------------------------------------------
+# Networking
+# ----------------------------------------------------------------------------
+
+variable "vpc_cidr" {
+  type        = string
+  description = "Primary IPv4 CIDR for the env's VPC. Pick non-overlapping CIDRs across envs so they could be peered later."
+}
+
+# ----------------------------------------------------------------------------
+# EKS
+# ----------------------------------------------------------------------------
 
 variable "kubernetes_version" {
   type        = string
   default     = "1.33"
-  description = "EKS control-plane Kubernetes version. AWS retires versions ~14 months after K8s release — check `aws eks describe-cluster-versions` for the currently supported list and bump this when the AMI for the current default is retired."
-}
-
-# 10.43.0.0/16 — deliberately distinct from V5's 10.42.0.0/16 so the two VPCs
-# could be peered later without overlapping CIDRs.
-variable "vpc_cidr" {
-  type        = string
-  default     = "10.43.0.0/16"
-  description = "Primary IPv4 CIDR block for the EKS VPC."
+  description = "EKS control-plane Kubernetes version. AWS retires versions ~14 months after K8s release; check `aws eks describe-cluster-versions` and bump when current default is retired."
 }
 
 variable "node_instance_types" {
   type        = list(string)
-  default     = ["t3.medium"]
-  description = "EC2 instance types for the EKS managed node group."
+  description = "Worker instance types. Smaller for non-prod (cost-aware), larger for prod (capacity)."
 }
 
 variable "node_desired_size" {
   type        = number
-  default     = 2
-  description = "Desired worker node count. Two nodes are enough for the V6 self-healing demo."
+  description = "Desired worker node count."
 }
 
 variable "node_min_size" {
   type        = number
-  default     = 1
-  description = "Minimum worker node count for the managed node group."
+  description = "Minimum worker node count."
 }
 
 variable "node_max_size" {
   type        = number
-  default     = 4
-  description = "Maximum worker node count. Bump this if you scale a Deployment past 4 replicas."
+  description = "Maximum worker node count."
+}
+
+# ----------------------------------------------------------------------------
+# Cost guardrails
+# ----------------------------------------------------------------------------
+
+variable "monthly_budget_usd" {
+  type        = number
+  description = "Per-env monthly spending cap. Email is sent when actual spend crosses 80% and 100%."
+}
+
+variable "budget_alert_email" {
+  type        = string
+  description = "Email that receives budget alerts. Must be deliverable — first alert from a new account triggers an SES bounce-test."
 }

@@ -1,13 +1,22 @@
+###############################################################################
+# V6 root composition.
+#
+# This file is intentionally thin — every meaningful resource lives in a
+# module under ../modules/. The root just wires modules together and sets
+# the default_tags that FinOps/cost reports rely on.
+#
+# State key is parameterized per environment via -backend-config at init time
+# (see scripts/tf_deploy_v6.sh). One state file per env keeps dev/prod from
+# fighting over the same lock.
+###############################################################################
+
 terraform {
+  required_version = ">= 1.5"
+
   backend "s3" {
-    # NOTE: Terraform doesn't allow variables in `backend` blocks, so the bucket
-    # name has the account ID baked in literally. Either edit YOUR_ACCOUNT_ID
-    # below to match your AWS account, or pass `-backend-config="bucket=..."`
-    # at `terraform init` time (which is what scripts/tf_deploy_v6.sh does).
-    bucket         = "reliability-platform-v06-tfstate-YOUR_ACCOUNT_ID"
-    key            = "eks/v6/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "terraform-state-lock-v06"
+    # Bucket / dynamodb_table / region / key are all supplied via
+    # -backend-config flags from scripts/tf_deploy_v6.sh. Hardcoding is
+    # avoided so the same root works for dev, staging, and prod.
   }
 
   required_providers {
@@ -18,164 +27,125 @@ terraform {
   }
 }
 
+# Single source of truth for tags applied to every taggable AWS resource.
+# default_tags are merged with per-resource tags inside each module — so the
+# modules don't need to know about Environment, Owner, or CostCenter at all.
+# This is the canonical FinOps tagging pattern: tag once at the provider, get
+# it on everything Terraform creates.
 provider "aws" {
+  region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = var.project_name
+      App         = var.project_name
+      Environment = var.environment
+      Owner       = var.owner
+      CostCenter  = var.cost_center
+      Version     = var.version_suffix
+      ManagedBy   = "terraform"
+    }
+  }
+}
+
+# Aliased provider with no default_tags. Used for AWS services whose tagging
+# requires a separate IAM permission (e.g. budgets:TagResource) that the
+# course's least-privilege user doesn't have. The default_tags block above
+# would otherwise cause CreateBudget to call TagResource and fail with
+# AccessDeniedException. Resources created via this alias get no tags from
+# Terraform; the budget's filter logic uses the cost_filter_tags it was
+# *given* (Environment, App), which is independent of tags on the budget
+# itself.
+provider "aws" {
+  alias  = "untagged"
   region = var.aws_region
 }
 
-# All variables are declared in variables.tf — defaults match the V6 stack
-# names referenced by tf_deploy_v6.sh and the README. Override with
-# -var <name>=<value> on the apply (or use a tfvars file).
+# Naming prefix used by modules for VPC / IAM / cluster names. Includes env
+# so every env gets its own IAM roles and cluster — IAM is account-global, so
+# without the env suffix two stacks in the same account would collide.
+locals {
+  name_prefix  = "${var.project_name}-${var.version_suffix}-${var.environment}"
+  cluster_name = "${var.project_name}-${var.environment}"
+}
+
+module "vpc" {
+  source = "../modules/vpc"
+
+  name_prefix  = local.name_prefix
+  cidr_block   = var.vpc_cidr
+  cluster_name = local.cluster_name
+}
+
+module "eks_iam" {
+  source = "../modules/eks-iam"
+
+  name_prefix = local.name_prefix
+}
+
+module "eks_cluster" {
+  source = "../modules/eks-cluster"
+
+  cluster_name        = local.cluster_name
+  kubernetes_version  = var.kubernetes_version
+  subnet_ids          = module.vpc.public_subnet_ids
+  cluster_role_arn    = module.eks_iam.cluster_role_arn
+  node_role_arn       = module.eks_iam.node_role_arn
+  node_group_name     = "${local.name_prefix}-workers"
+  node_instance_types = var.node_instance_types
+  node_desired_size   = var.node_desired_size
+  node_min_size       = var.node_min_size
+  node_max_size       = var.node_max_size
+
+  # IAM policy attachments must exist before EKS calls AssumeRole on them.
+  # Module-level depends_on covers all of eks_iam's resources, including the
+  # policy attachments that don't appear in the cluster's data flow.
+  depends_on = [module.eks_iam]
+}
+
+module "budget" {
+  source = "../modules/budget"
+
+  # Use the untagged provider so CreateBudget doesn't call TagResource —
+  # see the aws.untagged provider block above for why.
+  providers = {
+    aws = aws.untagged
+  }
+
+  name              = "${local.name_prefix}-monthly"
+  monthly_limit_usd = var.monthly_budget_usd
+  alert_email       = var.budget_alert_email
+
+  # Scope the budget to this stack's spend by tag. Requires the Environment
+  # and App tags to be activated as Cost Allocation Tags in the Billing
+  # console (one-time, account-global). Until activated, this filter matches
+  # nothing — see modules/budget/main.tf for the full caveat.
+  cost_filter_tags = {
+    Environment = var.environment
+    App         = var.project_name
+  }
+}
 
 # ----------------------------------------------------------------------------
-# Dedicated VPC for V6's EKS cluster.
-#
-# We don't reach for the AWS default VPC because (a) some accounts don't have
-# one and (b) sharing infrastructure with the rest of the account makes blast
-# radius unclear. Two public subnets in different AZs are the EKS minimum;
-# both carry the `kubernetes.io/cluster/<name>` and `kubernetes.io/role/elb`
-# tags so EKS and the in-tree LoadBalancer controller can find them.
+# Outputs
 # ----------------------------------------------------------------------------
-
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = {
-    Name      = "${var.project_name}-vpc"
-    ManagedBy = "terraform"
-  }
-}
-
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name      = "${var.project_name}-igw"
-    ManagedBy = "terraform"
-  }
-}
-
-# Two public subnets in two AZs (EKS minimum), with public IPs auto-assigned
-# so worker nodes can pull from ECR and reach the Kubernetes control plane.
-resource "aws_subnet" "public" {
-  count = 2
-
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index + 1)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name                                        = "${var.project_name}-subnet-${count.index + 1}"
-    ManagedBy                                   = "terraform"
-    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-    "kubernetes.io/role/elb"                    = "1"
-  }
-}
-
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = {
-    Name      = "${var.project_name}-rt"
-    ManagedBy = "terraform"
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  count          = length(aws_subnet.public)
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_iam_role" "eks_cluster" {
-  name = "reliability-eks-cluster-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "eks.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster" {
-  role       = aws_iam_role.eks_cluster.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
-}
-
-resource "aws_iam_role" "eks_nodes" {
-  name = "reliability-eks-nodes-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "node_worker" {
-  role       = aws_iam_role.eks_nodes.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-}
-
-resource "aws_iam_role_policy_attachment" "node_ecr" {
-  role       = aws_iam_role.eks_nodes.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-}
-
-resource "aws_iam_role_policy_attachment" "node_cni" {
-  role       = aws_iam_role.eks_nodes.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-}
-
-resource "aws_eks_cluster" "main" {
-  name     = var.cluster_name
-  role_arn = aws_iam_role.eks_cluster.arn
-  version  = var.kubernetes_version
-
-  vpc_config {
-    subnet_ids = aws_subnet.public[*].id
-  }
-
-  depends_on = [aws_iam_role_policy_attachment.eks_cluster]
-}
-
-resource "aws_eks_node_group" "workers" {
-  cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "reliability-workers"
-  node_role_arn   = aws_iam_role.eks_nodes.arn
-  subnet_ids      = aws_subnet.public[*].id
-  instance_types  = var.node_instance_types
-
-  scaling_config {
-    desired_size = var.node_desired_size
-    min_size     = var.node_min_size
-    max_size     = var.node_max_size
-  }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.node_worker,
-    aws_iam_role_policy_attachment.node_ecr,
-    aws_iam_role_policy_attachment.node_cni,
-  ]
-}
 
 output "cluster_name" {
-  value = aws_eks_cluster.main.name
+  value       = module.eks_cluster.cluster_name
+  description = "EKS cluster name. Feed to `aws eks update-kubeconfig`."
+}
+
+output "vpc_id" {
+  value       = module.vpc.vpc_id
+  description = "VPC the cluster runs in."
+}
+
+output "environment" {
+  value       = var.environment
+  description = "Environment this stack represents."
+}
+
+output "monthly_budget_usd" {
+  value       = var.monthly_budget_usd
+  description = "Monthly budget cap (USD) — alerts fire at 80% and 100%."
 }

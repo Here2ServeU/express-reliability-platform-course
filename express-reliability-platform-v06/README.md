@@ -1,11 +1,14 @@
-# Express Reliability Platform V6 — Kubernetes: The Self-Healing Platform
+# Express Reliability Platform V6 — Terraform Modules, Repeatable Infrastructure, Cost-Aware Environments
 
-> **What you will build (in one paragraph).** A production-shaped Kubernetes deployment of three services on AWS EKS, each watched by liveness and readiness probes that automatically kill and replace any pod that falls over. By the end of this version you will delete a pod by hand, watch Kubernetes replace it within 30 seconds, and run a zero-downtime rolling update. About 30 minutes end-to-end on a fresh AWS account, ~$4.30/day if you forget to clean up.
+> **What you will build (in one paragraph).** The same EKS-on-AWS stack from V5, but rebuilt around the three production-grade infrastructure patterns: **reusable Terraform modules** with explicit input/output contracts, **per-environment tfvars** (`dev` and `prod` from the same code, sized differently), and **cost-aware tagging plus AWS Budgets alerts** so spend never sneaks up on you. By the end you will deploy the same root composition twice — once to a small `dev` cluster, once to a `prod`-sized cluster — with two different state files, two different budgets, and the same Helm charts on top. About 30 minutes per env on a fresh AWS account, ~$2.10/day for `dev`, ~$5.40/day for `prod` if you forget to clean up.
 
 ## Table of contents
 
 - [Quick Start (the 4-command path)](#quick-start-the-4-command-path)
-- [Why Kubernetes (the concept layer)](#why-kubernetes-the-concept-layer)
+- [Why modules + per-env + cost-aware (the concept layer)](#why-modules--per-env--cost-aware-the-concept-layer)
+- [Modules overview](#modules-overview)
+- [Per-environment deploy](#per-environment-deploy)
+- [Cost guardrails](#cost-guardrails)
 - [Prerequisites](#prerequisites)
 - [Deploy](#deploy)
   - [Path A — Scripted (recommended)](#path-a--scripted-recommended)
@@ -34,53 +37,160 @@
 # 1. Clone the course repo (V5 sources live at ../express-reliability-platform-v05/)
 cd express-reliability-platform-v06
 
-# 2. One command provisions everything: state backend → ECR → images → EKS → Helm
-./scripts/tf_deploy_v6.sh
+# 2. One command provisions a sized environment. Default is dev.
+ENV=dev  ./scripts/tf_deploy_v6.sh   # 1× t3.small,  $50/mo budget
+# ENV=prod ./scripts/tf_deploy_v6.sh  # 3× t3.medium, $300/mo budget
 
 # 3. Get the public URL (~25 minutes after step 2 starts; ALB takes 60-90s)
 kubectl get svc web-ui-web-ui -n platform \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 
-# 4. When done — destroy everything (avoid the EKS bill)
-./scripts/cleanup_v6.sh
+# 4. When done — destroy this env (the other env's state stays put)
+ENV=dev ./scripts/cleanup_v6.sh
 ```
 
-**You'll know it worked when** `curl -I http://<the-hostname>` returns `HTTP/1.1 200 OK` and `kubectl get pods -n platform` shows 6 pods all `Running 1/1`.
+**You'll know it worked when** `curl -I http://<the-hostname>` returns `HTTP/1.1 200 OK` and `kubectl get pods -n platform` shows 6 pods all `Running 1/1`. To prove the FinOps story, also check the AWS Billing console → Budgets — you should see `reliability-platform-v06-<env>-monthly` with the `Environment=<env>` filter.
 
 ---
 
-## Why Kubernetes (the concept layer)
+## Why modules + per-env + cost-aware (the concept layer)
 
-V5 keeps containers running on ECS Fargate, but ECS health checks run every 30 seconds. For those 30 seconds, broken requests can still reach a crashed container. Worse, a container that's *running* but internally stuck (infinite loop, deadlock) keeps receiving traffic even though it can't actually serve it.
+V5 gave you a working EKS cluster, but the Terraform that built it was one ~180-line `main.tf` with hardcoded sizing, no environment separation, and the bare-minimum tags. That's fine for a single demo cluster. It's a disaster the moment you need a second one — for staging, for a customer demo, for a regulated tenant — because every change is copy-paste-edit, blast radius is unclear, and there's no signal when spend drifts.
 
-Kubernetes flips this. Liveness probes run every 10 seconds, readiness probes every 5. Three consecutive liveness failures → Kubernetes kills the container and starts a fresh one, automatically, no human involved. Readiness gating means traffic only goes to pods that are currently passing their health check.
+V6 fixes all three at once.
 
-**A real-world example.** At a bank, when a payment pod hits a memory leak at 3am, Kubernetes catches it on the next 10-second check, kills the pod, and spins up a replacement. Customer impact: a few seconds of reduced capacity instead of an outage. Hospitals run their patient-portal APIs the same way — readiness gating stops traffic to a pod whose database connection just dropped, instead of returning 500s to the EHR system.
+**Reusable modules.** Every meaningful resource lives in a module under [platform/terraform/modules/](express-reliability-platform-v06/platform/terraform/modules/) with explicit `variables.tf` (inputs) and `outputs.tf` (outputs). The root [eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) is just composition — provider config plus four `module` calls. New env? New tfvars file. New region? Same modules, different root. Modules are the contract; the root is the only thing that changes.
 
-### The three guarantees Kubernetes makes
+**Repeatable infrastructure.** The same root applies cleanly to `dev` and `prod` from [environments/dev.tfvars](express-reliability-platform-v06/platform/terraform/eks/environments/dev.tfvars) and [environments/prod.tfvars](express-reliability-platform-v06/platform/terraform/eks/environments/prod.tfvars), with state stored in distinct keys (`eks/v6/dev/...` vs `eks/v6/prod/...`) so the two never share a lock or accidentally overwrite each other. Sizing, CIDR, and budget all flow from the tfvars file — code is identical, configuration is per-env.
 
-| Guarantee | What it means |
-|---|---|
-| **Desired state reconciliation** | You declare "run 2 copies of `node-api`." If one crashes, Kubernetes starts another within seconds. Always. |
-| **Traffic only goes to healthy pods** | Readiness probe must pass before a pod sees traffic. Liveness probe must keep passing or the pod is killed. |
-| **Zero-downtime deployments** | Rolling updates: one new pod starts, becomes ready, then one old pod is removed. Repeat until done. |
+**Cost-aware environments.** A provider-level `default_tags` block stamps `Environment`, `Owner`, `App`, `CostCenter`, `Project`, `Version`, `ManagedBy` onto every taggable AWS resource without the modules having to know those tags exist — the canonical FinOps pattern. An [aws_budgets_budget](express-reliability-platform-v06/platform/terraform/modules/budget/main.tf) resource per env emails you when spend crosses 80% and 100% of the env's monthly cap. Cost reports group cleanly by `Environment`/`App` so dev's noise doesn't drown out prod's signal.
 
-### Glossary (plain-language)
+### The three guarantees V6 adds on top of V5
+
+| Guarantee | What it means | Where it lives |
+|---|---|---|
+| **One source of truth, many environments** | Same modules + same root + different tfvars = different env. Drift between envs becomes obvious in PRs. | [environments/](express-reliability-platform-v06/platform/terraform/eks/environments/) + [eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) |
+| **Bounded blast radius** | Each module owns one concern (VPC, IAM, cluster, budget). A bug in IAM never compiles into a network change. | [modules/](express-reliability-platform-v06/platform/terraform/modules/) |
+| **Spend you can see before the bill arrives** | Tags flow into Cost Explorer; budgets fire actual emails before the bill does. | [modules/budget/](express-reliability-platform-v06/platform/terraform/modules/budget/) + provider `default_tags` |
+
+### Glossary (plain-language — V6 + carryover from V5)
 
 | Term | What it means |
 |---|---|
-| **Kubernetes** | Container orchestrator that runs, heals, and scales containers across many servers. |
-| **EKS** | AWS-managed Kubernetes — AWS runs the control plane, you manage workloads. |
-| **Pod** | Smallest unit Kubernetes schedules. One or more containers sharing a network namespace. |
-| **Deployment** | Declares "I want N pods like this." Self-heals by replacing failed pods. |
-| **Service** | Stable virtual IP + DNS name for a set of pods. Routes traffic only to *ready* pods. |
-| **Namespace** | Virtual partition for resources. Your apps live in `platform`; system pods live in `kube-system`. |
-| **Liveness probe** | `httpGet /health` every 10s. Three failures → kill and replace. *This is self-healing.* |
-| **Readiness probe** | `httpGet /health` every 5s. Must pass before a pod receives traffic. |
-| **Helm** | Package manager for Kubernetes — one command installs all the resources for a service. |
-| **Chart** | A Helm package: templates plus default values for one application. |
-| **`helm upgrade --install`** | Install if missing, upgrade if present. Idempotent — safe to run repeatedly. |
-| **LoadBalancer Service** | Service that creates a public AWS ALB/NLB so the cluster is reachable from the internet. |
+| **Module** | A folder under `modules/` that wraps a related set of resources behind explicit inputs (`variables.tf`) and outputs (`outputs.tf`). Callers depend on the contract, not the contents. |
+| **Root module / composition** | The top-level `*.tf` that calls modules. Stays small on purpose — most of the logic lives inside the modules it composes. |
+| **tfvars file** | A file of `name = value` pairs that fills in variables at apply time. We use one per env: `dev.tfvars`, `prod.tfvars`. |
+| **Backend** | Where Terraform stores state. We use S3 for the state file, DynamoDB for locking, and a per-env state key so envs never collide. |
+| **`default_tags`** | A provider-level block that automatically applies a tag map to every taggable resource the provider creates. The FinOps tagging pattern. |
+| **Cost Allocation Tag** | A tag activated in the Billing console so it shows up in Cost Explorer reports and can filter Budgets. Activation is one-time, account-global, and takes ~24h to back-fill. |
+| **AWS Budgets** | Spend alerts. Defined in Terraform; emails when actuals (or forecasts) cross thresholds. We use 80% and 100%. |
+| **Kubernetes / EKS / Pod / Deployment / Service / Helm** | Same meanings as V5 — V6 doesn't change the runtime, only the way the runtime is provisioned. |
+
+---
+
+## Modules overview
+
+V6's Terraform lives in two places: small composition files at the root, and self-contained modules under [platform/terraform/modules/](express-reliability-platform-v06/platform/terraform/modules/). Each module exposes a narrow contract — only the inputs it actually needs, only the outputs other modules consume.
+
+| Module | Purpose | Key inputs | Key outputs |
+|---|---|---|---|
+| [`modules/vpc`](express-reliability-platform-v06/platform/terraform/modules/vpc) | VPC, IGW, public subnets across N AZs, route table | `cidr_block`, `cluster_name`, `name_prefix` | `vpc_id`, `public_subnet_ids` |
+| [`modules/eks-iam`](express-reliability-platform-v06/platform/terraform/modules/eks-iam) | Cluster + node IAM roles with the four AWS-managed policies attached | `name_prefix` | `cluster_role_arn`, `node_role_arn` |
+| [`modules/eks-cluster`](express-reliability-platform-v06/platform/terraform/modules/eks-cluster) | EKS control plane + managed node group | `cluster_name`, `kubernetes_version`, `subnet_ids`, role ARNs, sizing | `cluster_name`, `cluster_endpoint` |
+| [`modules/budget`](express-reliability-platform-v06/platform/terraform/modules/budget) | Per-env `aws_budgets_budget` with 80%/100% email alerts | `monthly_limit_usd`, `alert_email`, `cost_filter_tags` | `budget_name`, `budget_id` |
+
+The root [eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) is just provider config plus four `module` calls — under 130 lines, mostly variables and outputs. To add a fifth concern (say, a managed Prometheus workspace later), you'd add `modules/prometheus/` with its own contract and a single `module "prometheus" {}` block in the root.
+
+**Versioning interfaces.** Each module owns its `variables.tf` and `outputs.tf`. Adding an optional input with a `default` is non-breaking; renaming or removing one is. When you publish a module to multiple stacks, treat its `variables.tf` like a public API — semver it.
+
+---
+
+## Per-environment deploy
+
+V6 ships two ready-to-apply environments: `dev` (cheap, single-node) and `prod` (sized for load + headroom). The same root `main.tf` applies cleanly to either; only the tfvars file changes.
+
+| Setting | `dev.tfvars` | `prod.tfvars` |
+|---|---|---|
+| `vpc_cidr` | `10.43.0.0/16` | `10.44.0.0/16` (peerable with dev) |
+| `node_instance_types` | `["t3.small"]` | `["t3.medium"]` |
+| `node_desired_size` / `min` / `max` | `1` / `1` / `2` | `3` / `2` / `6` |
+| `monthly_budget_usd` | `50` | `300` |
+| State key | `eks/v6/dev/terraform.tfstate` | `eks/v6/prod/terraform.tfstate` |
+| Cluster name | `reliability-platform-dev` | `reliability-platform-prod` |
+
+```sh
+# Apply dev (default)
+ENV=dev ./scripts/tf_deploy_v6.sh
+
+# Apply prod (same code, different tfvars + state key)
+ENV=prod ./scripts/tf_deploy_v6.sh
+
+# Tear down only dev — prod is untouched
+ENV=dev ./scripts/cleanup_v6.sh
+```
+
+**State separation.** The deploy script passes `-backend-config="key=eks/v6/${ENV}/terraform.tfstate"` so each env gets its own state file in the shared bootstrap bucket. The DynamoDB lock table is shared but the lock key is the state key, so dev and prod never block each other.
+
+**IAM is account-global.** EKS cluster + node IAM roles include the env in their names (`reliability-platform-v06-<env>-eks-cluster-role`) so dev and prod coexist on the same account. The `name_prefix` local in [eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) is what threads `<env>` through every module.
+
+**Adding a `staging` env.** Copy `dev.tfvars` → `staging.tfvars`, change `environment = "staging"`, pick a non-overlapping CIDR (e.g. `10.45.0.0/16`), then `ENV=staging ./scripts/tf_deploy_v6.sh`. No code changes.
+
+---
+
+## Cost guardrails
+
+Cost-aware infrastructure isn't just "smaller in dev" — it's a tagging discipline plus an alert mechanism.
+
+**Tagging via `default_tags`.** [eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) declares a single `default_tags` block on the AWS provider. Every taggable resource Terraform creates inside any module gets:
+
+| Tag | Source | Used by |
+|---|---|---|
+| `Project` | `var.project_name` | Cost Explorer grouping, ServiceCatalog discovery |
+| `App` | `var.project_name` | Budget cost filter, app-level chargeback |
+| `Environment` | `var.environment` | Budget cost filter, env-level chargeback |
+| `Owner` | `var.owner` | FinOps escalation, "who owns this?" queries |
+| `CostCenter` | `var.cost_center` | Showback / chargeback to the right team |
+| `Version` | `var.version_suffix` | Course-version namespacing across V5/V6/V7+ |
+| `ManagedBy` | `"terraform"` | Distinguishes from console-created resources |
+
+The modules themselves don't reference these tags. They set per-resource tags like `Name`, and Terraform merges the provider defaults in. Add a new tag once at the provider, and every resource picks it up on the next apply.
+
+**Activate the tags.** Tag-based cost reports and tag-filtered budgets only work after the tag is **activated** as a Cost Allocation Tag. One-time, per-account: AWS Billing console → Cost allocation tags → activate `Environment`, `App`, `Owner`, `CostCenter`, `Project`. Activation takes ~24h to back-fill historical spend; until then, tagged spend appears as "untagged" in reports and budgets.
+
+**Per-env budgets.** [modules/budget](express-reliability-platform-v06/platform/terraform/modules/budget) creates one `aws_budgets_budget` per env, scoped by `Environment` and `App` tags so dev's spend doesn't trigger prod's alert. Two notification thresholds: 80% (warning) and 100% (alert). Both email `var.budget_alert_email` from the env's tfvars.
+
+**Why the budget module gets a separate `aws.untagged` provider.** AWS Budgets has its own service-specific tagging permission (`budgets:TagResource`) that's not bundled into the typical IAM policies a course user gets. With the provider's `default_tags` in effect, `CreateBudget` calls `TagResource` and fails with:
+
+```
+AccessDeniedException: User ... is not authorized to perform: budgets:TagResource
+```
+
+[eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) declares a second `provider "aws"` block aliased as `untagged` (no `default_tags`), and the `module "budget"` call passes `providers = { aws = aws.untagged }`. The budget resource is created without tags, so no `TagResource` call is made. Every other resource still receives the full `default_tags` map.
+
+The budget's cost-filter logic is unaffected — `cost_filter_tags = { Environment, App }` filters spend on tagged resources, which is independent of whether the budget itself is tagged.
+
+If you'd rather grant the IAM permission and remove the alias (e.g. when the course user becomes an admin role), add this to the user's policy and delete the `aws.untagged` provider block:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "budgets:TagResource",
+    "budgets:UntagResource",
+    "budgets:ListTagsForResource"
+  ],
+  "Resource": "arn:aws:budgets::<account-id>:budget/*"
+}
+```
+
+**Daily run-rate.** Both envs are dominated by EKS control plane ($0.10/h flat) + EC2 nodes:
+
+| Env | EKS control plane | Worker nodes | Approx daily |
+|---|---|---|---|
+| `dev` | $2.40/day | 1× t3.small | ~$2.10/day |
+| `prod` | $2.40/day | 3× t3.medium | ~$5.40/day |
+
+Forgetting to clean up `dev` for a month costs ~$63 — under the $50 budget alert, you'd see the warning at ~24 days. Forgetting `prod` costs ~$162/month and trips the 80% warning at ~24 days as well. Both well below the cap, by design — the budget exists to catch surprise spikes (a runaway node group, a Spot replacement loop, an unintended LoadBalancer), not to track expected baseline.
 
 ---
 
@@ -105,7 +215,7 @@ Before running anything, confirm you have:
   kubectl version --client
   helm version
   ```
-- [ ] **V5 application sources accessible.** V6 only ships `web-ui/index.html`; the build script reads Dockerfiles for `flask-api`/`node-api` from V5 by default. The deploy script defaults to `../express-reliability-platform-v05/apps`. If your sources live elsewhere, set `APPS_SRC=<path>`.
+- [ ] **V5 application sources accessible.** V6 ships its own `web-ui/` (Dockerfile + V6 `index.html`); the build script reads Dockerfiles for `flask-api`/`node-api` from V5. The deploy script defaults to `../express-reliability-platform-v05/apps`. If your V5 sources live elsewhere, set `V5_APPS_SRC=<path>`.
 
 > **Don't have V5?** Clone the course repo (`Here2ServeU/express-reliability-platform-course`) and you'll get both V5 and V6 as sibling directories. You don't need to deploy V5 — V6 only needs the Dockerfiles, not a running V5 stack.
 
@@ -118,23 +228,24 @@ V6 owns its full stack: a state backend (S3 + DynamoDB), three ECR repos, an EKS
 ### Path A — Scripted (recommended)
 
 ```sh
-./scripts/tf_deploy_v6.sh
+ENV=dev  ./scripts/tf_deploy_v6.sh   # or ENV=prod
 ```
 
 **What it runs, in order:**
 
 | # | Step | Time |
 |---|---|---|
-| 1 | Bootstrap apply: state bucket + lock table + 3 ECR repos | ~1 min |
+| 1 | Bootstrap apply: state bucket + lock table + 3 ECR repos (shared across envs) | ~1 min |
 | 2 | Build + push 3 `linux/amd64` images to ECR | ~3-5 min |
-| 3 | EKS apply: control plane + IAM + VPC + 2 × `t3.medium` node group | **10-15 min** |
+| 3 | EKS apply with `-var-file=environments/${ENV}.tfvars` and per-env state key | **10-15 min** |
 | 4 | Configure kubectl and create the `platform` namespace | <1 min |
 | 5 | Helm install all three charts | ~30s + pod startup |
-| 6 | Wait for all rollouts to finish, print the public URL | ALB takes 60-90s |
+| 6 | `kubectl rollout restart` so `:latest` images are picked up | ~5s |
+| 7 | Wait for all rollouts to finish, print the public URL | ALB takes 60-90s |
 
-The script is idempotent — run it again after a code change and it rebuilds, repushes, and rolls forward.
+The script is idempotent within an env — re-running with the same `ENV` rebuilds, repushes, and rolls forward. Switching `ENV` between runs is also safe: state keys are env-scoped, so `dev` and `prod` never share state.
 
-**You'll know it worked when** the script prints a hostname under "Public URL" and `curl -I http://<that-hostname>` returns `HTTP/1.1 200 OK`.
+**You'll know it worked when** the script prints a hostname under "Public URL", `curl -I http://<that-hostname>` returns `HTTP/1.1 200 OK`, and the AWS Billing console shows a budget named `reliability-platform-v06-${ENV}-monthly`.
 
 ### Path B — Manual walkthrough
 
@@ -157,23 +268,25 @@ Outputs to note: `state_bucket`, `lock_table`, `account_id`, `ecr_base_uri`.
 ./scripts/build_push_images_v6.sh
 ```
 
-Defaults: reads Dockerfiles from `../express-reliability-platform-v05/apps`, builds `linux/amd64`, pushes `:latest` to V6's ECR. Override the source path with `APPS_SRC=<path>`.
+Defaults: reads `web-ui/` from V6's own `apps/`, reads `flask-api/` and `node-api/` from `../express-reliability-platform-v05/apps`, builds `linux/amd64`, pushes `:latest` to V6's ECR. Override the V5 path with `V5_APPS_SRC=<path>`.
 
 > **Why `linux/amd64`?** EKS nodes (and ECS Fargate) run amd64. On Apple Silicon, a plain `docker build` would produce arm64 images that the cluster cannot pull, leaving every pod in `ImagePullBackOff`.
 
 #### Phase 3 — Provision EKS · 10-15 min ☕
 
 ```sh
+ENV=dev   # or prod
 ACCOUNT_ID=$(terraform -chdir=platform/terraform/bootstrap output -raw account_id)
 terraform -chdir=platform/terraform/eks init -reconfigure \
   -backend-config="bucket=reliability-platform-v06-tfstate-${ACCOUNT_ID}" \
   -backend-config="dynamodb_table=terraform-state-lock-v06" \
-  -backend-config="key=eks/v6/terraform.tfstate"
+  -backend-config="key=eks/v6/${ENV}/terraform.tfstate"
 
-terraform -chdir=platform/terraform/eks apply -auto-approve
+terraform -chdir=platform/terraform/eks apply -auto-approve \
+  -var-file="environments/${ENV}.tfvars"
 ```
 
-Creates: cluster IAM role, node IAM role + 3 policy attachments (worker / ECR read / CNI), the EKS cluster, and a managed node group of 2 × `t3.medium`.
+Creates (per env): VPC + IGW + 2 public subnets (via `modules/vpc`), cluster + node IAM roles (via `modules/eks-iam`), the EKS cluster + managed node group sized per the tfvars file (via `modules/eks-cluster`), and a tag-filtered `aws_budgets_budget` (via `modules/budget`). The provider's `default_tags` block stamps `Environment`, `Owner`, `App`, `CostCenter`, `Project`, `Version`, `ManagedBy` onto every taggable resource.
 
 #### Phase 4 — Configure kubectl · <1 min
 
@@ -223,11 +336,12 @@ Run these eight checks in order. All must pass before moving on to V7.
 ### 1. Cluster is up
 
 ```sh
-aws eks describe-cluster --region us-east-1 --name reliability-platform-cluster \
+ENV=dev   # or prod
+aws eks describe-cluster --region us-east-1 --name "reliability-platform-${ENV}" \
   --query 'cluster.{name:name,status:status,version:version}' --output table
 kubectl get nodes
 ```
-Expect: cluster `status: ACTIVE`, 2 nodes `Ready`.
+Expect: cluster `status: ACTIVE`, nodes `Ready` (count per the env's tfvars: 1 for dev, 3 for prod).
 
 ### 2. All pods running
 
@@ -328,30 +442,33 @@ If new pods land `Pending` for resource reasons, bump `node_desired_size` in [ek
 
 ## Cleanup
 
-EKS is not free: 2 × `t3.medium` ≈ \$0.08/hr + control plane \$0.10/hr ≈ **\$4.30/day**. Always destroy after a session.
+EKS is not free: control plane \$0.10/hr (~\$2.40/day) plus the worker nodes the env's tfvars sized. Always destroy after a session.
 
 ### Path A — Scripted (recommended)
 
 ```sh
-./scripts/cleanup_v6.sh
+ENV=dev  ./scripts/cleanup_v6.sh   # tear down dev only
+ENV=prod ./scripts/cleanup_v6.sh   # tear down prod only
 ```
 
-Uninstalls Helm releases, deletes the namespace, reaps orphan AWS load balancers (so subnet/IGW destroy doesn't `DependencyViolation`), destroys EKS, drains the V6 state bucket, destroys the V6 bootstrap (including the ECR repos and pushed images — `force_delete = true` handles non-empty drains), and removes the kubectl context.
+The script tears down only the `ENV` you specify. It uninstalls Helm releases, deletes the namespace, reaps orphan AWS load balancers (so subnet/IGW destroy doesn't `DependencyViolation`), destroys the env's EKS stack, and removes the kubectl context.
 
-V5's bootstrap and ECR (if present) are untouched.
+If **other envs still have state in the bootstrap bucket**, the script preserves the bucket / lock table / ECR repos so the other env keeps working. Once you've cleaned up every env, the final `cleanup_v6.sh` run also drains and destroys the bootstrap. V5's bootstrap and ECR (if present) are never touched.
 
 ### Path B — Manual
 
-Run in reverse order of deploy:
+Run in reverse order of deploy. Substitute `dev` or `prod` for `${ENV}`.
 
 ```sh
+ENV=dev
+
 # 1) Helm + namespace
 helm uninstall web-ui node-api flask-api -n platform || true
 kubectl delete namespace platform --ignore-not-found
 
 # 2) Reap orphan load balancers (otherwise subnet destroy will fail)
 VPC=$(aws ec2 describe-vpcs --region us-east-1 \
-  --filters "Name=tag:Name,Values=reliability-platform-v06-vpc" \
+  --filters "Name=tag:Name,Values=reliability-platform-v06-${ENV}-vpc" \
   --query 'Vpcs[0].VpcId' --output text)
 for LB in $(aws elb describe-load-balancers --region us-east-1 \
       --query "LoadBalancerDescriptions[?VPCId=='$VPC'].LoadBalancerName" --output text); do
@@ -359,10 +476,12 @@ for LB in $(aws elb describe-load-balancers --region us-east-1 \
 done
 sleep 90
 
-# 3) EKS (10-15 min)
-terraform -chdir=platform/terraform/eks destroy -auto-approve
+# 3) EKS for this env (10-15 min)
+terraform -chdir=platform/terraform/eks destroy -auto-approve \
+  -var-file="environments/${ENV}.tfvars"
 
-# 4) Bootstrap — apply first to record force_destroy in state, then destroy
+# 4) Bootstrap — only when no other envs remain. Apply first to record
+#    force_destroy in state, then destroy.
 terraform -chdir=platform/terraform/bootstrap apply -auto-approve
 terraform -chdir=platform/terraform/bootstrap destroy -auto-approve
 
@@ -383,24 +502,34 @@ kubectl config delete-context "$(kubectl config current-context)" 2>/dev/null ||
 ```text
 express-reliability-platform-v06/
 ├── apps/
-│   └── web-ui/index.html                    ← V6 governance scorecard UI
+│   └── web-ui/                              ← V6 governance scorecard UI
+│       ├── Dockerfile                       ← nginx:alpine + index.html
+│       └── index.html
 ├── platform/
 │   ├── helm/
 │   │   ├── flask-api/                       ← Chart.yaml, values.yaml, templates/deployment.yaml
 │   │   ├── node-api/
 │   │   └── web-ui/                          ← service.type=LoadBalancer
 │   └── terraform/
-│       ├── bootstrap/                       ← state backend + ECR
+│       ├── bootstrap/                       ← state backend + ECR (shared across envs)
 │       │   ├── main.tf                      ← S3 + DynamoDB
 │       │   ├── ecr.tf                       ← 3 ECR repos + lifecycle policy
 │       │   └── variables.tf
-│       └── eks/                             ← cluster + IAM + VPC + node group
-│           ├── main.tf
-│           └── variables.tf
+│       ├── modules/                         ← reusable, single-concern modules
+│       │   ├── vpc/                         ← VPC + IGW + public subnets + RT
+│       │   ├── eks-iam/                     ← cluster + node IAM roles
+│       │   ├── eks-cluster/                 ← EKS control plane + node group
+│       │   └── budget/                      ← aws_budgets_budget + tag filter
+│       └── eks/                             ← thin root composition (uses modules/)
+│           ├── main.tf                      ← provider default_tags + module calls
+│           ├── variables.tf
+│           └── environments/
+│               ├── dev.tfvars               ← cheap, single-node
+│               └── prod.tfvars              ← sized + larger budget
 └── scripts/
-    ├── tf_deploy_v6.sh                      ← end-to-end deploy
-    ├── build_push_images_v6.sh              ← standalone image pipeline (APPS_SRC overrides)
-    └── cleanup_v6.sh                        ← uninstall, destroy, drain, deregister
+    ├── tf_deploy_v6.sh                      ← ENV=dev|prod end-to-end deploy
+    ├── build_push_images_v6.sh              ← image pipeline (V6 web-ui, V5 apis)
+    └── cleanup_v6.sh                        ← ENV=dev|prod env-scoped teardown
 ```
 
 ### Configuration reference
@@ -465,14 +594,7 @@ helm upgrade --install web-ui platform/helm/web-ui -n platform \
 
 #### 2. Terraform variables
 
-Override on the command line with `-var key=value`, or commit a `terraform.tfvars` next to `variables.tf` for persistent overrides:
-
-```hcl
-# platform/terraform/eks/terraform.tfvars
-node_instance_types = ["t3.large"]
-node_desired_size   = 3
-kubernetes_version  = "1.32"
-```
+The EKS stack reads variables from a per-env tfvars file ([environments/dev.tfvars](express-reliability-platform-v06/platform/terraform/eks/environments/dev.tfvars), [environments/prod.tfvars](express-reliability-platform-v06/platform/terraform/eks/environments/prod.tfvars)). Override per-apply with `-var key=value`. To add a new env, copy a tfvars file and change the values — no code change needed.
 
 ##### Bootstrap stack ([platform/terraform/bootstrap/variables.tf](express-reliability-platform-v06/platform/terraform/bootstrap/variables.tf))
 
@@ -485,17 +607,22 @@ kubernetes_version  = "1.32"
 
 ##### EKS stack ([platform/terraform/eks/variables.tf](express-reliability-platform-v06/platform/terraform/eks/variables.tf))
 
-| Variable | Default | When to change |
-|---|---|---|
-| `aws_region` | `us-east-1` | Different region. **Must match** the bootstrap region. |
-| `project_name` | `reliability-platform-v06` | Tags VPC, IGW, subnets, route table. Cosmetic — used in resource `Name` tags. |
-| `cluster_name` | `reliability-platform-cluster` | Renaming the EKS cluster. **Set once before the first apply** — changing later rebuilds the cluster from scratch (it's the EKS resource's primary identifier). |
-| `kubernetes_version` | `1.33` | AWS retires EKS versions ~14 months after K8s release. List supported versions: `aws eks describe-cluster-versions --query 'clusterVersions[?clusterVersionStatus==\`standard\`].clusterVersion' --output text`. EKS only allows **one minor version per upgrade** (1.30 → 1.31, then 1.31 → 1.32). |
-| `vpc_cidr` | `10.43.0.0/16` | Avoiding overlap with a peered VPC. V5 uses `10.42.0.0/16` so the two can be peered. |
-| `node_instance_types` | `["t3.medium"]` | Bigger pods or workloads — try `["t3.large"]` or `["m5.xlarge"]`. List of types lets EKS fall back if the primary is out of capacity. |
-| `node_desired_size` | `2` | More workers if pods land `Pending` for resource reasons. |
-| `node_min_size` | `1` | Floor for manual scaling. |
-| `node_max_size` | `4` | Ceiling for manual scaling. **Bump this if you scale a Deployment past `node_max_size × pods-per-node`.** |
+Variables without a default **must** come from a tfvars file (or `-var`).
+
+| Variable | Default | Source | When to change |
+|---|---|---|---|
+| `aws_region` | `us-east-1` | code | Different region. Must match bootstrap. |
+| `project_name` | `reliability-platform` | code | Drives `App` tag and `name_prefix`. Forking the course under a different name. |
+| `version_suffix` | `v06` | code | Must match the bootstrap stack's `version_suffix`. |
+| `environment` | *(required)* | tfvars | One of `dev`/`staging`/`prod`. Drives sizing, CIDR, budget, and `Environment` tag. |
+| `owner` | `platform-team` | tfvars | Goes into the `Owner` tag — FinOps and on-call escalation target. |
+| `cost_center` | `platform-eng` | tfvars | Showback / chargeback label. Goes into the `CostCenter` tag. |
+| `vpc_cidr` | *(required)* | tfvars | Pick non-overlapping CIDRs across envs. dev = `10.43.0.0/16`, prod = `10.44.0.0/16`. |
+| `kubernetes_version` | `1.33` | code/tfvars | Bump when AWS retires the current default. EKS allows one minor version per upgrade. |
+| `node_instance_types` | *(required)* | tfvars | dev: `["t3.small"]`, prod: `["t3.medium"]`. List form lets EKS fall back if the primary is out of capacity. |
+| `node_desired_size` / `min` / `max` | *(required)* | tfvars | dev: 1/1/2. prod: 3/2/6. |
+| `monthly_budget_usd` | *(required)* | tfvars | Per-env spend cap. Alerts at 80% and 100% of this number. |
+| `budget_alert_email` | *(required)* | tfvars | Where the budget email goes. Must be deliverable. |
 
 #### 3. Script environment variables
 
@@ -504,20 +631,25 @@ kubernetes_version  = "1.32"
 | [build_push_images_v6.sh](express-reliability-platform-v06/scripts/build_push_images_v6.sh) | `REGION` | `us-east-1` | Target ECR region |
 | | `PROJECT` | `reliability-platform` | ECR repo prefix — must match bootstrap's `project_name` |
 | | `IMAGE_TAG` | `latest` | Tag the built images with `:<this>`. Set to a Git SHA for traceable deploys: `IMAGE_TAG=$(git rev-parse --short HEAD)` |
-| | `APPS_SRC` | `<v6-root>/../express-reliability-platform-v05/apps` | Where to read Dockerfiles from. Set to `apps` if your V6 directory contains the Dockerfiles directly |
-| [tf_deploy_v6.sh](express-reliability-platform-v06/scripts/tf_deploy_v6.sh) | `REGION` | `us-east-1` (hardcoded) | All AWS calls — keep consistent with the Terraform stacks |
+| | `V5_APPS_SRC` | `<v6-root>/../express-reliability-platform-v05/apps` | Where to read `flask-api` and `node-api` Dockerfiles from. `web-ui` always builds from V6's `apps/web-ui/`. |
+| [tf_deploy_v6.sh](express-reliability-platform-v06/scripts/tf_deploy_v6.sh) | `ENV` | `dev` | Which env to deploy. Must match a file in [environments/](express-reliability-platform-v06/platform/terraform/eks/environments/). Picks the tfvars file and the per-env state key. |
+| | `REGION` | `us-east-1` (hardcoded) | All AWS calls — keep consistent with the Terraform stacks |
 | | `PROJECT` | `reliability-platform` (hardcoded) | ECR repo prefix |
 | | `NAMESPACE` | `platform` (hardcoded) | Kubernetes namespace for Helm releases |
 | | (passes through to `build_push_images_v6.sh`) | | All env vars above also apply when invoked through the orchestrator |
-| [cleanup_v6.sh](express-reliability-platform-v06/scripts/cleanup_v6.sh) | `REGION` | `us-east-1` (hardcoded) | Where to look for AWS resources to destroy |
+| [cleanup_v6.sh](express-reliability-platform-v06/scripts/cleanup_v6.sh) | `ENV` | `dev` | Which env to tear down. Other envs' state is preserved. |
+| | `REGION` | `us-east-1` (hardcoded) | Where to look for AWS resources to destroy |
 | | `NAMESPACE` | `platform` (hardcoded) | Helm/k8s namespace to drain |
 
-**Override example:**
+**Override examples:**
 
 ```sh
-# Build images tagged with the current git SHA, then deploy
+# Build images tagged with the current git SHA, then deploy to dev
 IMAGE_TAG=$(git rev-parse --short HEAD) ./scripts/build_push_images_v6.sh
-./scripts/tf_deploy_v6.sh   # picks up :latest by default; override per-install if needed
+ENV=dev ./scripts/tf_deploy_v6.sh
+
+# Deploy to prod from a non-default V5 source location
+V5_APPS_SRC=/path/to/v5/apps ENV=prod ./scripts/tf_deploy_v6.sh
 ```
 
 #### 4. Hardcoded values worth knowing about
@@ -526,7 +658,7 @@ These aren't variables — they're literals in source files. Edit the file if yo
 
 | File | Line(s) | Value | When to edit |
 |---|---|---|---|
-| [platform/terraform/eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf#L2-L11) | `backend "s3"` block | `bucket = "reliability-platform-v06-tfstate-YOUR_ACCOUNT_ID"`, `dynamodb_table = "terraform-state-lock-v06"` | Terraform doesn't allow variables in `backend` blocks. **Either replace `YOUR_ACCOUNT_ID` with your actual account ID, or pass `-backend-config="bucket=..."` at `terraform init` time** (which is what `tf_deploy_v6.sh` does — that's why the script works without editing this block). Also update both fields if you change `project_name` or `version_suffix` in bootstrap. |
+| [platform/terraform/eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) | `backend "s3"` block | (empty — every field is supplied via `-backend-config` at init time) | Terraform doesn't allow variables in `backend` blocks. The deploy script passes `bucket`/`dynamodb_table`/`region`/`key=eks/v6/${ENV}/terraform.tfstate` at `terraform init` time, so the same root applies to any env without editing this block. To run `terraform init` by hand, pass the same `-backend-config` flags. |
 | [scripts/tf_deploy_v6.sh](express-reliability-platform-v06/scripts/tf_deploy_v6.sh) | top of file | `REGION`, `PROJECT`, `NAMESPACE`, `SERVICES=(...)` | Forking under a different project name or namespace |
 | [scripts/cleanup_v6.sh](express-reliability-platform-v06/scripts/cleanup_v6.sh) | top of file | `REGION`, `NAMESPACE` | Same as above — keep in sync with deploy script |
 | Each chart's [templates/deployment.yaml](express-reliability-platform-v06/platform/helm/flask-api/templates/deployment.yaml#L25) | `containerPort`, `targetPort` | `5000` (flask-api), `3000` (node-api), `80` (web-ui) | Changing the port the app listens on. Must match `service.port` in `values.yaml` |
@@ -611,13 +743,14 @@ For a real local Kubernetes (with kind or Docker Desktop's built-in cluster), se
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `kubectl` returns `connection refused` | `aws eks update-kubeconfig` not run, or cluster still provisioning | Re-run `aws eks --region us-east-1 update-kubeconfig --name reliability-platform-cluster` |
+| `kubectl` returns `connection refused` | `aws eks update-kubeconfig` not run, or cluster still provisioning | Re-run `aws eks --region us-east-1 update-kubeconfig --name reliability-platform-${ENV}` |
 | Worker nodes stuck `NotReady` | CNI is still initializing | Wait 5 min; `kubectl describe node <name>` shows the actual state |
-| Pod `ImagePullBackOff` | ECR repo doesn't exist, or no image was pushed | `aws ecr describe-repositories` — if missing, `terraform -chdir=platform/terraform/bootstrap apply`. If empty, `./scripts/build_push_images_v6.sh` (set `APPS_SRC` if Dockerfiles aren't at the default path) |
+| Pod `ImagePullBackOff` | ECR repo doesn't exist, or no image was pushed | `aws ecr describe-repositories` — if missing, `terraform -chdir=platform/terraform/bootstrap apply`. If empty, `./scripts/build_push_images_v6.sh` (set `V5_APPS_SRC` if V5 Dockerfiles aren't at the default path) |
 | Pod `CrashLoopBackOff` | App crashing on start, or probe path returns non-200 | `kubectl logs <pod> -n platform --previous` shows the crash; `kubectl describe pod <pod>` shows probe failure HTTP codes. **The most common case:** the probe path (`/health`) doesn't exist in the app — add the route or change `probes.liveness.path` in `values.yaml` |
 | Pod `Pending` forever | Node has insufficient CPU/memory for `resources.requests` | Reduce requests in `values.yaml`, or bump `node_desired_size` / `node_instance_types` |
 | `helm upgrade` hangs waiting for pods | Readiness probe failing | Check probe path / port / `initialDelaySeconds`. `kubectl describe pod` shows probe results |
 | `web-ui-web-ui` `EXTERNAL-IP` stays `<pending>` | The default EKS install provisions a Classic ELB | Wait 60-90s. For an ALB instead of Classic ELB, install the AWS Load Balancer Controller — that's a V7 exercise |
+| `CreateBudget … AccessDeniedException: budgets:TagResource` | The budget resource was about to receive `default_tags`; the IAM user lacks `budgets:TagResource` | Already handled by the `aws.untagged` provider alias in [eks/main.tf](express-reliability-platform-v06/platform/terraform/eks/main.tf) — if you removed it, either restore it or grant `budgets:TagResource`/`UntagResource`/`ListTagsForResource` to the user (see [Cost guardrails](#cost-guardrails) for both options) |
 | Terraform errors with `state lock` | Another apply in flight, or one was killed | `aws dynamodb scan --table-name terraform-state-lock-v06`. Force-unlock only as last resort: `terraform force-unlock <LOCK_ID>` |
 | `Requested AMI for this version not supported` | EKS retires AMIs ~14 months after K8s release | List supported: `aws eks describe-cluster-versions --query 'clusterVersions[?clusterVersionStatus==\`standard\`].clusterVersion' --output text`. Bump `kubernetes_version` to one of those |
 | `DependencyViolation` on subnet/IGW during destroy | A `LoadBalancer` Service left an orphan ELB holding ENIs/EIPs | Use `./scripts/cleanup_v6.sh` (it reaps the orphan in Step 2b). Or run the LB-reap snippet in [Cleanup → Path B](#path-b--manual) |

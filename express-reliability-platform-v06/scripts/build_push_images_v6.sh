@@ -2,9 +2,9 @@
 ###############################################################################
 # Build and push the three service images to V6's ECR repos.
 #
-# V6 only carries web-ui/index.html — the flask-api / node-api Dockerfiles
-# and source live in V5's apps/. APPS_SRC defaults to ../express-reliability-
-# platform-v05/apps for that reason; override it if you've copied sources
+# V6 ships its own web-ui (Dockerfile + index.html under V6's apps/web-ui/).
+# flask-api and node-api are unchanged from V5, so their sources are still
+# read from V5's apps/. Override V5_APPS_SRC if you've copied those sources
 # elsewhere.
 #
 # Usable standalone (after bootstrap apply has created the ECR repos) for
@@ -19,7 +19,18 @@ TAG="${IMAGE_TAG:-latest}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V6_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-APPS_SRC="${APPS_SRC:-${V6_ROOT}/../express-reliability-platform-v05/apps}"
+V6_APPS_SRC="${V6_ROOT}/apps"
+V5_APPS_SRC="${V5_APPS_SRC:-${V6_ROOT}/../express-reliability-platform-v05/apps}"
+
+# Per-service source paths: web-ui from V6 (so V6's index.html actually ships),
+# flask-api and node-api from V5 since those services are unchanged.
+svc_src() {
+  case "$1" in
+    web-ui)            echo "${V6_APPS_SRC}/$1" ;;
+    flask-api|node-api) echo "${V5_APPS_SRC}/$1" ;;
+    *) echo "ERROR: unknown service $1" >&2; exit 1 ;;
+  esac
+}
 
 echo "=== Resolving ECR base URI ==="
 # Prefer the bootstrap output so this script and tf_deploy_v6.sh agree on the
@@ -34,16 +45,22 @@ else
   ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${PROJECT}"
   echo "  source: aws sts (bootstrap output unavailable)"
 fi
-echo "  ECR base: ${ECR_BASE}"
-echo "  apps src: ${APPS_SRC}"
-echo "  tag:      ${TAG}"
+echo "  ECR base:    ${ECR_BASE}"
+echo "  V6 apps src: ${V6_APPS_SRC}  (web-ui)"
+echo "  V5 apps src: ${V5_APPS_SRC}  (flask-api, node-api)"
+echo "  tag:         ${TAG}"
 
-# Fail fast with an actionable message: the most common cause of a missing
-# Dockerfile here is "I deleted V5's directory" or "I cloned only V6".
+# Fail fast with an actionable message. Most common cause: V5 directory was
+# deleted (flask-api/node-api), or V6's web-ui/Dockerfile is missing.
 for SVC in "${SERVICES[@]}"; do
-  if [[ ! -f "${APPS_SRC}/${SVC}/Dockerfile" ]]; then
-    echo "ERROR: ${APPS_SRC}/${SVC}/Dockerfile not found." >&2
-    echo "       Set APPS_SRC=<path-to-apps-with-Dockerfiles> and re-run." >&2
+  SRC="$(svc_src "${SVC}")"
+  if [[ ! -f "${SRC}/Dockerfile" ]]; then
+    echo "ERROR: ${SRC}/Dockerfile not found." >&2
+    if [[ "${SVC}" == "web-ui" ]]; then
+      echo "       V6's web-ui Dockerfile should live at ${V6_APPS_SRC}/web-ui/." >&2
+    else
+      echo "       Set V5_APPS_SRC=<path-to-v5-apps> and re-run." >&2
+    fi
     exit 1
   fi
 done
@@ -61,11 +78,12 @@ echo "=== Building and pushing ==="
 # you would see "image Manifest does not contain descriptor matching platform
 # 'linux/amd64'". buildx --platform linux/amd64 --push handles both archs.
 for SVC in "${SERVICES[@]}"; do
-  echo "--- ${SVC} ---"
+  SRC="$(svc_src "${SVC}")"
+  echo "--- ${SVC}  (src: ${SRC}) ---"
   docker buildx build --platform linux/amd64 \
     -t "${ECR_BASE}/${SVC}:${TAG}" \
     --push \
-    "${APPS_SRC}/${SVC}"
+    "${SRC}"
 done
 
 echo "=== Done. Pushed ${#SERVICES[@]} images to ${ECR_BASE} ==="
