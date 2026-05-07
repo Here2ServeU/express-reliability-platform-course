@@ -72,7 +72,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 7: Incident Operations</span>
+      <span class="badge">Version 7: Runbooks, Incident Response, Release Gates, Operational Evidence</span>
     </div>
   </header>
 
@@ -86,13 +86,13 @@
     <div class="workspace">
       <section aria-labelledby="assessment-title">
         <h2 id="assessment-title">V7 Readiness Assessment</h2>
-        <p class="muted">V7 keeps the same platform console and adds the operating model: SLOs, runbooks, escalation, incident evidence, and recovery proof.</p>
+        <p class="muted">V7 keeps the same platform console and adds the operating model: <strong>tested runbooks</strong>, an <strong>incident response</strong> workflow, <strong>release gates</strong> on every change, and <strong>operational evidence</strong> for audit.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">86</strong><small>SLOs and runbooks</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">80</strong><small>Incident cost visibility</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">84</strong><small>Auditable response</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">74</strong><small>Structured incident data</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">86</strong><small>Tested runbooks</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">80</strong><small>Controlled releases</small></div>
+          <div class="metric"><span>Security</span><strong id="securityScore">84</strong><small>Auditable evidence</small></div>
+          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">74</strong><small>Structured incidents</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
@@ -105,19 +105,23 @@
             <select id="runbook"><option value="tested">Tested runbook</option><option value="draft">Draft runbook</option><option value="none">No runbook</option></select>
           </label>
           <label>
-            SLO status
-            <select id="slo"><option value="defined">SLO and SLI defined</option><option value="partial">Partial SLOs</option><option value="none">No SLOs</option></select>
+            Incident response
+            <select id="response"><option value="oncall">On-call rota with severity levels</option><option value="ad-hoc">Ad-hoc response</option><option value="none">No response process</option></select>
           </label>
           <label>
-            Evidence pack
-            <select id="evidence"><option value="complete">Complete timeline and recovery proof</option><option value="partial">Partial evidence</option><option value="missing">Missing evidence</option></select>
+            Release gates
+            <select id="gates"><option value="enforced">PR plan + approval + change window</option><option value="partial">PR review only</option><option value="none">No gates</option></select>
+          </label>
+          <label>
+            Operational evidence
+            <select id="evidence"><option value="complete">Timeline, runbook trace, recovery proof</option><option value="partial">Partial evidence</option><option value="missing">Missing evidence</option></select>
           </label>
           <div class="actions">
             <button type="submit">Run V7 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate incident operations.</pre>
+        <pre id="output">Ready to evaluate runbooks, incident response, release gates, and operational evidence.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
@@ -139,7 +143,7 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V7, the platform adds <strong>Runbooks and incident operations</strong>.</p>
+      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V7, the platform adds <strong>runbooks, incident response, release gates, and operational evidence</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -156,13 +160,13 @@
       <div class="pill-row">
         <span class="pill">HIPAA-aware evidence</span>
         <span class="pill">PCI/SOX-style audit trail</span>
-        <span class="pill">SLO and SLI scoring</span>
-        <span class="pill">FinOps guardrails</span>
-        <span class="pill">AIOps triage</span>
-        <span class="pill">MLOps readiness</span>
-        <span class="pill">SLO and SLI catalog</span>
-        <span class="pill">Incident runbook</span>
-        <span class="pill">Escalation path</span>
+        <span class="pill">Tested runbook</span>
+        <span class="pill">On-call rotation</span>
+        <span class="pill">Severity classification</span>
+        <span class="pill">PR plan-only workflow</span>
+        <span class="pill">Approval gate</span>
+        <span class="pill">Change window</span>
+        <span class="pill">Incident timeline</span>
         <span class="pill">Recovery validation</span>
       </div>
 
@@ -193,29 +197,61 @@
 
     function runAssessment(event) {
       event.preventDefault();
-      const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
-      const extra = {};
+      const scenario = document.getElementById("platformInput").value.trim() || "regulated-incident";
 
-      const runbook = document.getElementById("runbook").value;
-      const slo = document.getElementById("slo").value;
+      const runbook  = document.getElementById("runbook").value;
+      const response = document.getElementById("response").value;
+      const gates    = document.getElementById("gates").value;
       const evidence = document.getElementById("evidence").value;
-      const reliability = clamp(92 - (runbook === "none" ? 30 : runbook === "draft" ? 12 : 0) - (slo === "none" ? 16 : slo === "partial" ? 7 : 0));
-      const cost = clamp(82 - (evidence === "missing" ? 12 : evidence === "partial" ? 5 : 0));
-      const security = clamp(90 - (evidence === "missing" ? 28 : evidence === "partial" ? 10 : 0));
-      const intelligence = clamp(78 + (runbook === "tested" ? 8 : 0) + (slo === "defined" ? 6 : 0));
+
+      // Reliability is anchored on runbook + incident-response maturity:
+      // a tested runbook plus an on-call rota means the team can detect,
+      // act, and recover predictably under pressure.
+      const reliability = clamp(
+        92
+        - (runbook  === "none" ? 30 : runbook  === "draft"   ? 12 : 0)
+        - (response === "none" ? 22 : response === "ad-hoc"  ? 10 : 0)
+      );
+
+      // Cost reflects how well release gates control blast radius —
+      // unguarded changes drive the most expensive incidents.
+      const cost = clamp(
+        86
+        - (gates    === "none" ? 22 : gates    === "partial" ? 8  : 0)
+        - (evidence === "missing" ? 6 : 0)
+      );
+
+      // Security/compliance lives or dies on auditable evidence.
+      // No timeline + no recovery proof = no audit.
+      const security = clamp(
+        90
+        - (evidence === "missing" ? 28 : evidence === "partial" ? 10 : 0)
+        - (gates    === "none"    ? 12 : gates    === "partial" ? 4  : 0)
+      );
+
+      // Intelligence/AIOps readiness improves when incident data is
+      // structured: tested runbooks + complete evidence are what V8's
+      // pattern detection feeds on.
+      const intelligence = clamp(
+        72
+        + (runbook  === "tested"   ? 8 : 0)
+        + (evidence === "complete" ? 6 : 0)
+        + (response === "oncall"   ? 4 : 0)
+      );
+
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
-      document.getElementById("costScore").textContent = cost;
-      document.getElementById("securityScore").textContent = security;
+      document.getElementById("costScore").textContent        = cost;
+      document.getElementById("securityScore").textContent    = security;
       document.getElementById("intelligenceScore").textContent = intelligence;
 
       output.textContent = JSON.stringify({
-        platform,
+        scenario,
         version: "v7",
         readiness_score: total,
-        readiness_grade: grade(total),
-        focus: "Runbooks and incident operations",
+        readiness_band: grade(total),
+        focus: "Runbooks, incident response, release gates, operational evidence",
         domains: {
           reliability,
           cost_efficiency: cost,
@@ -223,13 +259,12 @@
           intelligence_aiops_mlops: intelligence
         },
         version_adds: [
-          "SLO and SLI catalog",
-          "Incident runbook",
-          "Escalation path",
-          "Recovery validation"
-],
-        next: "Move to V8 for AIOps risk scoring, incident summaries, and automated triage.",
-        ...extra
+          "Runbooks",
+          "Incident response",
+          "Release gates",
+          "Operational evidence"
+        ],
+        next: "Move to V8 for AIOps risk scoring, incident summaries, and automated triage."
       }, null, 2);
     }
 

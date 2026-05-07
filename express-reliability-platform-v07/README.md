@@ -35,11 +35,12 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 | Term | Plain Language Meaning |
 |---|---|
 | **Layer separation** | Each Terraform folder manages one layer. Each has its own state file. Changes to one cannot corrupt another. |
+| **Bootstrap layer** | The state backend itself: S3 bucket, DynamoDB lock table, and ECR repos. Built once before any other layer. |
 | **Shared layer** | The network foundation: VPC, subnets, internet gateway. Built once. Referenced by everything else. |
 | **Live layer** | The compute layer: EKS cluster, ALB, node groups. Rebuilt frequently as you iterate. |
 | **Remote state** | A Terraform data source that reads outputs from another layer's S3 state file. |
 | **State isolation** | Each layer's state lives at a different S3 key. Destroying `live` state does not affect `shared` state. |
-| **Promotion order** | Always deploy bottom-up: `shared` first, then `live`. Always destroy top-down: `live` first, then `shared`. |
+| **Promotion order** | Always deploy bottom-up: `bootstrap` → `shared` → `live`. Always destroy top-down: `live` → `shared` → `bootstrap`. |
 | **GitHub Actions** | GitHub's built-in CI/CD. Runs YAML-defined workflows triggered by `git push`. |
 | **Workflow** | A `.github/workflows/FILENAME.yml` file defining jobs and their steps. |
 | **Job** | One unit of work in a workflow. Runs on a fresh Ubuntu VM. Can depend on other jobs. |
@@ -51,7 +52,7 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 
 **Expected result at the end of this version:**
 
-- S3 holds two independent state files: `shared/terraform.tfstate` and `live/terraform.tfstate`.
+- S3 holds two independent state files: `shared/v7/terraform.tfstate` and `live/v7/terraform.tfstate`.
 - `terraform -chdir=terraform/shared output` returns `vpc_id` and subnet IDs.
 - `terraform -chdir=terraform/live output` returns `cluster_name` and `cluster_endpoint` sourced from `shared` via remote state.
 - A `git push` to `main` runs three GitHub Actions jobs in sequence: `deploy-shared → deploy-live → deploy-apps`.
@@ -59,24 +60,27 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 
 ---
 
-## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+## 4) Training Workflow (Understand → Build → Test → Break → Fix → Explain → Automate → Improve)
 
 1. **Understand:** Read layer separation, remote state, and destroy-order rules.
-2. **Build:** `terraform apply` on `shared`, then on `live`; deploy Helm charts into the `platform` namespace.
+2. **Build:** `terraform apply` on `bootstrap`, `shared`, then `live`; deploy Helm charts into the `platform` namespace.
 3. **Test:** Verify two distinct state files in S3, outputs wire through remote state, and the pipeline runs green.
 4. **Break:** Attempt `terraform destroy` on `shared` while `live` depends on it — confirm Terraform refuses.
-5. **Fix:** Destroy in the correct order (Helm → live → shared).
+5. **Fix:** Destroy in the correct order (Helm → live → shared → bootstrap).
 6. **Explain:** Capture why layer isolation matters and what remote state actually does at the file-system level.
 7. **Automate:** Let the three-job GitHub Actions pipeline own the deploy path. No local `terraform apply` on `main`.
 8. **Improve:** Tighten IAM role trust policy, add plan-only PR workflows, split envs further (`dev`, `staging`, `prod`).
 
 ## 5) What You Will Build
 
+- `terraform/bootstrap/` — V7's state bucket, DynamoDB lock table, and three ECR repos. Owns `version_suffix = "v07"` so it coexists with V5/V6 bootstraps on the same AWS account.
 - `terraform/shared/` — a VPC with 2 public and 2 private subnets across 2 AZs, IGW, and public route table. Exports `vpc_id` and subnet IDs.
 - `terraform/live/` — an EKS cluster launched inside `shared`'s VPC using a `terraform_remote_state` data source.
-- `terraform/modules/eks/` — a reusable EKS module consumed by `live` (inputs: `cluster_name`, `vpc_id`, `subnet_ids`, `node_count`, `instance_type`).
+- `terraform/modules/eks/` — a reusable EKS module consumed by `live` (inputs: `cluster_name`, `kubernetes_version`, `vpc_id`, `subnet_ids`, `node_count`, `instance_type`).
 - `.github/workflows/deploy.yml` — a three-job pipeline (`deploy-shared → deploy-live → deploy-apps`) authenticating to AWS via OIDC.
-- `scripts/cleanup_v7.sh` — a teardown script that enforces the mandatory reverse order.
+- `scripts/tf_deploy_v7.sh` — local end-to-end deploy: bootstrap → push images → shared → live → Helm.
+- `scripts/build_push_images_v7.sh` — standalone image pipeline (overridable `APPS_SRC`).
+- `scripts/cleanup_v7.sh` — teardown that enforces the mandatory reverse order and drains the V7 state bucket.
 
 ## 6) Architecture Diagram (Mermaid)
 
@@ -84,10 +88,10 @@ Cloud infrastructure should work the same way. The VPC (your network foundation)
 flowchart LR
     Push[git push main] --> GHA[GitHub Actions]
     GHA --> J1[deploy-shared]
-    J1 --> S3s[(S3: shared/terraform.tfstate)]
+    J1 --> S3s[(S3: shared/v7/terraform.tfstate)]
     J1 --> VPC[VPC + Subnets + IGW]
     J1 --> J2[deploy-live]
-    J2 --> S3l[(S3: live/terraform.tfstate)]
+    J2 --> S3l[(S3: live/v7/terraform.tfstate)]
     J2 --> EKS[EKS via modules/eks]
     EKS -->|terraform_remote_state| VPC
     J2 --> J3[deploy-apps]
@@ -100,23 +104,33 @@ flowchart LR
 ```text
 express-reliability-platform-v07/
 ├── terraform/
+│   ├── bootstrap/
+│   │   ├── main.tf            ← S3 state bucket + DynamoDB lock table
+│   │   ├── ecr.tf             ← 3 ECR repos + lifecycle policy
+│   │   └── variables.tf
 │   ├── shared/
-│   │   └── main.tf            ← VPC, subnets, IGW, route table + outputs
+│   │   ├── main.tf            ← VPC, subnets, IGW, route table + outputs
+│   │   └── variables.tf
 │   ├── live/
-│   │   └── main.tf            ← reads shared via remote state; uses modules/eks
+│   │   ├── main.tf            ← reads shared via remote state; uses modules/eks
+│   │   └── variables.tf
 │   └── modules/
 │       └── eks/
 │           ├── main.tf        ← cluster, IAM roles, managed node group
 │           ├── variables.tf
 │           └── outputs.tf
 ├── helm/
-│   ├── flask-api/
+│   ├── flask-api/             ← Chart.yaml, values.yaml, templates/deployment.yaml
 │   ├── node-api/
-│   └── web-ui/
+│   └── web-ui/                ← service.type=LoadBalancer
+├── apps/
+│   └── web-ui/index.html      ← V7 incident-operations console
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml         ← three-job pipeline with OIDC
 ├── scripts/
+│   ├── tf_deploy_v7.sh        ← local end-to-end deploy
+│   ├── build_push_images_v7.sh
 │   └── cleanup_v7.sh
 └── README.md
 ```
@@ -126,26 +140,58 @@ express-reliability-platform-v07/
 ### Local apply (first time or when iterating)
 
 ```sh
-# Bottom-up build order — shared MUST be applied before live.
-terraform -chdir=terraform/shared init
+# One command provisions everything:
+# bootstrap → image build/push → shared → live → Helm
+./scripts/tf_deploy_v7.sh
+```
+
+The script is idempotent — re-run it after a code change and it rebuilds, repushes, and rolls forward.
+
+#### Manual walkthrough (the same steps the script does)
+
+```sh
+# 1. Bootstrap — state bucket, lock table, ECR repos
+terraform -chdir=terraform/bootstrap init
+terraform -chdir=terraform/bootstrap apply -auto-approve
+
+STATE_BUCKET=$(terraform -chdir=terraform/bootstrap output -raw state_bucket)
+LOCK_TABLE=$(terraform -chdir=terraform/bootstrap output -raw lock_table)
+ECR_BASE=$(terraform -chdir=terraform/bootstrap output -raw ecr_base_uri)
+
+# 2. Build and push images (sources from V5 by default)
+./scripts/build_push_images_v7.sh
+
+# 3. Shared layer — VPC + subnets + IGW
+terraform -chdir=terraform/shared init -reconfigure \
+  -backend-config="bucket=${STATE_BUCKET}" \
+  -backend-config="dynamodb_table=${LOCK_TABLE}" \
+  -backend-config="key=shared/v7/terraform.tfstate"
 terraform -chdir=terraform/shared apply -auto-approve
 
-terraform -chdir=terraform/live init
-terraform -chdir=terraform/live apply -auto-approve
+# 4. Live layer — EKS via the module + remote state
+terraform -chdir=terraform/live init -reconfigure \
+  -backend-config="bucket=${STATE_BUCKET}" \
+  -backend-config="dynamodb_table=${LOCK_TABLE}" \
+  -backend-config="key=live/v7/terraform.tfstate"
+terraform -chdir=terraform/live apply -auto-approve \
+  -var "state_bucket=${STATE_BUCKET}"
 
+# 5. Wire kubectl + install Helm charts
 CLUSTER=$(terraform -chdir=terraform/live output -raw cluster_name)
 aws eks --region us-east-1 update-kubeconfig --name "$CLUSTER"
 
-helm upgrade --install flask-api helm/flask-api --namespace platform --create-namespace
-helm upgrade --install node-api  helm/node-api  --namespace platform --create-namespace
-helm upgrade --install web-ui    helm/web-ui    --namespace platform --create-namespace
+for SVC in flask-api node-api web-ui; do
+  helm upgrade --install "$SVC" "helm/$SVC" \
+    --namespace platform --create-namespace \
+    --set image.repository="${ECR_BASE}/${SVC}"
+done
 
 kubectl get pods -n platform
 ```
 
 ### Automated apply (every `git push` to `main`)
 
-Set one GitHub Secret before the first push:
+The bootstrap (state bucket + ECR) is run once locally — the per-push pipeline only manages `shared`, `live`, and `apps`. Set one GitHub Secret before the first push:
 
 - `Repository → Settings → Secrets and variables → Actions → New repository secret`
 - Name: `AWS_ROLE_ARN`
@@ -165,7 +211,7 @@ Watch the run at `Repository → Actions`. You should see three green jobs in or
 
 All six checks must pass before moving on to V8.
 
-- [ ] **Check 1 — Separate state files in S3:** `aws s3 ls s3://reliability-platform-tfstate-$ACCOUNT/ --recursive | grep tfstate` lists both `shared/terraform.tfstate` and `live/terraform.tfstate`.
+- [ ] **Check 1 — Separate state files in S3:** `aws s3 ls s3://reliability-platform-v07-tfstate-$ACCOUNT/ --recursive | grep tfstate` lists both `shared/v7/terraform.tfstate` and `live/v7/terraform.tfstate`.
 - [ ] **Check 2 — Shared outputs available:** `terraform -chdir=terraform/shared output` shows `vpc_id`, `public_subnet_ids`, `private_subnet_ids`.
 - [ ] **Check 3 — Live used shared's VPC:** `terraform -chdir=terraform/live output` shows `cluster_name` and `cluster_endpoint`.
 - [ ] **Check 4 — GitHub Actions pipeline ran:** Three jobs (`deploy-shared → deploy-live → deploy-apps`) show green checkmarks on the `main` branch.
@@ -175,14 +221,15 @@ All six checks must pass before moving on to V8.
 ## 10) Troubleshooting
 
 - **`Error acquiring the state lock`:** Another apply is in flight. Wait, or release with `terraform force-unlock <LOCK_ID>` only after confirming no active run.
-- **`data.terraform_remote_state.shared.outputs.vpc_id is null`:** `shared` has not been applied yet, or the `key`/`bucket` in the remote state block does not match the `shared` backend.
+- **`data.terraform_remote_state.shared.outputs.vpc_id is null`:** `shared` has not been applied yet, or the `key`/`bucket` in the remote state block does not match the `shared` backend. Pass `-var state_bucket=<bucket>` to live, or replace `YOUR_ACCOUNT_ID` in the literal default.
 - **GitHub Actions job: `Error: Could not assume role`:** The `AWS_ROLE_ARN` secret is missing, or the role's trust policy does not allow your repo + branch via GitHub OIDC.
 - **`deploy-apps` job: `kubectl` cannot connect:** The `aws eks update-kubeconfig` step failed — check the cluster name matches the `live` output.
+- **`deploy-apps` pods stuck in `ImagePullBackOff`:** The bootstrap step ran, but no images were pushed yet. Run `./scripts/build_push_images_v7.sh` locally before pushing to `main`.
 - **`terraform destroy` on `shared` fails with VPC dependency errors:** Correct. Destroy `live` first. This is the state isolation guarantee working as designed.
 
 ## 11) Cleanup — Mandatory Reverse Order
 
-**Destroy order is mandatory: Helm → live → shared.**
+**Destroy order is mandatory: Helm → live → shared → bootstrap.**
 Never destroy `shared` before `live`. `live` reads `shared`'s remote state during its own destroy; destroying `shared` first causes `live`'s destroy to fail with confusing errors.
 
 ```sh
@@ -190,7 +237,9 @@ chmod +x scripts/cleanup_v7.sh
 ./scripts/cleanup_v7.sh
 ```
 
-The script uninstalls Helm releases, deletes the `platform` namespace, destroys `live`, destroys `shared`, and cleans up the kubectl context. The bootstrap S3 bucket and DynamoDB table are intentionally preserved for V8–V10.
+The script uninstalls Helm releases, deletes the `platform` namespace, reaps any orphan AWS load balancers, destroys `live`, destroys `shared`, drains the V7 state bucket, destroys `bootstrap` (including ECR repos and pushed images), and cleans up the kubectl context.
+
+V5 and V6 bootstraps (if present) are left untouched.
 
 ## 12) Next Version Preview
 

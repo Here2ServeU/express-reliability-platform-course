@@ -72,7 +72,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 6: Terraform and FinOps</span>
+      <span class="badge">Version 6: Terraform Modules, Repeatable Infrastructure, Cost-Aware Environments</span>
     </div>
   </header>
 
@@ -86,38 +86,58 @@
     <div class="workspace">
       <section aria-labelledby="assessment-title">
         <h2 id="assessment-title">V6 Readiness Assessment</h2>
-        <p class="muted">V6 keeps the same console and adds infrastructure governance: Terraform modules, repeatable environments, tagging, and FinOps accountability.</p>
+        <p class="muted">V6 keeps the same console and adds the infrastructure foundation: <strong>Terraform modules</strong> for reuse, <strong>repeatable infrastructure</strong> across environments, and <strong>cost-aware environments</strong> with consistent tagging and FinOps guardrails.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">82</strong><small>Repeatable environments</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">82</strong><small>Tags and spend ownership</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">82</strong><small>Reusable Terraform modules</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">82</strong><small>Tags + spend ownership</small></div>
           <div class="metric"><span>Security</span><strong id="securityScore">80</strong><small>Reviewed IaC changes</small></div>
           <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">70</strong><small>Policy-ready data</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
-            Platform or application
+            Platform or environment
             <input id="platformInput" value="regulated-cloud-foundation" autocomplete="off" />
           </label>
           <label>
             Terraform modules
-            <select id="modules"><option value="complete">Reusable modules</option><option value="partial">Partial modules</option><option value="manual">Manual resources</option></select>
+            <select id="modules">
+              <option value="reusable">Reusable modules with versioned interfaces</option>
+              <option value="partial">Partial modules</option>
+              <option value="manual">Manual resources</option>
+            </select>
           </label>
           <label>
-            Cost allocation
-            <select id="costTags"><option value="complete">Owner, app, env tags</option><option value="partial">Partial tags</option><option value="missing">Missing tags</option></select>
+            Repeatable infrastructure
+            <select id="repeatable">
+              <option value="parameterized">Per-env tfvars + identical apply</option>
+              <option value="partial">Partial parameterization</option>
+              <option value="snowflake">Snowflake environments</option>
+            </select>
+          </label>
+          <label>
+            Cost-aware environments
+            <select id="costAware">
+              <option value="tagged">Owner / app / env tags + budgets</option>
+              <option value="partial">Partial tags, no budgets</option>
+              <option value="missing">Missing tags</option>
+            </select>
           </label>
           <label>
             Change control
-            <select id="change"><option value="reviewed">PR-reviewed plans</option><option value="partial">Manual plan review</option><option value="none">No review evidence</option></select>
+            <select id="change">
+              <option value="reviewed">PR-reviewed plans</option>
+              <option value="partial">Manual plan review</option>
+              <option value="none">No review evidence</option>
+            </select>
           </label>
           <div class="actions">
             <button type="submit">Run V6 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate infrastructure governance.</pre>
+        <pre id="output">Ready to evaluate Terraform modules, repeatable infrastructure, and cost-aware environments.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
@@ -139,7 +159,7 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V6, the platform adds <strong>Terraform and FinOps governance</strong>.</p>
+      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V6, the platform adds <strong>Terraform modules, repeatable infrastructure, and cost-aware environments</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -156,14 +176,14 @@
       <div class="pill-row">
         <span class="pill">HIPAA-aware evidence</span>
         <span class="pill">PCI/SOX-style audit trail</span>
-        <span class="pill">SLO and SLI scoring</span>
-        <span class="pill">FinOps guardrails</span>
-        <span class="pill">AIOps triage</span>
-        <span class="pill">MLOps readiness</span>
-        <span class="pill">Terraform modules</span>
-        <span class="pill">Environment tfvars</span>
-        <span class="pill">Cost tags</span>
-        <span class="pill">Reviewed plans</span>
+        <span class="pill">Reusable Terraform modules</span>
+        <span class="pill">Versioned module interfaces</span>
+        <span class="pill">Per-env tfvars</span>
+        <span class="pill">Repeatable apply</span>
+        <span class="pill">Owner / app / env tags</span>
+        <span class="pill">Budget guardrails</span>
+        <span class="pill">PR-reviewed plans</span>
+        <span class="pill">FinOps accountability</span>
       </div>
 
       <div class="creator-panel">
@@ -194,28 +214,59 @@
     function runAssessment(event) {
       event.preventDefault();
       const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
-      const extra = {};
 
-      const modules = document.getElementById("modules").value;
-      const costTags = document.getElementById("costTags").value;
-      const change = document.getElementById("change").value;
-      const reliability = clamp(88 - (modules === "manual" ? 24 : modules === "partial" ? 10 : 0));
-      const cost = clamp(90 - (costTags === "missing" ? 30 : costTags === "partial" ? 12 : 0));
-      const security = clamp(86 - (change === "none" ? 28 : change === "partial" ? 10 : 0));
-      const intelligence = clamp(74 + (modules === "complete" ? 6 : 0) + (costTags === "complete" ? 6 : 0));
+      const modules    = document.getElementById("modules").value;
+      const repeatable = document.getElementById("repeatable").value;
+      const costAware  = document.getElementById("costAware").value;
+      const change     = document.getElementById("change").value;
+
+      // Reliability anchored on Terraform modules + repeatability.
+      // Snowflake environments and ad-hoc resources are the biggest
+      // reliability risk in regulated infra.
+      const reliability = clamp(
+        92
+        - (modules    === "manual"    ? 26 : modules    === "partial" ? 10 : 0)
+        - (repeatable === "snowflake" ? 18 : repeatable === "partial" ? 8  : 0)
+      );
+
+      // Cost depends on tagging + parameterized envs (so non-prod can be
+      // sized down independently from prod).
+      const cost = clamp(
+        90
+        - (costAware  === "missing"   ? 30 : costAware  === "partial" ? 12 : 0)
+        - (repeatable === "snowflake" ? 8  : 0)
+      );
+
+      // Security/compliance is driven by reviewed IaC changes and
+      // module-bounded blast radius.
+      const security = clamp(
+        88
+        - (change  === "none"    ? 28 : change  === "partial" ? 10 : 0)
+        - (modules === "manual"  ? 8  : 0)
+      );
+
+      // Intelligence/policy readiness improves as infra becomes structured
+      // (modules + tags) — that's what V7+ runbooks and V8 AIOps consume.
+      const intelligence = clamp(
+        72
+        + (modules    === "reusable"     ? 8 : 0)
+        + (costAware  === "tagged"       ? 6 : 0)
+        + (repeatable === "parameterized" ? 4 : 0)
+      );
+
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
-      document.getElementById("costScore").textContent = cost;
-      document.getElementById("securityScore").textContent = security;
+      document.getElementById("costScore").textContent        = cost;
+      document.getElementById("securityScore").textContent    = security;
       document.getElementById("intelligenceScore").textContent = intelligence;
 
       output.textContent = JSON.stringify({
         platform,
         version: "v6",
         readiness_score: total,
-        readiness_grade: grade(total),
-        focus: "Terraform and FinOps governance",
+        readiness_band: grade(total),
+        focus: "Terraform modules, repeatable infrastructure, cost-aware environments",
         domains: {
           reliability,
           cost_efficiency: cost,
@@ -224,12 +275,10 @@
         },
         version_adds: [
           "Terraform modules",
-          "Environment tfvars",
-          "Cost tags",
-          "Reviewed plans"
-],
-        next: "Move to V7 for runbooks, incident response, and operational evidence.",
-        ...extra
+          "Repeatable infrastructure",
+          "Cost-aware environments"
+        ],
+        next: "Move to V7 for runbooks, incident response, release gates, and operational evidence."
       }, null, 2);
     }
 
