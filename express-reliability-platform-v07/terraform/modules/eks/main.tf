@@ -1,3 +1,8 @@
+# Reusable EKS module — consumed by terraform/live. Inputs are network info
+# (vpc_id + subnet_ids) plus shape knobs (node_count, instance_type, version).
+# Outputs cluster name + endpoint + ARN for downstream consumers (Helm,
+# kubectl, IAM trust policies).
+
 resource "aws_iam_role" "eks_cluster" {
   name = "${var.cluster_name}-cluster-role"
 
@@ -47,7 +52,7 @@ resource "aws_iam_role_policy_attachment" "node_cni" {
 resource "aws_eks_cluster" "main" {
   name     = var.cluster_name
   role_arn = aws_iam_role.eks_cluster.arn
-  version  = "1.29"
+  version  = var.kubernetes_version
 
   vpc_config {
     subnet_ids = var.subnet_ids
@@ -65,8 +70,8 @@ resource "aws_eks_node_group" "workers" {
 
   scaling_config {
     desired_size = var.node_count
-    min_size     = 1
-    max_size     = var.node_count * 2
+    min_size     = var.node_min_size
+    max_size     = var.node_max_size
   }
 
   depends_on = [

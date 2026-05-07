@@ -1,9 +1,29 @@
 name: Deploy Platform
 
+# V7 three-job pipeline: deploy-shared → deploy-live → deploy-apps.
+#
+# Auth: passwordless via GitHub OIDC. The repo only stores AWS_ROLE_ARN —
+# the IAM role's trust policy must allow this repo (and ideally this branch)
+# to assume it via token.actions.githubusercontent.com.
+#
+# Bootstrap (state bucket + lock table + ECR repos) is NOT in this pipeline.
+# Run it once locally with `terraform -chdir=terraform/bootstrap apply` before
+# the first push, or add a separate bootstrap workflow guarded by
+# workflow_dispatch. Decoupling bootstrap from the per-push pipeline keeps
+# the state backend stable across deploys.
+
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  PROJECT: reliability-platform
+  CLUSTER: reliability-platform-cluster
+  NAMESPACE: platform
+  STATE_BUCKET_PREFIX: reliability-platform-v07-tfstate
+  LOCK_TABLE: terraform-state-lock-v07
 
 jobs:
 
@@ -18,14 +38,26 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Deploy Shared Layer
+      - name: Resolve V7 state bucket name
+        id: backend
         run: |
-          terraform -chdir=terraform/shared init
-          terraform -chdir=terraform/shared apply -auto-approve
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "state_bucket=${STATE_BUCKET_PREFIX}-${ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Init shared layer with V7 backend
+        run: |
+          terraform -chdir=terraform/shared init -reconfigure -input=false \
+            -backend-config="bucket=${{ steps.backend.outputs.state_bucket }}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${LOCK_TABLE}" \
+            -backend-config="key=shared/v7/terraform.tfstate"
+
+      - name: Apply shared layer
+        run: terraform -chdir=terraform/shared apply -auto-approve
 
   deploy-live:
     runs-on: ubuntu-latest
@@ -39,14 +71,30 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Deploy Live Layer
+      - name: Resolve V7 state bucket name
+        id: backend
         run: |
-          terraform -chdir=terraform/live init
-          terraform -chdir=terraform/live apply -auto-approve
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "state_bucket=${STATE_BUCKET_PREFIX}-${ACCOUNT_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Init live layer with V7 backend
+        run: |
+          terraform -chdir=terraform/live init -reconfigure -input=false \
+            -backend-config="bucket=${{ steps.backend.outputs.state_bucket }}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${LOCK_TABLE}" \
+            -backend-config="key=live/v7/terraform.tfstate"
+
+      - name: Apply live layer
+        # state_bucket is also passed to the live module so its
+        # terraform_remote_state data source reads from the right bucket.
+        run: |
+          terraform -chdir=terraform/live apply -auto-approve \
+            -var "state_bucket=${{ steps.backend.outputs.state_bucket }}"
 
   deploy-apps:
     runs-on: ubuntu-latest
@@ -60,19 +108,39 @@ jobs:
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Install Helm
-        run: curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.14.0
 
       - name: Configure kubectl
-        run: aws eks update-kubeconfig --name reliability-platform-cluster --region us-east-1
+        run: aws eks update-kubeconfig --name "${CLUSTER}" --region "${AWS_REGION}"
 
-      - name: Deploy Helm Charts
+      - name: Resolve ECR base URI
+        id: ecr
         run: |
-          helm upgrade --install flask-api helm/flask-api --namespace platform --create-namespace
-          helm upgrade --install node-api  helm/node-api  --namespace platform --create-namespace
-          helm upgrade --install web-ui    helm/web-ui    --namespace platform --create-namespace
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "ecr_base=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT}" >> "$GITHUB_OUTPUT"
 
-      - name: Verify Deployment
-        run: kubectl get pods -n platform
+      - name: Deploy Helm charts
+        # --set image.repository overrides the YOUR_ACCOUNT_ID placeholder
+        # in each chart's values.yaml so Helm pulls from the V7 ECR repos.
+        # Images must already be pushed by the local bootstrap flow — CI
+        # does not build images on every push (would 5-10x the run time).
+        run: |
+          for SVC in flask-api node-api web-ui; do
+            helm upgrade --install "$SVC" "helm/$SVC" \
+              --namespace "${NAMESPACE}" --create-namespace \
+              --set image.repository="${{ steps.ecr.outputs.ecr_base }}/$SVC"
+          done
+
+      - name: Wait for rollouts
+        run: |
+          kubectl rollout status deployment/flask-api-flask-api -n "${NAMESPACE}"
+          kubectl rollout status deployment/node-api-node-api  -n "${NAMESPACE}"
+          kubectl rollout status deployment/web-ui-web-ui      -n "${NAMESPACE}"
+
+      - name: Verify deployment
+        run: kubectl get pods -n "${NAMESPACE}"

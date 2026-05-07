@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c \"import json; print\\('checking layout'\\)\")",
+      "Bash(xargs -I{} bash -c 'echo \"=== {} ===\"; ruby -ryaml -e \"YAML.safe_load\\(File.read\\(ARGV[0]\\),aliases:true\\)\" {} 2>&1 || echo \"\\(ruby missing, trying perl\\)\"')"
+    ]
+  }
+}
