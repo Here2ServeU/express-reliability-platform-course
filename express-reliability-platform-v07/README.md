@@ -128,10 +128,12 @@ express-reliability-platform-v07/
 │   ├── node-api/
 │   └── web-ui/                ← service.type=LoadBalancer
 ├── apps/
+│   ├── flask-api/             ← Python service (Dockerfile + app.py + requirements.txt)
+│   ├── node-api/              ← Node service (Dockerfile + index.js + package.json)
 │   └── web-ui/index.html      ← V7 incident-operations console
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml         ← three-job pipeline with OIDC
+│       └── deploy.yml         ← four-job pipeline (changes → build-images, deploy-shared, deploy-live → deploy-apps) with OIDC
 ├── scripts/
 │   ├── tf_deploy_v7.sh        ← local end-to-end deploy
 │   ├── build_push_images_v7.sh
@@ -162,7 +164,7 @@ STATE_BUCKET=$(terraform -chdir=terraform/bootstrap output -raw state_bucket)
 LOCK_TABLE=$(terraform -chdir=terraform/bootstrap output -raw lock_table)
 ECR_BASE=$(terraform -chdir=terraform/bootstrap output -raw ecr_base_uri)
 
-# 2. Build and push images (sources from V5 by default)
+# 2. Build and push images (sources live in this repo's apps/)
 ./scripts/build_push_images_v7.sh
 
 # 3. Shared layer — VPC + subnets + IGW
