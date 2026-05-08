@@ -365,13 +365,50 @@ aws ecr describe-repositories --region us-east-1 \
 
 All three commands should return empty / no matches.
 
-## 14) Next Version Preview
+## 14) GitHub Actions OIDC Trust Policy
+
+V3 is deployed manually from your laptop, but the platform's security story already calls for OIDC instead of long-lived AWS access keys. The trust policy below is the V3-scoped version of what V4+ will use when GitHub Actions assumes an AWS role via OIDC.
+
+Replace `<your-github-owner>` with your GitHub org or username. The `sub` claim is pinned to the `express-reliability-platform-v03` repo specifically:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:aws:iam::730335276920:oidc-provider/token.actions.githubusercontent.com"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:<your-github-owner>/express-reliability-platform-v03:*"
+      }
+    }
+  }]
+}
+```
+
+**Tightening the `sub` claim (recommended for prod):**
+
+| Goal | Replace `:*` with |
+|---|---|
+| Only the `main` branch | `:ref:refs/heads/main` |
+| Only a GitHub environment named `production` | `:environment:production` |
+| Only tagged releases | `:ref:refs/tags/*` |
+
+You do not need this policy to complete V3, but creating the OIDC provider and role now means V4's GitHub Actions workflow can assume it without any code changes.
+
+## 15) Next Version Preview
 
 Version 4 replaces the manual AWS commands with Terraform, so deployment and cleanup become repeatable infrastructure-as-code workflows.
 
 ---
 
-## 15) Web UI Guide — `apps/web-ui/index.html`
+## 16) Web UI Guide — `apps/web-ui/index.html`
 
 ### Platform Continuity
 
