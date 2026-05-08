@@ -1,6 +1,7 @@
 name: Deploy Platform
 
-# V7 three-job pipeline: deploy-shared → deploy-live → deploy-apps.
+# V7 four-job pipeline: changes ─┬─► deploy-shared ─► deploy-live ─┐
+#                                └─► build-images (only if app source changed) ─┴─► deploy-apps
 #
 # Auth: passwordless via GitHub OIDC. The repo only stores AWS_ROLE_ARN —
 # the IAM role's trust policy must allow this repo (and ideally this branch)
@@ -11,6 +12,13 @@ name: Deploy Platform
 # the first push, or add a separate bootstrap workflow guarded by
 # workflow_dispatch. Decoupling bootstrap from the per-push pipeline keeps
 # the state backend stable across deploys.
+#
+# Image build strategy: build-images runs only when apps/ changes in this
+# repo, OR when the workflow itself changes (so the user can force a rebuild
+# by editing this file). All three services live in this repo's apps/
+# directory — V7 is fully self-contained, no cross-repo source dependencies.
+# Images are tagged BOTH `:latest` (what Helm deploys) and `:<commit-sha>`
+# (forensic trail per deploy).
 
 on:
   push:
@@ -26,6 +34,85 @@ env:
   LOCK_TABLE: terraform-state-lock-v07
 
 jobs:
+
+  # Detect what kind of change this push contains. Apps changes trigger
+  # build-images; Terraform-only changes skip it (saves ~3-5 min per deploy).
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.filter.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            apps:
+              - 'apps/**'
+              - '.github/workflows/deploy.yml'
+
+  # Builds and pushes flask-api, node-api, web-ui to ECR with both `:latest`
+  # and `:<sha>` tags. Runs in parallel with the Terraform jobs since ECR
+  # repos already exist (created once by `terraform/bootstrap` locally).
+  # On Terraform-only pushes, this job is skipped entirely.
+  build-images:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.apps == 'true'
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Resolve ECR base URI
+        id: ecr
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "base=${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT}" >> "$GITHUB_OUTPUT"
+
+      # EKS nodes run linux/amd64. Apple Silicon developers building locally
+      # need buildx --platform linux/amd64; CI runners are already amd64,
+      # but we set the platform explicitly so behavior is identical to local.
+      - name: Build and push flask-api
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/flask-api
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.base }}/flask-api:latest
+            ${{ steps.ecr.outputs.base }}/flask-api:${{ github.sha }}
+
+      - name: Build and push node-api
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/node-api
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.base }}/node-api:latest
+            ${{ steps.ecr.outputs.base }}/node-api:${{ github.sha }}
+
+      - name: Build and push web-ui
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/web-ui
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.base }}/web-ui:latest
+            ${{ steps.ecr.outputs.base }}/web-ui:${{ github.sha }}
 
   deploy-shared:
     runs-on: ubuntu-latest
@@ -98,7 +185,15 @@ jobs:
 
   deploy-apps:
     runs-on: ubuntu-latest
-    needs: deploy-live
+    # build-images runs in parallel with deploy-shared/deploy-live and is
+    # skipped on Terraform-only pushes. The `if: always()` clause lets this
+    # job run when build-images was skipped (no app changes); the inner
+    # conditions still require deploy-live to have succeeded.
+    needs: [deploy-live, build-images]
+    if: |
+      always() &&
+      needs.deploy-live.result == 'success' &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     permissions:
       id-token: write
       contents: read
@@ -127,8 +222,10 @@ jobs:
       - name: Deploy Helm charts
         # --set image.repository overrides the YOUR_ACCOUNT_ID placeholder
         # in each chart's values.yaml so Helm pulls from the V7 ECR repos.
-        # Images must already be pushed by the local bootstrap flow — CI
-        # does not build images on every push (would 5-10x the run time).
+        # Images are pushed by the build-images job earlier in this workflow
+        # (when apps/ changes) or persist from a previous deploy (Terraform-
+        # only pushes). pullPolicy: Always in values.yaml ensures kubelet
+        # picks up new :latest digests on each rollout.
         run: |
           for SVC in flask-api node-api web-ui; do
             helm upgrade --install "$SVC" "helm/$SVC" \
@@ -141,6 +238,26 @@ jobs:
           kubectl rollout status deployment/flask-api-flask-api -n "${NAMESPACE}"
           kubectl rollout status deployment/node-api-node-api  -n "${NAMESPACE}"
           kubectl rollout status deployment/web-ui-web-ui      -n "${NAMESPACE}"
+
+      # Runs only if a previous step in this job failed. Dumps pod state,
+      # recent container logs, and namespace events so the CI log explains
+      # *why* a rollout stalled (ImagePullBackOff, OOMKilled, CrashLoopBackOff,
+      # readiness failure, etc.) instead of just reporting the timeout.
+      - name: Diagnose failed rollout
+        if: failure()
+        run: |
+          echo "=== pods ==="
+          kubectl get pods -n "${NAMESPACE}" -o wide
+          echo "=== describe pods ==="
+          kubectl describe pods -n "${NAMESPACE}"
+          echo "=== recent events ==="
+          kubectl get events -n "${NAMESPACE}" --sort-by=.lastTimestamp | tail -50
+          echo "=== logs (previous + current, all containers) ==="
+          for pod in $(kubectl get pods -n "${NAMESPACE}" -o name); do
+            echo "--- $pod ---"
+            kubectl logs "$pod" -n "${NAMESPACE}" --all-containers --tail=100 || true
+            kubectl logs "$pod" -n "${NAMESPACE}" --all-containers --previous --tail=100 || true
+          done
 
       - name: Verify deployment
         run: kubectl get pods -n "${NAMESPACE}"
