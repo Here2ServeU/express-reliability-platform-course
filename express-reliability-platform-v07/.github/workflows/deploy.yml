@@ -25,6 +25,14 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Serialize runs on the same branch so two quick pushes don't race on
+# `terraform apply`. The DynamoDB lock would catch the conflict, but we'd
+# burn a runner and get a confusing failure. cancel-in-progress: false is
+# deliberate — cancelling mid-apply can orphan AWS resources.
+concurrency:
+  group: deploy-platform-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   AWS_REGION: us-east-1
   PROJECT: reliability-platform

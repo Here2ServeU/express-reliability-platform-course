@@ -2,14 +2,15 @@
 ###############################################################################
 # Build and push the three service images to V7's ECR repos.
 #
-# V7 only ships web-ui/index.html. The flask-api / node-api Dockerfiles and
-# source live in V5's apps/ directory — APPS_SRC defaults to
-# ../express-reliability-platform-v05/apps. Override with APPS_SRC=<path>
-# if your sources live elsewhere.
+# V7 ships ALL service source — flask-api, node-api, web-ui — in this repo's
+# apps/ directory. No cross-repo dependencies.
 #
 # Usable standalone (after bootstrap apply has created the ECR repos) for
 # app-only redeploys, or invoked by tf_deploy_v7.sh as part of the full
 # bootstrap → push → shared → live → apps flow.
+#
+# CI also pushes images via .github/workflows/deploy.yml on any push that
+# changes apps/ — this script is for local iteration without committing.
 ###############################################################################
 set -euo pipefail
 
@@ -20,7 +21,6 @@ TAG="${IMAGE_TAG:-latest}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V7_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-APPS_SRC="${APPS_SRC:-${V7_ROOT}/../express-reliability-platform-v05/apps}"
 
 echo "=== Resolving ECR base URI ==="
 # Prefer the bootstrap output so this script and tf_deploy_v7.sh agree on the
@@ -36,36 +36,14 @@ else
   echo "  source: aws sts (bootstrap output unavailable)"
 fi
 echo "  ECR base: ${ECR_BASE}"
-echo "  apps src: ${APPS_SRC}"
 echo "  tag:      ${TAG}"
 
-# Resolve the build context for each service.
-#
-# flask-api / node-api: source still lives in V5's apps/ — V7 does not ship
-# Python or Node application code, only infrastructure changes.
-#
-# web-ui: V7 ships its OWN apps/web-ui/ with a V7-specific index.html and
-# Dockerfile. Pulling web-ui from V5 here would silently deploy V5's UI on
-# the V7 cluster (the bug that hid V7's content behind V5's nginx). Always
-# build web-ui from this repo's apps/web-ui.
-context_for() {
-  local svc="$1"
-  if [[ "$svc" == "web-ui" ]]; then
-    echo "${V7_ROOT}/apps/web-ui"
-  else
-    echo "${APPS_SRC}/${svc}"
-  fi
-}
-
-# Fail fast with an actionable message: the most common cause of a missing
-# Dockerfile here is "I deleted V5's directory" or "I cloned only V7".
+# Fail fast with an actionable message if a Dockerfile is missing — most
+# common cause is a partial clone or a deleted apps/ subdirectory.
 for SVC in "${SERVICES[@]}"; do
-  CTX=$(context_for "${SVC}")
+  CTX="${V7_ROOT}/apps/${SVC}"
   if [[ ! -f "${CTX}/Dockerfile" ]]; then
     echo "ERROR: ${CTX}/Dockerfile not found." >&2
-    if [[ "${SVC}" != "web-ui" ]]; then
-      echo "       Set APPS_SRC=<path-to-apps-with-Dockerfiles> and re-run." >&2
-    fi
     exit 1
   fi
 done
@@ -83,7 +61,7 @@ echo "=== Building and pushing ==="
 # ImagePullBackOff with "image manifest does not contain descriptor matching
 # platform 'linux/amd64'". buildx --platform linux/amd64 --push fixes both.
 for SVC in "${SERVICES[@]}"; do
-  CTX=$(context_for "${SVC}")
+  CTX="${V7_ROOT}/apps/${SVC}"
   echo "--- ${SVC} (context: ${CTX}) ---"
   docker buildx build --platform linux/amd64 \
     -t "${ECR_BASE}/${SVC}:${TAG}" \

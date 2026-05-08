@@ -38,7 +38,7 @@ echo "  state bucket: ${STATE_BUCKET}"
 echo "  lock table:   ${LOCK_TABLE}"
 echo "  ECR base:     ${ECR_BASE}"
 
-echo '=== Step 3: Build and push images (sources from V5 apps/ by default) ==='
+echo '=== Step 3: Build and push images from this repo apps/ ==='
 "${SCRIPT_DIR}/build_push_images_v7.sh"
 
 echo '=== Step 4: Initialize SHARED layer against V7 bootstrap backend ==='
