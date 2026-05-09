@@ -119,6 +119,12 @@ docker compose down
 
 Run from the `express-reliability-platform-v03` directory.
 
+**0. Make the scripts executable**
+
+```sh
+chmod +x scripts/
+```
+
 **1. Create the ECR repositories:**
 
 ```sh
