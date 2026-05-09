@@ -1,4 +1,4 @@
-# Express Reliability Platform V3 - Your First AWS Deployment
+# Express Reliability Platform V3: Your First AWS Deployment
 
 ## 1) Version Purpose
 
@@ -180,28 +180,6 @@ aws ecs describe-services \
 ```
 
 You want `running == desired == 1` and `status == ACTIVE` for all three.
-
-**Resolve all three public IPs at once:**
-
-```sh
-for SVC in flask-api node-api web-ui; do
-  TASK=$(aws ecs list-tasks --cluster reliability-platform-v03 \
-    --service-name $SVC --region us-east-1 \
-    --query 'taskArns[0]' --output text)
-  ENI=$(aws ecs describe-tasks --cluster reliability-platform-v03 \
-    --tasks $TASK --region us-east-1 \
-    --query 'tasks[0].attachments[0].details[?name==`networkInterfaceId`].value' \
-    --output text)
-  IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI \
-    --region us-east-1 \
-    --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
-  case $SVC in
-    web-ui)    echo "$SVC:    http://$IP/" ;;
-    flask-api) echo "$SVC: http://$IP:5000/" ;;
-    node-api)  echo "$SVC:  http://$IP:3000/" ;;
-  esac
-done
-```
 
 **Reachability test (HTTP 2xx == healthy):**
 
