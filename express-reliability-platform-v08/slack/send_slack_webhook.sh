@@ -76,9 +76,20 @@ if [[ "$DRY_RUN" == "true" ]] || [[ -z "$WEBHOOK_URL" ]]; then
   exit 0
 fi
 
-curl -s -X POST "$WEBHOOK_URL" \
-  -H "Content-Type: application/json" \
-  --data "$(python3 -c "import json,sys; print(json.dumps({'text': sys.stdin.read()}))" <<< "$MESSAGE")"
+payload="$(python3 -c "import json,sys; print(json.dumps({'text': sys.stdin.read()}))" <<< "$MESSAGE")"
 
-echo ""
-echo "Slack alert sent."
+response="$(curl -sS -X POST "$WEBHOOK_URL" \
+  -H "Content-Type: application/json" \
+  --data "$payload" 2>&1)" || {
+    echo "Slack request failed: ${response:-<no response>}" >&2
+    exit 1
+  }
+
+# A Slack Incoming Webhook returns the literal body "ok" on success.
+if [[ "$response" == "ok" ]]; then
+  echo "Slack alert sent."
+else
+  echo "Slack did not accept the message. Response: ${response:-<empty>}" >&2
+  echo "Check that SLACK_WEBHOOK_URL (or --url) is a real webhook, e.g. https://hooks.slack.com/services/YOUR/WEBHOOK/URL" >&2
+  exit 1
+fi
