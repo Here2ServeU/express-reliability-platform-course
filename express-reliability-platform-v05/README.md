@@ -17,7 +17,7 @@ Use the main class repository for scripts and canonical structure:
 
 ## 2) Version Purpose
 
-Install Prometheus, Grafana, and Alertmanager. Instrument Node API with `prom-client`. Build a live dashboard. Write three alert rules. Prove that `ServiceDown` fires when a container stops. Then re-deploy the application tier on AWS using the same Terraform stacks you used in V4 — now upgraded with a dedicated VPC, `linux/amd64` builds, and a full-teardown cleanup.
+Install Prometheus, Grafana, and Alertmanager. Instrument Node API with `prom-client`. Build a live dashboard. Write three alert rules. Prove that `ServiceDown` fires when a container stops. Then re-deploy the application tier on AWS — but instead of the manual shell scripts you used in V4, codify the same VPC, ECR, ECS, and ALB infrastructure with **Terraform** (your first taste of Infrastructure as Code).
 
 ---
 
@@ -79,7 +79,7 @@ Banks watch transaction latency in real time — a sudden spike can mean fraud, 
 ## 5) What You Will Build
 
 - **Locally (Docker Compose):** the full V5 stack — three application services plus Prometheus, Grafana, and Alertmanager — with a working dashboard and three alert rules.
-- **On AWS (Terraform):** the application tier deployed to ECS Fargate behind an ALB, with images stored in ECR and Terraform state in S3 + DynamoDB. Same V4 architecture, with all the V4 fixes (dedicated VPC, `linux/amd64` images, full-teardown cleanup) carried forward.
+- **On AWS (Terraform):** the application tier deployed to ECS Fargate behind an ALB, with images stored in ECR and Terraform state in S3 + DynamoDB. Same V4 architecture (dedicated VPC, `linux/amd64` images, full-teardown cleanup), but now expressed as code instead of imperative shell scripts.
 
 > **Scope note:** V5 ships the **application tier** to AWS. Prometheus, Grafana, and Alertmanager stay local in V5 — they move to Kubernetes (EKS) in V6, which is the right place for managed observability.
 

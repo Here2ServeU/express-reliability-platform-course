@@ -1,92 +1,153 @@
 #!/bin/bash
-# Full V4 teardown: destroys the platform stack (ECS, ALB, ECR, IAM, networking)
-# AND the bootstrap stack (S3 state bucket + DynamoDB lock table).
-#
-# Note: no `set -e` — we want each step to keep going even if a previous one
-# partially failed, so a half-cleaned-up environment can be finished off.
+# Tear down everything deploy_ecs.sh creates, including the dedicated VPC.
+# Order matters: services -> cluster -> ENIs -> SG -> subnets -> RT -> IGW -> VPC.
 
 REGION="us-east-1"
+CLUSTER="reliability-platform-v04"
+VPC_NAME="reliability-platform-v04-vpc"
+SG_NAME="reliability-sg-v04"
 
-echo '=== V4 Full Cleanup ==='
-echo 'This will destroy ALL V4 AWS resources including the Terraform state backend.'
-echo
+echo '=== V4 Cleanup ==='
 
-echo '=== Step 1: Read bootstrap outputs (need state-bucket name to init platform) ==='
-STATE_BUCKET=$(terraform -chdir=terraform/bootstrap output -raw state_bucket 2>/dev/null)
-ACCOUNT_ID=$(terraform -chdir=terraform/bootstrap output -raw account_id 2>/dev/null)
+echo 'Step 1: Scale services to zero (required before deletion)...'
+for SVC in web-ui node-api flask-api; do
+  aws ecs update-service --cluster $CLUSTER --service $SVC \
+    --desired-count 0 --region $REGION 2>/dev/null || true
+done
+sleep 30
 
-if [ -z "$STATE_BUCKET" ] || [ "$STATE_BUCKET" = "null" ]; then
-  echo 'WARNING: no bootstrap state file found locally.'
-  echo '         Skipping platform destroy. If platform resources still exist,'
-  echo '         delete them by hand from the AWS console.'
-  PLATFORM_SKIP=1
+echo 'Step 2: Delete ECS services...'
+for SVC in web-ui node-api flask-api; do
+  aws ecs delete-service --cluster $CLUSTER --service $SVC \
+    --force --region $REGION 2>/dev/null || true
+done
+
+echo 'Step 3: Delete ECS cluster...'
+aws ecs delete-cluster --cluster $CLUSTER --region $REGION 2>/dev/null || true
+
+echo 'Step 4: Delete CloudWatch log groups...'
+for SVC in flask-api node-api web-ui; do
+  aws logs delete-log-group --log-group-name "/ecs/v04/$SVC" \
+    --region $REGION 2>/dev/null || true
+done
+
+echo 'Step 5: Delete ECR repositories and all images...'
+for SVC in flask-api node-api web-ui; do
+  aws ecr delete-repository --repository-name reliability-platform/$SVC \
+    --force --region $REGION 2>/dev/null || true
+done
+
+echo 'Step 6: Detach policy and delete IAM role...'
+aws iam detach-role-policy --role-name ecsExecRole-v04 \
+  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
+aws iam delete-role --role-name ecsExecRole-v04 2>/dev/null || true
+
+# ---------- Network teardown ----------
+
+echo 'Step 7: Locate VPC...'
+VPC_ID=$(aws ec2 describe-vpcs \
+  --filters Name=tag:Name,Values=$VPC_NAME \
+  --query 'Vpcs[0].VpcId' --output text --region $REGION 2>/dev/null)
+
+if [ "$VPC_ID" = "None" ] || [ -z "$VPC_ID" ]; then
+  echo "  No VPC named $VPC_NAME found. Skipping network teardown."
 else
-  echo "  state bucket: ${STATE_BUCKET}"
-  echo "  account id:   ${ACCOUNT_ID}"
+  echo "  VPC: $VPC_ID"
+
+  echo 'Step 8: Wait for Fargate ENIs to clear (up to 90s)...'
+  # Fargate tasks leave ENIs behind that block SG/subnet deletion. They auto-
+  # release after services are deleted, but it can take a minute.
+  for attempt in 1 2 3 4 5 6 7 8 9; do
+    ENI_COUNT=$(aws ec2 describe-network-interfaces \
+      --filters Name=vpc-id,Values=$VPC_ID \
+      --query 'length(NetworkInterfaces)' \
+      --output text --region $REGION 2>/dev/null)
+    if [ "$ENI_COUNT" = "0" ]; then break; fi
+    echo "  $ENI_COUNT ENI(s) still present, waiting 10s..."
+    sleep 10
+  done
+  # Force-delete anything left over (best effort).
+  for ENI in $(aws ec2 describe-network-interfaces \
+        --filters Name=vpc-id,Values=$VPC_ID \
+        --query 'NetworkInterfaces[].NetworkInterfaceId' \
+        --output text --region $REGION 2>/dev/null); do
+    aws ec2 delete-network-interface --network-interface-id $ENI \
+      --region $REGION 2>/dev/null || true
+  done
+
+  echo 'Step 9: Delete security group...'
+  SG_ID=$(aws ec2 describe-security-groups \
+    --filters Name=group-name,Values=$SG_NAME Name=vpc-id,Values=$VPC_ID \
+    --query 'SecurityGroups[0].GroupId' --output text --region $REGION 2>/dev/null)
+  if [ -n "$SG_ID" ] && [ "$SG_ID" != "None" ]; then
+    aws ec2 delete-security-group --group-id $SG_ID --region $REGION 2>/dev/null \
+      && echo "  Deleted SG: $SG_ID" \
+      || echo "  Could not delete SG $SG_ID (may have lingering dependencies)."
+  fi
+
+  echo 'Step 10: Disassociate and delete route tables...'
+  # Disassociate every non-main association in this VPC, then delete the
+  # custom route tables (the "main" RT is deleted with the VPC).
+  for RT_ID in $(aws ec2 describe-route-tables \
+        --filters Name=vpc-id,Values=$VPC_ID \
+        --query 'RouteTables[].RouteTableId' \
+        --output text --region $REGION 2>/dev/null); do
+    for ASSOC in $(aws ec2 describe-route-tables \
+          --route-table-ids $RT_ID \
+          --query 'RouteTables[0].Associations[?Main==`false`].RouteTableAssociationId' \
+          --output text --region $REGION 2>/dev/null); do
+      aws ec2 disassociate-route-table --association-id $ASSOC \
+        --region $REGION 2>/dev/null || true
+    done
+    # Skip the main RT — AWS deletes it when the VPC is removed.
+    IS_MAIN=$(aws ec2 describe-route-tables --route-table-ids $RT_ID \
+      --query 'RouteTables[0].Associations[?Main==`true`] | length(@)' \
+      --output text --region $REGION 2>/dev/null)
+    if [ "$IS_MAIN" = "0" ]; then
+      aws ec2 delete-route-table --route-table-id $RT_ID \
+        --region $REGION 2>/dev/null \
+        && echo "  Deleted route table: $RT_ID" || true
+    fi
+  done
+
+  echo 'Step 11: Delete subnets...'
+  for SUBNET_ID in $(aws ec2 describe-subnets \
+        --filters Name=vpc-id,Values=$VPC_ID \
+        --query 'Subnets[].SubnetId' \
+        --output text --region $REGION 2>/dev/null); do
+    aws ec2 delete-subnet --subnet-id $SUBNET_ID --region $REGION 2>/dev/null \
+      && echo "  Deleted subnet: $SUBNET_ID" \
+      || echo "  Could not delete subnet $SUBNET_ID."
+  done
+
+  echo 'Step 12: Detach and delete Internet Gateway...'
+  IGW_ID=$(aws ec2 describe-internet-gateways \
+    --filters Name=attachment.vpc-id,Values=$VPC_ID \
+    --query 'InternetGateways[0].InternetGatewayId' \
+    --output text --region $REGION 2>/dev/null)
+  if [ -n "$IGW_ID" ] && [ "$IGW_ID" != "None" ]; then
+    aws ec2 detach-internet-gateway --internet-gateway-id $IGW_ID \
+      --vpc-id $VPC_ID --region $REGION 2>/dev/null || true
+    aws ec2 delete-internet-gateway --internet-gateway-id $IGW_ID \
+      --region $REGION 2>/dev/null \
+      && echo "  Deleted IGW: $IGW_ID" || true
+  fi
+
+  echo 'Step 13: Delete VPC...'
+  aws ec2 delete-vpc --vpc-id $VPC_ID --region $REGION 2>/dev/null \
+    && echo "  Deleted VPC: $VPC_ID" \
+    || echo "  Could not delete VPC $VPC_ID — check the AWS console for stragglers."
 fi
 
-if [ -z "$PLATFORM_SKIP" ]; then
-  echo '=== Step 2: Re-init platform Terraform against the bootstrap backend ==='
-  terraform -chdir=terraform/platform init \
-    -reconfigure -input=false \
-    -backend-config="bucket=${STATE_BUCKET}" \
-    -backend-config="region=${REGION}" \
-    -backend-config="dynamodb_table=terraform-state-lock" \
-    -backend-config="key=platform/v4/terraform.tfstate"
+# ---------- End network teardown ----------
 
-  echo '=== Step 3: Destroy platform (ECS, ALB, ECR, IAM, networking) ==='
-  # ECR repos have force_delete=true, so they tear down even with images present.
-  terraform -chdir=terraform/platform destroy -auto-approve
-fi
-
-echo '=== Step 4: Remove local Docker images and prune ==='
-docker rmi flask-api:latest node-api:latest web-ui:latest 2>/dev/null
+echo 'Step 14: Prune local Docker...'
 docker system prune -f
 
-if [ -n "$STATE_BUCKET" ] && [ "$STATE_BUCKET" != "null" ]; then
-  echo "=== Step 5: Empty state bucket s3://${STATE_BUCKET} (all versions + delete markers) ==="
-  # The state bucket has versioning enabled. terraform destroy on a non-empty
-  # versioned bucket fails, so we empty every version and delete-marker first.
+echo 'Verifying...'
+aws ecs list-clusters --region $REGION
+aws ec2 describe-vpcs \
+  --filters Name=tag:Name,Values=$VPC_NAME \
+  --query 'Vpcs[].VpcId' --output text --region $REGION
 
-  VERSIONS=$(aws s3api list-object-versions \
-    --bucket "$STATE_BUCKET" \
-    --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
-    --output json 2>/dev/null)
-  if [ -n "$VERSIONS" ] && [ "$VERSIONS" != "null" ] && \
-     [ "$(echo "$VERSIONS" | grep -o '"Key"' | wc -l)" -gt 0 ]; then
-    aws s3api delete-objects --bucket "$STATE_BUCKET" --delete "$VERSIONS" >/dev/null
-    echo '  deleted all object versions'
-  fi
-
-  MARKERS=$(aws s3api list-object-versions \
-    --bucket "$STATE_BUCKET" \
-    --query '{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}' \
-    --output json 2>/dev/null)
-  if [ -n "$MARKERS" ] && [ "$MARKERS" != "null" ] && \
-     [ "$(echo "$MARKERS" | grep -o '"Key"' | wc -l)" -gt 0 ]; then
-    aws s3api delete-objects --bucket "$STATE_BUCKET" --delete "$MARKERS" >/dev/null
-    echo '  deleted all delete markers'
-  fi
-fi
-
-echo '=== Step 6: Destroy bootstrap (S3 state bucket + DynamoDB lock table) ==='
-terraform -chdir=terraform/bootstrap destroy -auto-approve
-
-echo '=== Step 7: Verify cleanup ==='
-echo '--- ECS clusters (should not include reliability-platform-cluster) ---'
-aws ecs list-clusters --region "$REGION" --query 'clusterArns' --output text
-echo '--- ALBs (should not include reliability-platform-alb) ---'
-aws elbv2 describe-load-balancers --region "$REGION" \
-  --query 'LoadBalancers[*].LoadBalancerName' --output text 2>/dev/null
-echo '--- ECR repos (should not include reliability-platform/*) ---'
-aws ecr describe-repositories --region "$REGION" \
-  --query 'repositories[].repositoryName' --output text 2>/dev/null
-echo '--- State buckets (should not include reliability-platform-tfstate-*) ---'
-aws s3 ls 2>/dev/null | grep reliability-platform-tfstate || echo '  none'
-echo '--- DynamoDB lock table (should not exist) ---'
-aws dynamodb describe-table --table-name terraform-state-lock --region "$REGION" \
-  --query 'Table.TableStatus' --output text 2>/dev/null || echo '  not found'
-
-echo
-echo '=== Done! Full V4 teardown complete. ==='
-echo 'To redeploy V4, run: ./scripts/tf_deploy.sh'
+echo '=== V4 Cleanup Complete ==='

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>T2S Express Reliability Platform | V2</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --ink: #172033;
+      --muted: #5d6b82;
+      --line: #d9e2ee;
+      --panel: #ffffff;
+      --primary: #2457a6;
+      --accent: #087f8c;
+      --shadow: 0 14px 34px rgba(23, 32, 51, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .shell {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 0;
+    }
+
+    .brand {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand span,
+    .muted,
+    .eyebrow {
+      color: var(--muted);
+    }
+
+    .badge,
+    .pill {
+      border: 1px solid rgba(8, 127, 140, 0.24);
+      border-radius: 8px;
+      background: rgba(8, 127, 140, 0.08);
+      color: var(--accent);
+      font-weight: 700;
+      padding: 6px 10px;
+    }
+
+    main {
+      padding: 30px 0 44px;
+    }
+
+    h1 {
+      max-width: 860px;
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.24rem;
+    }
+
+    p {
+      margin-top: 0;
+    }
+
+    .hero {
+      padding: 26px 0 10px;
+    }
+
+    .hero p {
+      max-width: 820px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    section,
+    aside,
+    .metric,
+    .item {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    section,
+    aside {
+      padding: 22px;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 18px 0;
+    }
+
+    .metric {
+      min-height: 116px;
+      padding: 15px;
+      box-shadow: none;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin: 8px 0 4px;
+      color: var(--primary);
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .roadmap {
+      display: grid;
+      gap: 10px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: 70px 1fr;
+      gap: 12px;
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    .item strong {
+      color: var(--primary);
+    }
+
+    .item.active {
+      border-color: rgba(8, 127, 140, 0.5);
+      background: rgba(8, 127, 140, 0.06);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    a.button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--accent);
+      font-weight: 800;
+      text-decoration: none;
+      padding: 10px 14px;
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #ffffff;
+    }
+
+    code {
+      border-radius: 6px;
+      background: #edf3f8;
+      padding: 2px 5px;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .topbar,
+      .grid,
+      .metrics {
+        grid-template-columns: 1fr;
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="shell topbar">
+      <div class="brand">
+        <strong>T2S | Transformed 2 Succeed</strong>
+        <span>Express Reliability Platform for fintech and healthcare</span>
+      </div>
+      <span class="badge">Version 2: Containerized Service</span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <div class="hero">
+      <p class="eyebrow">From a local process to a portable container image</p>
+      <h1>Containerized Service Foundation</h1>
+      <p>
+        V2 wraps the V1 Express service in a Docker image so the same artifact runs identically on any laptop,
+        any CI runner, and any cloud node. This is the last step before V3 orchestrates the full three-service platform.
+      </p>
+    </div>
+
+    <div class="grid">
+      <section>
+        <h2>V2 Container Check</h2>
+        <p class="muted">
+          This page confirms the same service from V1 now runs inside a Docker container.
+          Same code, same endpoints — but the runtime is now portable and reproducible.
+        </p>
+
+        <div class="metrics">
+          <div class="metric">
+            <span>Reliability</span>
+            <strong>55</strong>
+            <small>Container restart policy + healthcheck</small>
+          </div>
+          <div class="metric">
+            <span>Cost</span>
+            <strong>30</strong>
+            <small>No cloud spend yet</small>
+          </div>
+          <div class="metric">
+            <span>Security</span>
+            <strong>40</strong>
+            <small>Pinned base image + .dockerignore</small>
+          </div>
+          <div class="metric">
+            <span>Intelligence</span>
+            <strong>25</strong>
+            <small>Healthcheck signal introduced</small>
+          </div>
+        </div>
+
+        <p>
+          Health endpoint: <code>/health</code>. Expected response includes
+          <code>"status":"ok"</code> and <code>"version":"v2"</code>.
+        </p>
+
+        <div class="actions">
+          <a class="button" href="/health">Check Health</a>
+          <a class="button secondary" href="https://github.com/Here2ServeU/express-reliability-platform-course">Course Repository</a>
+        </div>
+      </section>
+
+      <aside>
+        <h2>Program Path</h2>
+        <div class="roadmap">
+          <div class="item"><strong>V1</strong><span>Local Express app, health endpoint, GitHub baseline.</span></div>
+          <div class="item active"><strong>V2</strong><span>Containerize the single service with Docker.</span></div>
+          <div class="item"><strong>V3</strong><span>Orchestrate Node API, Flask API, and Web UI with Docker Compose.</span></div>
+          <div class="item"><strong>V4</strong><span>Deploy to AWS: ECR, ECS, VPC, ALB, S3, DynamoDB.</span></div>
+          <div class="item"><strong>V5</strong><span>Monitoring with Prometheus and Grafana plus an intro to Terraform.</span></div>
+          <div class="item"><strong>V6</strong><span>Apps, platform, Helm charts, and operational scripts.</span></div>
+          <div class="item"><strong>V7</strong><span>AIOps incident scoring and Slack routing.</span></div>
+          <div class="item"><strong>V8</strong><span>ITSM integration with ServiceNow, Jira, and chaos drills.</span></div>
+          <div class="item"><strong>V9</strong><span>Healthcare telemetry and predictive remediation.</span></div>
+          <div class="item"><strong>V10</strong><span>Capstone — student-owned regulated platform portfolio.</span></div>
+        </div>
+      </aside>
+    </div>
+
+    <section style="margin-top:22px">
+      <h2>Why V2 Matters</h2>
+      <p class="muted">
+        A working laptop process is not portable. Banks and hospitals require the exact same artifact
+        to run in dev, staging, and production. V2 packages the V1 service into a Docker image so the
+        runtime, dependencies, and start command are pinned — the foundation for every later version.
+      </p>
+      <div class="pill-row">
+        <span class="pill">Dockerfile</span>
+        <span class="pill">Healthcheck</span>
+        <span class="pill">Image tagging</span>
+        <span class="pill">Reproducible runtime</span>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

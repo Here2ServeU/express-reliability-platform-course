@@ -246,7 +246,7 @@ This is standard practice in every professional engineering team.
 
 ## 12) Next Version Preview
 
-In V2, you package this app with Docker and evolve from a single app into a 3-service platform structure (Node API, Flask API, Web UI).
+In V2, you wrap this same single Express service in a Docker container so the runtime is portable. V3 then evolves the single service into a 3-service platform (Node API, Flask API, Web UI) orchestrated with Docker Compose.
 
 ---
 
@@ -254,13 +254,13 @@ In V2, you package this app with Docker and evolve from a single app into a 3-se
 
 ### What the V1 UI Does
 
-The V1 `public/index.html` is the local foundation page for the whole T2S Express Reliability Platform course. It introduces the student to the regulated platform journey before the app becomes a multi-service system in V2.
+The V1 `public/index.html` is the local foundation page for the whole T2S Express Reliability Platform course. It introduces the student to the regulated platform journey before the service is containerized in V2 and grows into a multi-service system in V3.
 
 The page shows:
 
 - A V1 foundation check for the first Express service.
 - The `/health` endpoint students use to prove the service is running.
-- The full V1 -> V10 -> Capstone path.
+- The full V1 → V10 path.
 - Why local development, restart discipline, and GitHub ownership matter before cloud, Kubernetes, AIOps, and compliance work begin.
 
 ### What It Is Used For
@@ -295,4 +295,4 @@ Click **Check Health** to open `/health`. A healthy V1 service returns JSON simi
 }
 ```
 
-If the health endpoint works, the student is ready to move to V2 and containerize the platform.
+If the health endpoint works, the student is ready to move to V2 and containerize this single Express service with Docker.

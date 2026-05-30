@@ -1,0 +1,12 @@
+{
+  "name": "express-reliability-platform-v02",
+  "version": "2.0.0",
+  "description": "Containerized single-service reliability platform",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
