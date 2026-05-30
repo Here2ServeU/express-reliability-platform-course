@@ -1,439 +1,389 @@
-# Express Reliability Platform V3: Your First AWS Deployment
+# Express Reliability Platform V3 — Local Orchestration with Docker Compose
 
 ## 1) Version Purpose
 
-In Version 2, the platform ran on your laptop. In Version 3, you deploy the same three-service platform to AWS manually so you understand every moving part before Version 4 automates the flow.
+Version 3 takes the single containerized service from V2 and orchestrates a three-service platform — Node API, Flask API, and Web UI — with Docker Compose, so one command brings the whole stack up locally.
 
-By the end of V3, you will:
+---
 
-- Configure the AWS CLI.
-- Create ECR repositories.
-- Build, tag, and push Docker images for `linux/amd64` (Fargate's default).
-- Provision a **dedicated VPC** with public subnets, an Internet Gateway, and a route table.
-- Create an IAM task execution role.
-- Pre-create CloudWatch log groups.
-- Create an ECS cluster, task definitions, and Fargate services.
-- Find public task IP addresses.
-- Validate the platform from the terminal and a web browser.
-- Clean up every cloud resource created by this version, including the VPC.
+## 2) Plain Language Context
 
-## 2) What's New in V3 (Latest Updates)
+**What is this version teaching you?**
+You will wrap your three services inside Docker containers so they all start with one command and run identically on any computer. This is like putting each ingredient of a recipe into a labeled package, then bundling all the packages into one box — anyone can open the box and follow the same instructions.
 
-| Update | Why |
+**How does a bank or hospital use this?**
+Financial institutions and hospitals require that code behaves identically in development, testing, and production. A bug that only appears on one engineer's laptop but not on the server can cause transactions to fail or patient data to be corrupted. Docker eliminates that problem by guaranteeing the environment is always the same.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
 |---|---|
-| Dedicated VPC (`reliability-platform-v03-vpc`, CIDR `10.42.0.0/16`) | Some AWS accounts have no default VPC; building our own removes that dependency. |
-| Public subnets across up to 3 AZs | Spread tasks across availability zones for redundancy. |
-| Pre-created CloudWatch log groups | `AmazonECSTaskExecutionRolePolicy` doesn't grant `logs:CreateLogGroup`, so `awslogs-create-group=true` would fail at task startup. |
-| `docker build --platform linux/amd64` | Fargate runs `linux/amd64`; without this flag, Apple Silicon Macs produce arm64 images that Fargate can't pull. |
-| Idempotent deploy + cleanup scripts | Re-running either script is safe — existing resources are reused or skipped. |
-| `--force-new-deployment` on service updates | Bumps services onto the latest task definition revision automatically. |
-| IAM-role propagation wait | New roles take ~10s to be usable; the script waits before registering task definitions. |
+| **Docker** | A tool that packages your program and all its dependencies into a self-contained box called a container |
+| **Container** | A running instance of a packaged program — isolated from everything else on the computer |
+| **Docker Image** | The blueprint for a container — like a recipe. Running the image creates a container |
+| **Docker Compose** | A tool that starts multiple containers together with a single command using a `docker-compose.yml` file |
+| **docker-compose.yml** | A configuration file that describes every service, what image it uses, and how services connect to each other |
+| **Port mapping** | Connecting a port inside a container to a port on your computer — `8080:80` means "when my browser hits port 8080, forward it to port 80 inside the container" |
 
-## 3) Key AWS Terms
+**Expected result at the end of this version:**
+- `docker compose up --build -d` starts all three services with no errors.
+- `http://localhost:8080` shows the web UI.
+- `curl http://localhost:8080/api/health` returns `{"status": "ok"}`.
 
-| Term | Plain Language Meaning |
-|---|---|
-| AWS | Amazon Web Services, the cloud provider used in this version. |
-| Region | A geographic cluster of AWS data centers. V3 uses `us-east-1`. |
-| IAM | Identity and Access Management. Who can do what in AWS. |
-| ECR | Elastic Container Registry. Private Docker image storage in AWS. |
-| ECS | Elastic Container Service. Runs Docker containers in AWS. |
-| Fargate | ECS mode where AWS manages the underlying servers. |
-| Task Definition | Blueprint for one container: image, CPU, memory, ports, logs. |
-| Service | Keeps the requested number of tasks running. |
-| Cluster | Logical namespace for ECS services. |
-| Security Group | Cloud firewall controlling inbound and outbound traffic. |
-| VPC | Your isolated AWS network. V3 creates a dedicated one. |
-| Subnet | A range of IP addresses inside a VPC, scoped to one Availability Zone. |
-| Internet Gateway (IGW) | The component that lets a VPC route traffic to/from the internet. |
-| Route Table | Rules that direct subnet traffic (e.g., `0.0.0.0/0 → IGW`). |
-| ENI | Elastic Network Interface. Fargate attaches one per task. |
-| Public IP | Internet-reachable address assigned to a Fargate task. |
-| CloudWatch Logs | AWS log storage for container output. |
-| Task Execution Role | IAM role ECS uses to pull images and write logs. |
+---
 
-## 4) Cost Reminder
+## 3) Builds on V2
 
-ECS Fargate tasks cost money while running. In this version you run three tasks, which is a small hourly cost during practice, but leaving them running for days can become real money. Run `./scripts/cleanup_v3.sh` after every practice session.
+Before you start V3, copy your personal V2 repository to your local machine and rename it to V3:
 
-## 5) Project Structure
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v02.git
+mv express-reliability-platform-v02 express-reliability-platform-v03
+cd express-reliability-platform-v03
+```
+
+Then sync your folder structure with the class repository V3 layout — V3 adds the Flask API and Web UI alongside the V2 Node service, and replaces `docker run` with `docker compose`.
+
+Class repository (scripts and canonical structure):
+
+- https://github.com/Here2ServeU/express-reliability-platform-course
+
+
+## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+
+1. Understand: Read `Version Purpose` and `Plain Language Context`.
+2. Build: Complete the container setup steps in order.
+3. Test: Validate UI and API endpoints from this README.
+4. Break: Stop one service container intentionally (for example, `docker compose stop flask-api`).
+5. Fix: Use `docker compose logs` and restart the failed service.
+6. Explain: Document what failed, why it failed, and what fixed it.
+7. Automate: Add script-based checks for startup and health validation.
+8. Improve: Re-run end-to-end checks and update reliability guardrails.
+
+## 5) What You Will Build
+
+- `node-api` (Express): receives `/health` and `/score` requests
+- `flask-api` (Flask): computes a simple risk score used by `node-api`
+
+## 6) Use Cases (V3)
+
+- Local reliability demo for interview, classroom, or architecture walkthroughs.
+- Integration testing across UI, Node, and Flask layers using one `docker compose` stack.
+- API observability and troubleshooting practice with container logs and health checks.
+- Safe sandbox for trying resilience ideas (timeouts, retries, fallback behavior) before production systems.
+
+## 7) Architecture Diagram (Mermaid)
+
+```mermaid
+flowchart LR
+  Browser --> UI[web-ui :80]
+  UI -->|/api/*| Node[node-api :3000]
+  Node --> Flask[flask-api :5000]
+```
+
+## 8) Project Structure
 
 ```text
 express-reliability-platform-v03/
+├── docker-compose.yml
 ├── apps/
 │   ├── flask-api/
+│   │   ├── app.py
+│   │   ├── requirements.txt
+│   │   └── Dockerfile
 │   ├── node-api/
+│   │   ├── index.js
+│   │   ├── package.json
+│   │   └── Dockerfile
 │   └── web-ui/
-├── docker-compose.yml
-├── scripts/
-│   ├── create_ecr_repos.sh
-│   ├── build_tag_push_ecr.sh
-│   ├── deploy_ecs.sh
-│   ├── get_public_ips.sh
-│   └── cleanup_v3.sh
+│       ├── index.html
+│       ├── nginx.conf
+│       └── Dockerfile
 └── README.md
 ```
 
-## 6) Setup
+## 9) Linux Prerequisites
 
-Install the AWS CLI, then configure credentials:
+Install:
+- Docker Engine
+- Docker Compose plugin (`docker compose`)
+- `curl`
 
-```sh
-aws configure
-```
+Optional tools used in troubleshooting:
+- `lsof`
+- `wget`
 
-Use:
+## 10) Quick Start (Linux)
 
-- Default region name: `us-east-1`
-- Default output format: `json`
-
-Validate authentication:
-
-```sh
-aws sts get-caller-identity
-```
-
-Expected: JSON containing `UserId`, `Account`, and `Arn`.
-
-## 7) Local Test Gate
-
-Before deploying to AWS, confirm the platform still works locally:
+1. Move into the v03 directory:
 
 ```sh
-docker compose up --build
+cd express-reliability-platform-v03
 ```
 
-Endpoints:
+2. Build and start all services in detached mode:
 
-- Node API: `http://localhost:3000`
-- Flask API: `http://localhost:5000`
-- Web UI: `http://localhost:8080`
+```sh
+docker compose up --build -d
+```
 
-Stop the stack:
+3. Open the UI:
+
+```text
+http://localhost:8080
+```
+
+4. Validate end-to-end flow:
+
+```sh
+curl http://localhost:8080/api/health
+curl "http://localhost:8080/api/score?input=test"
+```
+
+Expected example response:
+
+```json
+{
+  "version": "v2",
+  "flask_response": {
+    "input": "test",
+    "risk_score": 28,
+    "logic": "Risk based on input length (placeholder)"
+  }
+}
+```
+
+## 11) Promotion Path
+
+V3 is your local test gate with Docker Compose — the last fully-local stop before V4 pushes the same stack to AWS.
+
+1. Pass all local checks in this README.
+2. Commit your changes.
+3. Move to V4 to start your first AWS deployment (ECR, ECS, VPC, ALB, S3, DynamoDB).
+
+## 12) Day-2 Operations
+
+Check running services:
+
+```sh
+docker compose ps
+```
+
+View logs:
+
+```sh
+docker compose logs -f
+docker compose logs -f node-api
+docker compose logs -f flask-api
+docker compose logs -f web-ui
+```
+
+Stop everything:
 
 ```sh
 docker compose down
 ```
 
-## 8) AWS Deployment Steps
+## 13) Service-Level Validation
 
-Run from the `express-reliability-platform-v03` directory.
-
-**0. Make the scripts executable**
+Run a request through full stack:
 
 ```sh
-chmod +x scripts/
+curl "http://localhost:8080/api/score?input=reliability"
 ```
 
-**1. Create the ECR repositories:**
+Validate Node to Flask networking from inside the Node container:
 
 ```sh
-./scripts/create_ecr_repos.sh
+docker exec node-api wget -qO- http://flask-api:5000/health
+docker exec node-api wget -qO- "http://flask-api:5000/score?input=reliability"
 ```
 
-**2. Build, tag, and push all three images** (forces `linux/amd64` for Fargate):
+## 14) Troubleshooting
+
+Port `8080` already in use:
+
+- Change mapping in `docker-compose.yml` from `8080:80` to `8090:80`
+- Relaunch with:
 
 ```sh
-./scripts/build_tag_push_ecr.sh
+docker compose up --build -d
 ```
 
-> On Apple Silicon, builds go through QEMU emulation and take noticeably longer than native arm64 builds — this is expected.
-
-**3. Provision VPC, IAM, log groups, ECS cluster, task definitions, and Fargate services:**
+Port `5000` already in use on host:
 
 ```sh
-./scripts/deploy_ecs.sh
+lsof -i :5000
+kill -9 <PID>
 ```
 
-The script is idempotent and prints each step's progress. It will:
+On macOS, port `5000` is often used by Control Center / AirPlay Receiver. This V3 Compose file maps Flask to host port `5001` while keeping container port `5000` unchanged:
 
-1. Ensure the ECS service-linked role exists.
-2. Create or reuse VPC `reliability-platform-v03-vpc` (`10.42.0.0/16`).
-3. Create or reuse the Internet Gateway.
-4. Create or reuse one public subnet per AZ (up to three: `10.42.1.0/24`, `10.42.2.0/24`, `10.42.3.0/24`).
-5. Create or reuse a route table with `0.0.0.0/0 → IGW`, associated with all subnets.
-6. Create or reuse the ECS cluster.
-7. Create or reuse the security group (opens `80`, `3000`, `5000`).
-8. Create or reuse the IAM task execution role.
-9. Wait for IAM propagation.
-10. Pre-create CloudWatch log groups (`/ecs/v03/flask-api`, `/ecs/v03/node-api`, `/ecs/v03/web-ui`).
-11. Register task definitions and create or update services with `--force-new-deployment`.
-12. Print a summary table of services.
+```yaml
+ports:
+  - "5001:5000"
+```
 
-**4. Wait about 90 seconds, then fetch the public IPs:**
+Use `http://localhost:5001` from your browser or host terminal when calling Flask directly. Inside Docker, services still call `http://flask-api:5000`.
+
+API fails even though containers are up:
 
 ```sh
-./scripts/get_public_ips.sh
+docker compose logs -f node-api
+docker compose logs -f flask-api
+docker compose ps
 ```
 
-## 9) Validate from the Terminal
-
-**Service health (does AWS think the platform is up?):**
+Force clean rebuild:
 
 ```sh
-aws ecs describe-services \
-  --cluster reliability-platform-v03 \
-  --services flask-api node-api web-ui \
-  --region us-east-1 \
-  --query 'services[].{name:serviceName,desired:desiredCount,running:runningCount,pending:pendingCount,status:status}' \
-  --output table
+docker compose down --volumes --remove-orphans
+docker system prune -af
+docker compose up --build -d
 ```
 
-You want `running == desired == 1` and `status == ACTIVE` for all three.
-
-**Reachability test (HTTP 2xx == healthy):**
+## 15) Cleanup
 
 ```sh
-curl -sfv http://<web-ui-ip>/
-curl -sfv http://<flask-api-ip>:5000/
-curl -sfv http://<node-api-ip>:3000/
+docker compose down --remove-orphans
+docker image prune -f
 ```
 
-**Live application logs:**
+---
+## 16) Linux Command Reference
 
-```sh
-aws logs tail /ecs/v03/flask-api --since 5m --region us-east-1 --follow
-aws logs tail /ecs/v03/node-api  --since 5m --region us-east-1 --follow
-aws logs tail /ecs/v03/web-ui    --since 5m --region us-east-1 --follow
-```
+This section explains every Linux command used in this README.
 
-After hitting an endpoint with curl or a browser, request lines should appear in the log stream.
+`cd express-reliability-platform-v03`
+- `cd`: changes the current shell directory.
+- Used to run all subsequent Docker commands from the v03 project root.
 
-**Architecture sanity check** (confirms the amd64 fix worked):
+`docker compose up --build -d`
+- `docker compose up`: creates and starts services from `docker-compose.yml`.
+- `--build`: rebuilds images before starting containers.
+- `-d`: runs containers in detached (background) mode.
 
-```sh
-aws ecs describe-tasks --cluster reliability-platform-v03 \
-  --tasks $(aws ecs list-tasks --cluster reliability-platform-v03 \
-    --service-name flask-api --region us-east-1 \
-    --query 'taskArns[0]' --output text) \
-  --region us-east-1 \
-  --query 'tasks[0].{lastStatus:lastStatus,health:healthStatus}'
-```
+`curl http://localhost:8080/api/health`
+- `curl`: sends HTTP requests from terminal.
+- Used to verify the API endpoint is reachable via the UI proxy.
 
-`lastStatus: RUNNING` means the image was pulled and the container started successfully.
+`curl "http://localhost:8080/api/score?input=test"`
+- Same `curl` behavior, but this request includes a query string (`input=test`).
+- Used to test the reliability scoring flow.
 
-## 10) Validate from the Browser
+`docker compose ps`
+- Lists compose-managed containers and current states (`Up`, `Exited`, etc.).
+- Used for quick health checks of all services.
 
-The script in the previous section prints clickable URLs. Open them in any browser:
+`docker compose logs -f`
+- Shows logs from all services.
+- `-f`: follow mode (stream logs live).
 
-| Service | URL pattern | What to expect |
-|---|---|---|
-| **web-ui** | `http://<web-ui-ip>/` | Rendered HTML page (the user-facing site). |
-| **flask-api** | `http://<flask-api-ip>:5000/` | JSON response from the root route. |
-| **node-api** | `http://<node-api-ip>:3000/` | JSON response from the root route. |
+`docker compose logs -f node-api`
+- Streams logs only for the `node-api` service.
+- Used when debugging Express-side failures.
 
-Common endpoints worth trying:
+`docker compose logs -f flask-api`
+- Streams logs only for the `flask-api` service.
+- Used when debugging scoring logic or Flask errors.
 
-- `http://<flask-api-ip>:5000/health`
-- `http://<node-api-ip>:3000/health`
+`docker compose logs -f web-ui`
+- Streams logs for the Nginx UI container.
+- Used to debug reverse proxy or static file issues.
 
-> Public IPs are **ephemeral**. Every time ECS replaces a task (deploy, crash, manual stop), the new task gets a new public IP. For stable URLs, you would put an Application Load Balancer in front of the services — that's the kind of thing V4+ adds.
+`docker compose down`
+- Stops and removes compose resources for the current project.
 
-### What to do if a page doesn't load
+`docker exec node-api wget -qO- http://flask-api:5000/health`
+- `docker exec`: runs a command inside an existing container.
+- `node-api`: target container name.
+- `wget -qO- <url>`:
+  - `-q`: quiet output (no progress noise).
+  - `-O-`: write response body to stdout.
+- Used to test container-to-container network calls from Node to Flask.
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| Site can't be reached / timeout | Security group blocking, or task not running yet | Re-check service health; wait 60-90s after deploy |
-| Connection refused | App is binding to `127.0.0.1` instead of `0.0.0.0` inside the container | Update the app's listen address |
-| Page loads but missing data | Cross-service call failing inside the VPC | Check CloudWatch logs on the calling service |
-| 4xx/5xx | Application-level error | Check CloudWatch logs |
+`docker exec node-api wget -qO- "http://flask-api:5000/score?input=reliability"`
+- Same as above, but tests the Flask `/score` endpoint with query params.
 
-## 11) Validation Checklist
+`lsof -i :5000`
+- `lsof`: lists open files/process handles.
+- `-i :5000`: filters to processes listening/using port `5000`.
+- Used to find port conflicts on Linux hosts.
 
-- [ ] `aws sts get-caller-identity` returns your AWS account.
-- [ ] VPC `reliability-platform-v03-vpc` exists and has 2-3 public subnets associated with a route table that routes `0.0.0.0/0` to the IGW.
-- [ ] ECR repos exist for `reliability-platform/flask-api`, `reliability-platform/node-api`, and `reliability-platform/web-ui`, each with a `latest` tag built for `linux/amd64`.
-- [ ] CloudWatch log groups `/ecs/v03/flask-api`, `/ecs/v03/node-api`, `/ecs/v03/web-ui` exist.
-- [ ] ECS cluster `reliability-platform-v03` is `ACTIVE`.
-- [ ] Services `flask-api`, `node-api`, and `web-ui` each show `running=1` and `desired=1`.
-- [ ] `curl -sf http://<web-ui-ip>/` returns 2xx.
-- [ ] Opening the web-ui URL in a browser renders the platform HTML.
-- [ ] CloudWatch logs show request lines after you hit an endpoint.
+`kill -9 <PID>`
+- Sends signal `9` (`SIGKILL`) to force-stop a process.
+- Used only when a process blocks required ports and does not stop gracefully.
 
-## 12) Troubleshooting
+`docker compose down --volumes --remove-orphans`
+- `--volumes`: removes attached named and anonymous volumes.
+- `--remove-orphans`: removes containers not defined in current compose file.
+- Used to reset state when stale data or old containers cause failures.
 
-**Task fails to start with `CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`:**
+`docker system prune -af`
+- Removes unused Docker data (images, containers, networks, build cache).
+- `-a`: includes unused images, not only dangling ones.
+- `-f`: skips confirmation prompt.
+- Used to recover disk space and force fresh image rebuilds.
 
-You're on Apple Silicon and built without `--platform linux/amd64`. Re-run `./scripts/build_tag_push_ecr.sh` (it now passes the flag), then force a redeploy:
+`docker compose down --remove-orphans`
+- Standard shutdown plus orphan cleanup.
 
-```sh
-for SVC in flask-api node-api web-ui; do
-  aws ecs update-service --cluster reliability-platform-v03 \
-    --service $SVC --force-new-deployment --region us-east-1 > /dev/null
-done
-```
-
-**Task fails to start with `AccessDeniedException: logs:CreateLogGroup`:**
-
-This means a log group is missing. Pre-create them:
-
-```sh
-for SVC in flask-api node-api web-ui; do
-  aws logs create-log-group --log-group-name "/ecs/v03/$SVC" --region us-east-1 2>/dev/null || true
-done
-```
-
-Then bounce the services with `--force-new-deployment`.
-
-**`ServiceSchedulerInitiated` stop code:**
-
-Not an error — this is the scheduler stopping an old task as part of a normal deployment cycle. Check `runningCount` on the service; if it's `1`, the new task is healthy.
-
-**Service stuck at `running=0, pending=1`:**
-
-```sh
-aws ecs describe-services \
-  --cluster reliability-platform-v03 --services flask-api \
-  --region us-east-1 \
-  --query 'services[0].events[0:5]'
-```
-
-The most recent event message tells you why. Common causes: image pull failure, log group missing, subnet has no public IP route.
-
-**Cannot pull image (image exists in ECR but pull fails):**
-
-```sh
-aws ecr list-images --repository-name reliability-platform/flask-api --region us-east-1
-aws iam list-attached-role-policies --role-name ecsExecRole-v03
-```
-
-The execution role must have `AmazonECSTaskExecutionRolePolicy` attached.
-
-**Access denied on AWS calls:**
-
-```sh
-aws configure list
-aws sts get-caller-identity
-```
-
-**Browser shows blank page or won't connect:**
-
-- Confirm the task is `RUNNING`, not just `PENDING`.
-- Confirm the security group has inbound rules for `80`, `3000`, and `5000`.
-- Confirm the task's subnet has `map-public-ip-on-launch=true` (the deploy script sets this).
-- Check CloudWatch log groups under `/ecs/v03/<service-name>` for application errors.
-
-## 13) Cleanup
-
-Run cleanup immediately after each practice session:
-
-```sh
-./scripts/cleanup_v3.sh
-```
-
-The cleanup script tears down (in dependency order):
-
-1. Scales services to zero.
-2. Deletes ECS services.
-3. Deletes the ECS cluster.
-4. Deletes CloudWatch log groups (`/ecs/v03/*`).
-5. Deletes ECR repositories and all images.
-6. Detaches and deletes the IAM task execution role.
-7. Waits for Fargate ENIs to drain.
-8. Deletes the security group.
-9. Disassociates and deletes route tables.
-10. Deletes subnets.
-11. Detaches and deletes the Internet Gateway.
-12. Deletes the VPC.
-13. Prunes local Docker resources.
-
-After cleanup, verify nothing was left behind:
-
-```sh
-aws ecs list-clusters --region us-east-1
-aws ec2 describe-vpcs --filters Name=tag:Name,Values=reliability-platform-v03-vpc \
-  --query 'Vpcs[].VpcId' --output text --region us-east-1
-aws ecr describe-repositories --region us-east-1 \
-  --query 'repositories[?starts_with(repositoryName, `reliability-platform/`)].repositoryName'
-```
-
-All three commands should return empty / no matches.
-
-## 14) GitHub Actions OIDC Trust Policy
-
-V3 is deployed manually from your laptop, but the platform's security story already calls for OIDC instead of long-lived AWS access keys. The trust policy below is the V3-scoped version of what V4+ will use when GitHub Actions assumes an AWS role via OIDC.
-
-Replace `<your-github-owner>` with your GitHub org or username. The `sub` claim is pinned to the `express-reliability-platform-v03` repo specifically:
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": {
-      "Federated": "arn:aws:iam::730335276920:oidc-provider/token.actions.githubusercontent.com"
-    },
-    "Action": "sts:AssumeRoleWithWebIdentity",
-    "Condition": {
-      "StringEquals": {
-        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-      },
-      "StringLike": {
-        "token.actions.githubusercontent.com:sub": "repo:<your-github-owner>/express-reliability-platform-v03:*"
-      }
-    }
-  }]
-}
-```
-
-**Tightening the `sub` claim (recommended for prod):**
-
-| Goal | Replace `:*` with |
-|---|---|
-| Only the `main` branch | `:ref:refs/heads/main` |
-| Only a GitHub environment named `production` | `:environment:production` |
-| Only tagged releases | `:ref:refs/tags/*` |
-
-You do not need this policy to complete V3, but creating the OIDC provider and role now means V4's GitHub Actions workflow can assume it without any code changes.
-
-## 15) Next Version Preview
-
-Version 4 replaces the manual AWS commands with Terraform, so deployment and cleanup become repeatable infrastructure-as-code workflows.
+`docker image prune -f`
+- Removes dangling/unused images to reclaim storage.
+- `-f`: skips interactive confirmation.
 
 ---
 
-## 16) Web UI Guide — `apps/web-ui/index.html`
+## 17) Web UI Guide — `apps/web-ui/index.html`
 
 ### Platform Continuity
 
-The V3 UI keeps the same V2 regulated readiness console and evolves it with cloud promotion checks. Students should experience this as the same platform growing, not as a separate app.
+V3 is the baseline multi-service user experience for the course platform. The `index.html` introduces the regulated readiness console, the four scoring domains, the V3 → V10 growth path, the market-inspired capability map, and the capstone creator preview. Later versions keep this same platform shell and add one new maturity layer at a time.
 
 ### What the V3 UI Does
 
-The V3 `index.html` is the cloud promotion readiness console. It shows how the V2 platform starts becoming suitable for regulated cloud environments by checking:
+The V3 `index.html` is the first multi-service version of the T2S regulated platform readiness console. It gives students a simple browser-based way to explain what the platform is checking for in fintech and healthcare environments:
 
-- Reliability of the promotion path from local work to cloud environments.
-- Cost awareness for dev, staging, and production targets.
-- Security maturity through IAM, OIDC, and avoidance of long-lived static keys.
-- Intelligence maturity through early telemetry and deployment signals.
+- Reliability: availability, latency, and incident posture.
+- Cost efficiency: cloud spend discipline and utilization awareness.
+- Security and compliance: evidence, access, and audit controls.
+- Intelligence: early AI, AIOps, and MLOps maturity.
+
+The page also keeps the original V2 backend integration through the **Call Score** button. That button calls:
+
+```text
+/api/score?input=<platform-name>
+```
 
 ### What It Is Used For
 
-Use the V3 UI when explaining whether a bank or hospital workload is ready to move from local development into cloud-hosted environments. Students can use it during demos to show that regulated delivery is not only about "does the app run?" but also "can we prove identity, environment separation, and release evidence?"
+Use the V3 UI to introduce the platform concept to students, interviewers, or clients before the system becomes more advanced in later versions. It is intentionally simple: students enter a platform name, choose a few readiness options, and generate a JSON scorecard.
 
-The UI is useful for:
+This version is useful for:
 
-- Practicing release gate conversations.
-- Explaining dev, staging, and prod readiness.
-- Connecting cloud deployment work to regulated audit expectations.
-- Showing how V3 prepares the platform for V4 observability.
+- Demonstrating the UI -> Node API -> Flask API request path.
+- Explaining why regulated organizations care about reliability, cost, security, and intelligent operations.
+- Showing the full V3 → V10 learning path from the first working UI.
 
 ### How to Read the Results
 
-The UI generates a JSON scorecard with four domain scores and a readiness band.
+The readiness output is JSON so students can practice reading structured operational evidence.
+
+Key fields:
 
 | Field | Meaning |
 |---|---|
-| `version` | Confirms this is the V3 cloud promotion assessment. |
-| `platform` | The workload or application being evaluated. |
-| `environment` | The selected target environment: `dev`, `staging`, or `prod`. |
-| `readiness_score` | Overall score from 0 to 100. |
-| `readiness_band` | Plain-language result such as `controlled pilot` or `production ready`. |
-| `domains.security_compliance` | Strongly affected by identity maturity and release evidence. |
-| `next` | The next capability students should build in V4. |
+| `readiness_score` | Overall score from 0 to 100 across the four domains. |
+| `readiness_grade` | Plain-language interpretation such as `controlled pilot` or `production ready`. |
+| `domains.reliability` | How ready the platform is from a stability and availability perspective. |
+| `domains.cost_efficiency` | Whether spend and utilization look controlled. |
+| `domains.security_compliance` | Whether audit evidence and security controls are strong enough. |
+| `domains.intelligence_aiops_mlops` | Whether the platform has automation, AIOps, or MLOps maturity. |
+| `next_student_builds` | What students will add in later versions. |
 
-Read the result this way:
+Suggested interpretation:
 
-- A high score means the platform has a credible cloud promotion story.
-- A lower security score usually means IAM, OIDC, or release evidence needs attention.
-- A lower reliability score usually means the environment gate is not ready for regulated workloads.
+- `85-100`: Strong candidate for production-style discussion.
+- `70-84`: Good controlled pilot; document remaining gaps.
+- `55-69`: Needs targeted improvement before regulated use.
+- `<55`: High risk; fix reliability, evidence, or automation gaps first.

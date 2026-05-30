@@ -72,7 +72,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 7: Runbooks, Incident Response, Release Gates, Operational Evidence</span>
+      <span class="badge">Version 8: AIOps</span>
     </div>
   </header>
 
@@ -86,42 +86,38 @@
     <div class="workspace">
       <section aria-labelledby="assessment-title">
         <h2 id="assessment-title">V7 Readiness Assessment</h2>
-        <p class="muted">V7 keeps the same platform console and adds the operating model: <strong>tested runbooks</strong>, an <strong>incident response</strong> workflow, <strong>release gates</strong> on every change, and <strong>operational evidence</strong> for audit.</p>
+        <p class="muted">V7 keeps the same platform console and adds AIOps triage: incident signal intake, risk scoring, severity bands, and recommended first action.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">86</strong><small>Tested runbooks</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">80</strong><small>Controlled releases</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">84</strong><small>Auditable evidence</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">74</strong><small>Structured incidents</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">88</strong><small>Signal-based severity</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">82</strong><small>Reduced alert toil</small></div>
+          <div class="metric"><span>Security</span><strong id="securityScore">86</strong><small>Evidence files</small></div>
+          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">88</strong><small>AIOps summary</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
-            Incident scenario
-            <input id="platformInput" value="payment-latency-sev2" autocomplete="off" />
+            Service
+            <input id="platformInput" value="node-api" autocomplete="off" />
           </label>
           <label>
-            Runbook maturity
-            <select id="runbook"><option value="tested">Tested runbook</option><option value="draft">Draft runbook</option><option value="none">No runbook</option></select>
+            p95 latency
+            <select id="latency"><option value="normal">Normal</option><option value="elevated">Elevated</option><option value="critical">Critical</option></select>
           </label>
           <label>
-            Incident response
-            <select id="response"><option value="oncall">On-call rota with severity levels</option><option value="ad-hoc">Ad-hoc response</option><option value="none">No response process</option></select>
+            Error rate
+            <select id="errors"><option value="low">Under 1%</option><option value="medium">1% to 5%</option><option value="high">Over 5%</option></select>
           </label>
           <label>
-            Release gates
-            <select id="gates"><option value="enforced">PR plan + approval + change window</option><option value="partial">PR review only</option><option value="none">No gates</option></select>
-          </label>
-          <label>
-            Operational evidence
-            <select id="evidence"><option value="complete">Timeline, runbook trace, recovery proof</option><option value="partial">Partial evidence</option><option value="missing">Missing evidence</option></select>
+            Blast radius
+            <select id="blast"><option value="single">Single service</option><option value="multi">Multiple services</option><option value="customer">Customer-facing outage</option></select>
           </label>
           <div class="actions">
             <button type="submit">Run V7 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate runbooks, incident response, release gates, and operational evidence.</pre>
+        <pre id="output">Ready to evaluate AIOps incident risk.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
@@ -132,9 +128,9 @@
           <div class="version"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
           <div class="version"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></div>
           <div class="version"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></div>
-          <div class="version current"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></div>
-          <div class="version"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
-          <div class="version"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
+          <div class="version"><strong>V6</strong><span>Runbooks, incident response, release gates, operational evidence.</span></div>
+          <div class="version current"><strong>V7</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
+          <div class="version"><strong>V8</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
           <div class="version"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></div>
           <div class="version"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></div>
         </div>
@@ -143,7 +139,7 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V7, the platform adds <strong>runbooks, incident response, release gates, and operational evidence</strong>.</p>
+      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V7, the platform adds <strong>AIOps incident intelligence</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -160,14 +156,14 @@
       <div class="pill-row">
         <span class="pill">HIPAA-aware evidence</span>
         <span class="pill">PCI/SOX-style audit trail</span>
-        <span class="pill">Tested runbook</span>
-        <span class="pill">On-call rotation</span>
-        <span class="pill">Severity classification</span>
-        <span class="pill">PR plan-only workflow</span>
-        <span class="pill">Approval gate</span>
-        <span class="pill">Change window</span>
-        <span class="pill">Incident timeline</span>
-        <span class="pill">Recovery validation</span>
+        <span class="pill">SLO and SLI scoring</span>
+        <span class="pill">FinOps guardrails</span>
+        <span class="pill">AIOps triage</span>
+        <span class="pill">MLOps readiness</span>
+        <span class="pill">Risk score</span>
+        <span class="pill">Severity band</span>
+        <span class="pill">Incident summary</span>
+        <span class="pill">Slack-ready alert</span>
       </div>
 
       <div class="creator-panel">
@@ -197,61 +193,35 @@
 
     function runAssessment(event) {
       event.preventDefault();
-      const scenario = document.getElementById("platformInput").value.trim() || "regulated-incident";
+      const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
+      const extra = {};
 
-      const runbook  = document.getElementById("runbook").value;
-      const response = document.getElementById("response").value;
-      const gates    = document.getElementById("gates").value;
-      const evidence = document.getElementById("evidence").value;
-
-      // Reliability is anchored on runbook + incident-response maturity:
-      // a tested runbook plus an on-call rota means the team can detect,
-      // act, and recover predictably under pressure.
-      const reliability = clamp(
-        92
-        - (runbook  === "none" ? 30 : runbook  === "draft"   ? 12 : 0)
-        - (response === "none" ? 22 : response === "ad-hoc"  ? 10 : 0)
-      );
-
-      // Cost reflects how well release gates control blast radius —
-      // unguarded changes drive the most expensive incidents.
-      const cost = clamp(
-        86
-        - (gates    === "none" ? 22 : gates    === "partial" ? 8  : 0)
-        - (evidence === "missing" ? 6 : 0)
-      );
-
-      // Security/compliance lives or dies on auditable evidence.
-      // No timeline + no recovery proof = no audit.
-      const security = clamp(
-        90
-        - (evidence === "missing" ? 28 : evidence === "partial" ? 10 : 0)
-        - (gates    === "none"    ? 12 : gates    === "partial" ? 4  : 0)
-      );
-
-      // Intelligence/AIOps readiness improves when incident data is
-      // structured: tested runbooks + complete evidence are what V8's
-      // pattern detection feeds on.
-      const intelligence = clamp(
-        72
-        + (runbook  === "tested"   ? 8 : 0)
-        + (evidence === "complete" ? 6 : 0)
-        + (response === "oncall"   ? 4 : 0)
-      );
-
+      const latency = document.getElementById("latency").value;
+      const errors = document.getElementById("errors").value;
+      const blast = document.getElementById("blast").value;
+      let risk = 2;
+      risk += latency === "critical" ? 3 : latency === "elevated" ? 1 : 0;
+      risk += errors === "high" ? 3 : errors === "medium" ? 1 : 0;
+      risk += blast === "customer" ? 3 : blast === "multi" ? 2 : 0;
+      const reliability = clamp(96 - risk * 6);
+      const cost = clamp(88 - risk * 3);
+      const security = clamp(90 - (risk >= 7 ? 8 : 0));
+      const intelligence = clamp(92 + (risk >= 7 ? 4 : 0));
+      extra.incident_risk_score = Math.min(10, risk);
+      extra.severity = risk >= 9 ? "critical" : risk >= 7 ? "high" : risk >= 4 ? "medium" : "low";
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
-      document.getElementById("costScore").textContent        = cost;
-      document.getElementById("securityScore").textContent    = security;
+      document.getElementById("costScore").textContent = cost;
+      document.getElementById("securityScore").textContent = security;
       document.getElementById("intelligenceScore").textContent = intelligence;
 
       output.textContent = JSON.stringify({
-        scenario,
+        platform,
         version: "v7",
         readiness_score: total,
-        readiness_band: grade(total),
-        focus: "Runbooks, incident response, release gates, operational evidence",
+        readiness_grade: grade(total),
+        focus: "AIOps incident intelligence",
         domains: {
           reliability,
           cost_efficiency: cost,
@@ -259,12 +229,13 @@
           intelligence_aiops_mlops: intelligence
         },
         version_adds: [
-          "Runbooks",
-          "Incident response",
-          "Release gates",
-          "Operational evidence"
-        ],
-        next: "Move to V8 for AIOps risk scoring, incident summaries, and automated triage."
+          "Risk score",
+          "Severity band",
+          "Incident summary",
+          "Slack-ready alert"
+],
+        next: "Move to V8 for Slack, ServiceNow, Jira, and chaos drill integration.",
+        ...extra
       }, null, 2);
     }
 

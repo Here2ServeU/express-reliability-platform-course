@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T2S Express Reliability Platform | V3</title>
+  <title>T2S Express Reliability Platform | V2</title>
   <style>
     :root {
       --bg: #f7f9fc;
@@ -14,54 +14,329 @@
       --teal: #087f8c;
       --blue: #2457a6;
       --gold: #b7791f;
+      --green: #18794e;
+      --red: #b42318;
       --shadow: 0 14px 34px rgba(23, 32, 51, 0.1);
     }
-    * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--ink); font-family: Arial, Helvetica, sans-serif; line-height: 1.5; }
-    header { border-bottom: 1px solid var(--line); background: #ffffff; }
-    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
-    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 0; }
-    .brand { display: grid; gap: 2px; }
-    .brand strong { font-size: 1.05rem; }
-    .brand span, .eyebrow, .muted { color: var(--muted); }
-    .badge { display: inline-flex; align-items: center; min-height: 34px; border: 1px solid rgba(8, 127, 140, 0.24); border-radius: 8px; color: var(--teal); background: rgba(8, 127, 140, 0.08); font-weight: 700; padding: 6px 10px; white-space: nowrap; }
-    main { padding: 28px 0 44px; }
-    .workspace { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr); gap: 22px; align-items: start; }
-    section, aside, .metric, .platform, .version { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); }
-    section, aside { padding: 22px; }
-    h1, h2, h3, p { margin-top: 0; }
-    h1 { max-width: 820px; margin-bottom: 12px; font-size: clamp(2rem, 4vw, 3.7rem); line-height: 1.02; letter-spacing: 0; }
-    h2 { margin-bottom: 14px; font-size: 1.25rem; }
-    h3 { margin-bottom: 8px; font-size: 1rem; }
-    .hero { margin-bottom: 22px; padding: 28px 0 8px; }
-    .hero p { max-width: 780px; color: var(--muted); font-size: 1.05rem; }
-    .score-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
-    .metric { min-height: 122px; padding: 16px; box-shadow: none; }
-    .metric span { display: block; color: var(--muted); font-size: 0.82rem; font-weight: 700; text-transform: uppercase; }
-    .metric strong { display: block; margin: 9px 0 4px; color: var(--blue); font-size: 2rem; line-height: 1; }
-    .assessment { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-    label { display: grid; gap: 7px; color: #334155; font-size: 0.92rem; font-weight: 700; }
-    input, select { width: 100%; min-height: 42px; border: 1px solid #c8d3e1; border-radius: 8px; color: var(--ink); background: #ffffff; font: inherit; padding: 9px 10px; }
-    button { min-height: 44px; border: 0; border-radius: 8px; color: #ffffff; background: var(--teal); cursor: pointer; font: inherit; font-weight: 800; padding: 10px 14px; }
-    button:hover { background: #066b76; }
-    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
-    pre { min-height: 140px; overflow: auto; margin: 16px 0 0; border: 1px solid #d8e4ef; border-radius: 8px; background: #0f172a; color: #e2e8f0; padding: 14px; white-space: pre-wrap; }
-    .versions { display: grid; gap: 10px; }
-    .version { display: grid; grid-template-columns: 68px 1fr; gap: 12px; padding: 12px; box-shadow: none; }
-    .version strong { color: var(--blue); }
-    .version.current { border-color: rgba(8, 127, 140, 0.5); background: rgba(8, 127, 140, 0.06); }
-    .platforms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-    .platform { padding: 12px; box-shadow: none; }
-    .platform strong { display: block; margin-bottom: 3px; }
-    .platform span { color: var(--muted); font-size: 0.9rem; }
-    .capstone { margin-top: 22px; }
-    .creator-panel { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 12px; }
-    .creator-credit { margin-top: 12px; border-left: 4px solid var(--gold); background: #fff8eb; border-radius: 8px; padding: 12px; color: #5f420c; font-weight: 700; }
-    .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .pill { border: 1px solid var(--line); border-radius: 8px; background: #f8fbfd; color: #334155; font-size: 0.84rem; font-weight: 700; padding: 6px 8px; }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+
+    header {
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 0;
+    }
+
+    .brand {
+      display: grid;
+      gap: 2px;
+    }
+
+    .brand strong {
+      font-size: 1.05rem;
+    }
+
+    .brand span,
+    .eyebrow,
+    .muted {
+      color: var(--muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      border: 1px solid rgba(8, 127, 140, 0.24);
+      border-radius: 8px;
+      color: var(--teal);
+      background: rgba(8, 127, 140, 0.08);
+      font-weight: 700;
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+
+    main {
+      padding: 28px 0 44px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    section,
+    aside,
+    .metric,
+    .platform,
+    .version {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    section,
+    aside {
+      padding: 22px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 820px;
+      margin-bottom: 12px;
+      font-size: clamp(2rem, 4vw, 3.7rem);
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin-bottom: 14px;
+      font-size: 1.25rem;
+    }
+
+    h3 {
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .hero {
+      margin-bottom: 22px;
+      padding: 28px 0 8px;
+    }
+
+    .hero p {
+      max-width: 780px;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      min-height: 122px;
+      padding: 16px;
+      box-shadow: none;
+    }
+
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      margin: 9px 0 4px;
+      color: var(--blue);
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .assessment {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: #334155;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid #c8d3e1;
+      border-radius: 8px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+      padding: 9px 10px;
+    }
+
+    button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--teal);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      padding: 10px 14px;
+    }
+
+    button:hover {
+      background: #066b76;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .secondary {
+      border: 1px solid var(--line);
+      color: var(--ink);
+      background: #ffffff;
+    }
+
+    .secondary:hover {
+      background: #eef4f8;
+    }
+
+    pre {
+      min-height: 140px;
+      overflow: auto;
+      margin: 16px 0 0;
+      border: 1px solid #d8e4ef;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 14px;
+      white-space: pre-wrap;
+    }
+
+    .versions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .version {
+      display: grid;
+      grid-template-columns: 68px 1fr;
+      gap: 12px;
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    .version strong {
+      color: var(--blue);
+    }
+
+    .version.current {
+      border-color: rgba(8, 127, 140, 0.5);
+      background: rgba(8, 127, 140, 0.06);
+    }
+
+    .platforms {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .platform {
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    .platform strong {
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .platform span {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .capstone {
+      margin-top: 22px;
+    }
+
+    .creator-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 12px;
+    }
+
+    .creator-credit {
+      margin-top: 12px;
+      border-left: 4px solid var(--gold);
+      background: #fff8eb;
+      border-radius: 8px;
+      padding: 12px;
+      color: #5f420c;
+      font-weight: 700;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #f8fbfd;
+      color: #334155;
+      font-size: 0.84rem;
+      font-weight: 700;
+      padding: 6px 8px;
+    }
+
     @media (max-width: 900px) {
-      .workspace, .assessment, .score-grid, .platforms { grid-template-columns: 1fr; }
-      .topbar, .creator-panel { align-items: stretch; flex-direction: column; grid-template-columns: 1fr; }
+      .workspace,
+      .assessment,
+      .score-grid,
+      .platforms {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar,
+      .creator-panel {
+        align-items: stretch;
+        flex-direction: column;
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -72,7 +347,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 3: Cloud Promotion</span>
+      <span class="badge">Version 2: Simple Platform Check</span>
     </div>
   </header>
 
@@ -80,51 +355,102 @@
     <div class="hero">
       <p class="eyebrow">Reliability, FinOps, security, compliance, AIOps, and MLOps in one learning path</p>
       <h1>Regulated Platform Readiness Console</h1>
-      <p>Banks, hospitals, and health-tech teams can use this student-built platform to check whether a system is reliable, cost efficient, secure, compliant, and intelligent enough for high-trust operations.</p>
+      <p>
+        Banks, hospitals, and health-tech teams can use this student-built platform to check whether a system is
+        reliable, cost efficient, secure, compliant, and intelligent enough for high-trust operations.
+      </p>
     </div>
 
     <div class="workspace">
       <section aria-labelledby="assessment-title">
-        <h2 id="assessment-title">V3 Readiness Assessment</h2>
-        <p class="muted">V3 keeps the same readiness console and adds cloud promotion checks: identity, environments, release evidence, and deployment discipline.</p>
+        <h2 id="assessment-title">V2 Readiness Assessment</h2>
+        <p class="muted">
+          V2 keeps the experience simple: collect a few operational signals, call the backend scoring API,
+          and show a plain-language readiness result.
+        </p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">76</strong><small>Cloud routing and promotion gate</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">70</strong><small>Right-sized dev and staging</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">74</strong><small>IAM, OIDC, no static keys</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">58</strong><small>Early deployment signals</small></div>
+          <div class="metric">
+            <span>Reliability</span>
+            <strong id="reliabilityScore">72</strong>
+            <small>Availability, latency, incidents</small>
+          </div>
+          <div class="metric">
+            <span>Cost</span>
+            <strong id="costScore">68</strong>
+            <small>Spend discipline and utilization</small>
+          </div>
+          <div class="metric">
+            <span>Security</span>
+            <strong id="securityScore">70</strong>
+            <small>Evidence, access, audit controls</small>
+          </div>
+          <div class="metric">
+            <span>Intelligence</span>
+            <strong id="intelligenceScore">54</strong>
+            <small>AI, AIOps, MLOps automation</small>
+          </div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
             Platform or application
-            <input id="platformInput" value="member-payment-api" autocomplete="off" />
+            <input id="input" value="claims-payment-api" autocomplete="off" />
           </label>
           <label>
-            Target environment
-            <select id="env"><option value="dev">dev</option><option value="staging">staging</option><option value="prod">prod</option></select>
+            Regulated industry
+            <select id="industry">
+              <option value="fintech">Fintech / banking</option>
+              <option value="healthcare">Healthcare / hospital</option>
+              <option value="both">Fintech + healthcare</option>
+            </select>
           </label>
           <label>
-            Identity maturity
-            <select id="identity"><option value="oidc">OIDC and scoped IAM</option><option value="partial">Partial IAM boundaries</option><option value="keys">Long-lived access keys</option></select>
+            Monthly cloud spend
+            <select id="spend">
+              <option value="low">Under $25k</option>
+              <option value="medium">$25k to $250k</option>
+              <option value="high">Over $250k</option>
+            </select>
           </label>
           <label>
-            Release evidence
-            <select id="evidence"><option value="complete">Complete release evidence</option><option value="partial">Partial evidence</option><option value="missing">Missing evidence</option></select>
+            Recent incident count
+            <select id="incidents">
+              <option value="0">0 incidents</option>
+              <option value="1">1 to 2 incidents</option>
+              <option value="3">3 or more incidents</option>
+            </select>
+          </label>
+          <label>
+            Security evidence
+            <select id="evidence">
+              <option value="complete">Complete audit evidence</option>
+              <option value="partial">Partial evidence</option>
+              <option value="missing">Missing evidence</option>
+            </select>
+          </label>
+          <label>
+            Intelligence maturity
+            <select id="aiops">
+              <option value="manual">Manual triage</option>
+              <option value="alerts">Automated alerts</option>
+              <option value="aiops">AIOps recommendations</option>
+            </select>
           </label>
           <div class="actions">
-            <button type="submit">Run V3 Readiness Check</button>
+            <button type="submit">Run Readiness Check</button>
+            <button class="secondary" type="button" onclick="runApiScore()">Call V2 API Score</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate cloud promotion readiness.</pre>
+        <pre id="output">Ready to score a regulated platform.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
         <h2 id="path-title">V2 to Capstone Growth Path</h2>
         <div class="versions">
-          <div class="version"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></div>
-          <div class="version current"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></div>
+          <div class="version current"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></div>
+          <div class="version"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></div>
           <div class="version"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
           <div class="version"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></div>
           <div class="version"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></div>
@@ -139,7 +465,10 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V3, the platform adds <strong>Cloud identity and promotion gates</strong>.</p>
+      <p class="muted">
+        The learning path borrows the major capability patterns seen across leading observability, AIOps,
+        security, and FinOps products, then rebuilds them as a teachable student platform.
+      </p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -160,10 +489,6 @@
         <span class="pill">FinOps guardrails</span>
         <span class="pill">AIOps triage</span>
         <span class="pill">MLOps readiness</span>
-        <span class="pill">ECR/ECS deployment story</span>
-        <span class="pill">Environment promotion</span>
-        <span class="pill">OIDC and IAM boundaries</span>
-        <span class="pill">CloudWatch evidence</span>
       </div>
 
       <div class="creator-panel">
@@ -173,7 +498,9 @@
         </label>
         <button type="button" onclick="saveCreator()">Save Creator</button>
       </div>
-      <div class="creator-credit" id="creatorCredit">Capstone preview: created by a T2S student engineer.</div>
+      <div class="creator-credit" id="creatorCredit">
+        Capstone preview: created by a T2S student engineer.
+      </div>
     </section>
   </main>
 
@@ -193,16 +520,18 @@
 
     function runAssessment(event) {
       event.preventDefault();
-      const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
-      const extra = {};
 
-      const env = document.getElementById("env").value;
-      const identity = document.getElementById("identity").value;
+      const platform = document.getElementById("input").value.trim() || "regulated-platform";
+      const industry = document.getElementById("industry").value;
+      const spend = document.getElementById("spend").value;
+      const incidents = Number(document.getElementById("incidents").value);
       const evidence = document.getElementById("evidence").value;
-      const reliability = clamp(80 + (env === "prod" ? 4 : 0) - (evidence === "missing" ? 16 : evidence === "partial" ? 7 : 0));
-      const cost = clamp(76 - (env === "prod" ? 5 : 0));
-      const security = clamp(86 - (identity === "keys" ? 32 : identity === "partial" ? 12 : 0));
-      const intelligence = clamp(64 + (evidence === "complete" ? 8 : 0));
+      const aiops = document.getElementById("aiops").value;
+
+      const reliability = clamp(82 - incidents * 12 + (industry === "both" ? 4 : 0));
+      const cost = clamp(78 - (spend === "high" ? 16 : spend === "medium" ? 7 : 0));
+      const security = clamp(84 - (evidence === "missing" ? 28 : evidence === "partial" ? 12 : 0));
+      const intelligence = clamp(aiops === "aiops" ? 86 : aiops === "alerts" ? 70 : 52);
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
@@ -212,25 +541,42 @@
 
       output.textContent = JSON.stringify({
         platform,
-        version: "v3",
+        version: "v2",
         readiness_score: total,
         readiness_grade: grade(total),
-        focus: "Cloud identity and promotion gates",
+        regulated_focus: industry,
         domains: {
           reliability,
           cost_efficiency: cost,
           security_compliance: security,
           intelligence_aiops_mlops: intelligence
         },
-        version_adds: [
-          "ECR/ECS deployment story",
-          "Environment promotion",
-          "OIDC and IAM boundaries",
-          "CloudWatch evidence"
-],
-        next: "Move to V4 for real monitoring, dashboards, and simulation evidence.",
-        ...extra
+        next_student_builds: [
+          "Add real telemetry and dashboards in V4",
+          "Add Kubernetes and Terraform controls in V5-V7",
+          "Add AIOps, ITSM, chaos, and healthcare telemetry in V8-V10",
+          "Personalize the final regulated platform in capstone"
+        ]
       }, null, 2);
+    }
+
+    async function runApiScore() {
+      const value = encodeURIComponent(document.getElementById("input").value.trim() || "regulated-platform");
+      try {
+        const response = await fetch(`/api/score?input=${value}`);
+        const data = await response.json();
+        output.textContent = JSON.stringify({
+          source: "V2 backend API",
+          result: data
+        }, null, 2);
+      } catch (error) {
+        output.textContent = JSON.stringify({
+          source: "V2 backend API",
+          status: "unavailable",
+          message: "Start the Docker Compose stack, then try the API score again.",
+          error: error.message
+        }, null, 2);
+      }
     }
 
     function saveCreator() {

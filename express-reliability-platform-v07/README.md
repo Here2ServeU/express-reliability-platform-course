@@ -1,4 +1,4 @@
-# Express Reliability Platform V7 — Organized Infrastructure and CI/CD
+# Express Reliability Platform V7 — AIOps Incident Management
 
 ## 1) Builds on V6
 
@@ -16,393 +16,557 @@ Use the main class repository for scripts and canonical structure:
 
 ## 2) Version Purpose
 
-In Version 6, all your Terraform lives in one folder. That works when you are the only engineer. In a real company with ten engineers, one person changing the EKS node size can accidentally destroy the VPC networking. Or two people run `terraform apply` simultaneously and corrupt the state.
+In Version 7 you organized infrastructure into independent layers and let GitHub Actions deploy them on every `git push`. The platform is now structured and automated — but when something breaks at 2 a.m., a human still has to read every alert and decide what matters.
 
-Version 7 separates infrastructure into independent **layers** — network in one folder, compute in another. Each layer has its own state file. A problem in one layer cannot affect another. Version 7 also adds **GitHub Actions** so every `git push` automatically deploys your platform without any manual commands.
+Version 8 adds **AIOps incident management**: you take your platform's health signals (latency, error rate, restarts, blast radius), turn them into a **risk score from 0 to 100**, classify the **severity**, write a **machine-readable incident summary**, and — when the score is high enough — fire a **Slack alert automatically**. You practice this loop locally first, then promote it through `dev → staging → prod` with guardrails.
 
-**V7 Goal:** Separate Terraform into `shared` (VPC, network) and `live` (EKS, apps) layers. Connect them with remote state data sources. Automate the complete deployment with a three-job GitHub Actions pipeline.
+**V7 Goal:** Convert raw signals into a scored, summarized, and routed incident — with a JSON evidence file written for every run and Slack notification wired into the scoring script.
 
 ---
 
 ## 3) Plain Language Context
 
-**The skyscraper construction analogy.** Building a skyscraper takes years. First the foundation — concrete piles driven deep into bedrock. Then the structural steel frame. Then floors. Then interior finishings. Each phase builds on the previous one, and each floor is independent: you can renovate the 30th floor without touching the 15th floor or the foundation.
+**The emergency-room triage analogy.** A triage nurse takes every patient's vital signs, assigns a priority number (1 = immediate, 5 = can wait), and hands the doctor a card: *"Priority 2. Elevated heart rate and blood pressure. Recommend ECG."* The doctor doesn't re-check every patient — they trust the triage.
 
-Cloud infrastructure should work the same way. The VPC (your network foundation) is built once and changed rarely. The EKS cluster (a floor) is rebuilt more frequently as you iterate. The application layer (tenant improvements) changes every deployment. Each layer is independent, with clear interfaces between them. Problems in one layer cannot cascade to others.
+V7 builds the same thing for your platform. Instead of patients you have services. Instead of vital signs you have latency, error rate, restart count, and how many services failed together. The scoring script is the nurse: it reads the numbers, produces a priority (`low` / `medium` / `high`), and hands you a card (`recommended_action`) — and pages the on-call via Slack when the priority is high.
+
+**Why a bank or hospital needs this.** Large regulated organizations receive thousands of monitoring alerts per day. No human team can review each one. AIOps tooling scores every alert, writes evidence for auditors, and surfaces only the ones that need a person — so engineers spend their time fixing real problems instead of reading noise.
 
 **Key terms in plain language:**
 
 | Term | Plain Language Meaning |
 |---|---|
-| **Layer separation** | Each Terraform folder manages one layer. Each has its own state file. Changes to one cannot corrupt another. |
-| **Bootstrap layer** | The state backend itself: S3 bucket, DynamoDB lock table, and ECR repos. Built once before any other layer. |
-| **Shared layer** | The network foundation: VPC, subnets, internet gateway. Built once. Referenced by everything else. |
-| **Live layer** | The compute layer: EKS cluster, ALB, node groups. Rebuilt frequently as you iterate. |
-| **Remote state** | A Terraform data source that reads outputs from another layer's S3 state file. |
-| **State isolation** | Each layer's state lives at a different S3 key. Destroying `live` state does not affect `shared` state. |
-| **Promotion order** | Always deploy bottom-up: `bootstrap` → `shared` → `live`. Always destroy top-down: `live` → `shared` → `bootstrap`. |
-| **GitHub Actions** | GitHub's built-in CI/CD. Runs YAML-defined workflows triggered by `git push`. |
-| **Workflow** | A `.github/workflows/FILENAME.yml` file defining jobs and their steps. |
-| **Job** | One unit of work in a workflow. Runs on a fresh Ubuntu VM. Can depend on other jobs. |
-| **Step** | One action within a job. Either a shell command (`run:`) or a reusable action (`uses:`). |
-| **needs: deploy-shared** | This job waits for `deploy-shared` to succeed before starting. Enforces correct order. |
-| **OIDC authentication** | Passwordless AWS auth. GitHub gets a token AWS trusts. No keys stored in GitHub. |
-| **id-token: write** | Permission required for OIDC. Allows the job to request a GitHub identity token. |
-| **secrets.AWS_ROLE_ARN** | A GitHub Secret holding the IAM role ARN. Set in Repository → Settings → Secrets. |
+| **AIOps** | Using automation and simple decision logic to help operations teams detect, prioritize, and fix incidents faster. |
+| **Incident signal** | A measurable sign that something is wrong — high latency, high error rate, pod restarts, multiple services failing. |
+| **SLI** | The measured value (for example, p95 latency in milliseconds). |
+| **SLO** | The target you promise for an SLI (for example, p95 latency under 500 ms). |
+| **Risk score** | A number (0–100 here) estimating how serious an incident is. Built from transparent rules, not guesswork. |
+| **Severity band** | `low` (0–39), `medium` (40–69), `high` (70–100) — defined in `artifacts/aiops/risk-rules.yaml`. |
+| **Incident summary** | A short, machine-readable report: impacted service, severity, risk score, recommended first action, owner, timestamp. |
+| **Evidence file** | The JSON written for every scoring run — your audit trail and your portfolio proof. |
+| **Blast radius** | How much of the system a fault affects. Two or more services failing together expands it. |
+| **Guardrail** | A safety rule that limits risk during tests — e.g. `prod` tests require `APPROVED_PROD_TEST=true`. |
+| **Recovery validation** | Proving the service returned to a healthy state (health endpoint up, SLO/SLI trends back to baseline) after mitigation. |
 
 **Expected result at the end of this version:**
 
-- S3 holds two independent state files: `shared/v7/terraform.tfstate` and `live/v7/terraform.tfstate`.
-- `terraform -chdir=terraform/shared output` returns `vpc_id` and subnet IDs.
-- `terraform -chdir=terraform/live output` returns `cluster_name` and `cluster_endpoint` sourced from `shared` via remote state.
-- A `git push` to `main` runs three GitHub Actions jobs in sequence: `deploy-shared → deploy-live → deploy-apps`.
-- `terraform -chdir=terraform/shared destroy` **fails** while `live` is still alive — proving state isolation is enforced.
+- `./scripts/aiops_score_and_summarize.sh <incident_id> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner> <output_file>` writes a JSON evidence file and prints `risk_score=… severity=…`.
+- `./scripts/aiops_local_incident_test.sh` checks the local stack's health endpoint, scores an incident, and writes evidence to `artifacts/aiops/evidence/local/*.json`.
+- `./scripts/aiops_cloud_incident_test.sh dev …` does the same for a cloud environment and writes to `artifacts/aiops/evidence/cloud/*.json`.
+- When `SLACK_WEBHOOK_URL` is exported, every scoring run sends a Slack alert; when it is not, the script prints a dry-run preview instead.
+- The cloud test refuses to run against `prod` unless `APPROVED_PROD_TEST=true`.
 
 ---
 
 ## 4) Training Workflow (Understand → Build → Test → Break → Fix → Explain → Automate → Improve)
 
-1. **Understand:** Read layer separation, remote state, and destroy-order rules.
-2. **Build:** `terraform apply` on `bootstrap`, `shared`, then `live`; deploy Helm charts into the `platform` namespace.
-3. **Test:** Verify two distinct state files in S3, outputs wire through remote state, and the pipeline runs green.
-4. **Break:** Attempt `terraform destroy` on `shared` while `live` depends on it — confirm Terraform refuses.
-5. **Fix:** Destroy in the correct order (Helm → live → shared → bootstrap).
-6. **Explain:** Capture why layer isolation matters and what remote state actually does at the file-system level.
-7. **Automate:** Let the three-job GitHub Actions pipeline own the deploy path. No local `terraform apply` on `main`.
-8. **Improve:** Tighten IAM role trust policy, add plan-only PR workflows, split envs further (`dev`, `staging`, `prod`).
+1. **Understand:** Read `artifacts/aiops/risk-rules.yaml`, `artifacts/aiops/aiops-incident-management.md`, and the high-demand AIOps engineer blueprint.
+2. **Build:** Bring up the local stack (`docker compose up` — flask-api, web-ui, prometheus, grafana, alertmanager) and make the V7 scripts executable.
+3. **Test:** Run the local AIOps incident test; confirm a JSON evidence file is written and the score/severity print.
+4. **Break:** Stop a service in the local stack on purpose; watch the health endpoint fail.
+5. **Fix:** Restart the service, re-run the test, confirm recovery criteria.
+6. **Explain:** Write the three answers — what failed, why, what fixed it — for every drill.
+7. **Automate:** Let `aiops_score_and_summarize.sh` own scoring + Slack; let GitHub Actions (`.github/workflows/provision.yml`) own the cloud deploy.
+8. **Improve:** Tune thresholds in `risk-rules.yaml`, improve summary quality, and drive down mean time to detect / recover.
 
-## 5) What You Will Build
+## 5) Skills That Match High AIOps Engineer Demand
 
-- `terraform/bootstrap/` — V7's state bucket, DynamoDB lock table, and three ECR repos. Owns `version_suffix = "v07"` so it coexists with V5/V6 bootstraps on the same AWS account.
-- `terraform/shared/` — a VPC with 2 public and 2 private subnets across 2 AZs, IGW, and public route table. Exports `vpc_id` and subnet IDs.
-- `terraform/live/` — an EKS cluster launched inside `shared`'s VPC using a `terraform_remote_state` data source.
-- `terraform/modules/eks/` — a reusable EKS module consumed by `live` (inputs: `cluster_name`, `kubernetes_version`, `vpc_id`, `subnet_ids`, `node_count`, `instance_type`).
-- `.github/workflows/deploy.yml` — a three-job pipeline (`deploy-shared → deploy-live → deploy-apps`) authenticating to AWS via OIDC.
-- `scripts/tf_deploy_v7.sh` — local end-to-end deploy: bootstrap → push images → shared → live → Helm.
-- `scripts/build_push_images_v7.sh` — standalone image pipeline (overridable `APPS_SRC`).
-- `scripts/cleanup_v7.sh` — teardown that enforces the mandatory reverse order and drains the V7 state bucket.
+Practiced directly in this version (see `artifacts/aiops/high-demand-aiops-engineer-blueprint.md`):
 
-## 6) Architecture Diagram (Mermaid)
+1. **Observable systems** — collect metrics, logs, events, and health signals.
+2. **Fast triage** — move from signal to incident summary in one command.
+3. **Risk scoring** — prioritize by impact using transparent rules, not gut feel.
+4. **Automation** — generate repeatable, machine-readable incident evidence.
+5. **Safe promotion** — validate in `dev`, then `staging`, then `prod` behind guardrails.
+6. **Evidence culture** — keep JSON outputs for post-incident review, audit, and portfolio.
+
+## 6) What You Will Build
+
+- A local testing stack — `docker-compose.yml` runs **flask-api**, **web-ui**, **prometheus**, **grafana**, and **alertmanager** so the AIOps scripts have a real platform to poll, score, and break.
+- A documented AIOps incident-management approach (`artifacts/aiops/aiops-incident-management.md`).
+- A risk-rule set with severity bands (`artifacts/aiops/risk-rules.yaml`).
+- A scoring + summary engine that also routes to Slack (`scripts/aiops_score_and_summarize.sh`).
+- A local incident-test workflow with health check and evidence output (`scripts/aiops_local_incident_test.sh`).
+- A cloud incident-test workflow with environment guardrails (`scripts/aiops_cloud_incident_test.sh`).
+- A standalone Slack webhook sender that can format messages from an evidence file (`slack/send_slack_webhook.sh`).
+- The carried-forward Terraform layers (`environments/shared`, `environments/live`, `modules/*`, `infrastructure/bootstrap`) and Helm charts (`environments/live/helm/*`), deployable by hand or by the `provision.yml` pipeline.
+- The continued V2-lineage web console, now showing AIOps risk scoring (`apps/web-ui/index.html`).
+
+## 7) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
-    Push[git push main] --> GHA[GitHub Actions]
-    GHA --> CH[changes<br/>paths-filter]
-    CH -->|infra path| J1[deploy-shared]
-    CH -.->|apps path| BI[build-images<br/>flask-api, node-api, web-ui]
-    J1 --> S3s[(S3: shared/v7/terraform.tfstate)]
-    J1 --> VPC[VPC + Subnets + IGW]
-    J1 --> J2[deploy-live]
-    J2 --> S3l[(S3: live/v7/terraform.tfstate)]
-    J2 --> EKS[EKS via modules/eks]
-    EKS -->|terraform_remote_state| VPC
-    BI --> ECR[(ECR: latest + commit-sha)]
-    J2 --> J3[deploy-apps]
-    BI -.-> J3
-    J3 --> Helm[helm upgrade --install]
-    Helm --> NS[Namespace: platform]
+    Signals[Metrics + Logs + Events<br/>latency, error rate, restarts] --> Detect[Anomaly Detection]
+    Detect --> Score["Risk Scoring<br/>aiops_score_and_summarize.sh"]
+    Score --> Summary["Incident Summary (JSON)<br/>artifacts/aiops/evidence/*"]
+    Summary --> Action[Recommended First Action]
+    Action -->|severity high| Slack["Slack Alert<br/>send_slack_webhook.sh"]
+    Action --> Ops[Operator + Runbook]
+    Ops --> Validate[Recovery Validation<br/>health up, SLO/SLI baseline]
 ```
 
-## 7) Project Structure
+## 8) Project Structure
 
 ```text
 express-reliability-platform-v07/
-├── terraform/
-│   ├── bootstrap/
-│   │   ├── main.tf            ← S3 state bucket + DynamoDB lock table
-│   │   ├── ecr.tf             ← 3 ECR repos + lifecycle policy
-│   │   └── variables.tf
-│   ├── shared/
-│   │   ├── main.tf            ← VPC, subnets, IGW, route table + outputs
-│   │   └── variables.tf
-│   ├── live/
-│   │   ├── main.tf            ← reads shared via remote state; uses modules/eks
-│   │   └── variables.tf
-│   └── modules/
-│       └── eks/
-│           ├── main.tf        ← cluster, IAM roles, managed node group
-│           ├── variables.tf
-│           └── outputs.tf
-├── helm/
-│   ├── flask-api/             ← Chart.yaml, values.yaml, templates/deployment.yaml
-│   ├── node-api/
-│   └── web-ui/                ← service.type=LoadBalancer
+├── docker-compose.yml                        ← local testing stack: flask-api, web-ui, prometheus, grafana, alertmanager
 ├── apps/
-│   ├── flask-api/             ← Python service (Dockerfile + app.py + requirements.txt)
-│   ├── node-api/              ← Node service (Dockerfile + index.js + package.json)
-│   └── web-ui/index.html      ← V7 incident-operations console
+│   ├── flask-api/                            ← Flask service: /, /metrics, /api/health
+│   │   ├── app.py  requirements.txt  Dockerfile
+│   └── web-ui/
+│       ├── index.html                        ← V7 AIOps incident-intelligence console (V2 lineage)
+│       ├── nginx.conf                        ← serves index.html, proxies /api/ -> flask-api
+│       └── Dockerfile
+├── monitoring/                               ← carried forward from V5
+│   ├── prometheus.yml                        ← scrape config; routes alerts to alertmanager:9093
+│   ├── alert.rules.yml                       ← ServiceDown / HighErrorRate / HighLatency alerts
+│   ├── alertmanager/
+│   │   └── alertmanager.yml                  ← alert routing + webhook receiver
+│   ├── grafana-dashboard.json                ← platform overview dashboard (import into Grafana)
+│   └── grafana-dashboard-golden-signals.json ← golden-signals dashboard (latency / traffic / errors / saturation)
+├── artifacts/
+│   └── aiops/
+│       ├── aiops-incident-management.md      ← the AIOps loop, signals, summary template
+│       ├── high-demand-aiops-engineer-blueprint.md
+│       ├── risk-rules.yaml                   ← scoring rules + severity bands
+│       └── evidence/                         ← generated at runtime
+│           ├── local/*.json
+│           └── cloud/*.json
+├── environments/
+│   ├── shared/                               ← shared S3 bucket layer (carried forward)
+│   │   ├── main.tf  outputs.tf  variables.tf  shared.tfvars
+│   └── live/                                 ← EKS + ALB layer
+│       ├── main.tf  outputs.tf  variables.tf  live.tfvars
+│       └── helm/
+│           ├── fintech-chart/                ← Chart.yaml + values.yaml
+│           ├── hospital-chart/
+│           ├── ui-chart/
+│           ├── ui-portal/
+│           └── global-monitoring/            ← Prometheus + Grafana values
+├── infrastructure/
+│   └── bootstrap/                            ← remote-state bucket + DynamoDB lock + IAM role
+│       ├── main.tf  outputs.tf  variables.tf  README.md
+├── modules/
+│   ├── alb/                                  ← main.tf + variables.tf
+│   ├── eks/
+│   ├── iam/
+│   └── vpc/
+├── scripts/
+│   ├── aiops_score_and_summarize.sh          ← scores risk, writes JSON, sends Slack if SLACK_WEBHOOK_URL set
+│   ├── aiops_local_incident_test.sh          ← health check → score → evidence (local)
+│   ├── aiops_cloud_incident_test.sh          ← guardrailed score → evidence (dev/staging/prod)
+│   └── terraform_init_apply.sh               ← init + apply a given Terraform dir
+├── slack/
+│   └── send_slack_webhook.sh                 ← standalone Slack sender; can build a message from an evidence file
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml         ← four-job pipeline (changes → build-images, deploy-shared, deploy-live → deploy-apps) with OIDC
-├── scripts/
-│   ├── tf_deploy_v7.sh        ← local end-to-end deploy
-│   ├── build_push_images_v7.sh
-│   └── cleanup_v7.sh
+│       └── provision.yml                     ← terraform-shared / terraform-live / helm-deploy / notify
+├── .gitignore
 └── README.md
 ```
 
-## 8) Run Steps
+## 9) Scoring Logic (What the Numbers Mean)
 
-### Local apply (first time or when iterating)
+`scripts/aiops_score_and_summarize.sh` mirrors `artifacts/aiops/risk-rules.yaml`:
 
-```sh
-# One command provisions everything:
-# bootstrap → image build/push → shared → live → Helm
-./scripts/tf_deploy_v7.sh
-```
+| Condition | Points added |
+|---|---|
+| `error_rate_pct > 1.0` | +30 |
+| `latency_ms > 500` | +30 |
+| `restart_count > 0` | +20 |
+| `multi_service_failures > 1` | +20 |
 
-The script is idempotent — re-run it after a code change and it rebuilds, repushes, and rolls forward.
+Severity bands and the recommended first action:
 
-#### Manual walkthrough (the same steps the script does)
+| Risk score | Severity | Recommended first action |
+|---|---|---|
+| 0–39 | `low` | Investigate dashboards and watch trends for ~10 minutes. |
+| 40–69 | `medium` | Open an incident ticket, assign an owner, apply the first runbook mitigation step. |
+| 70–100 | `high` | Declare an incident, start mitigation immediately, trigger on-call escalation (Slack alert fires automatically). |
 
-```sh
-# 1. Bootstrap — state bucket, lock table, ECR repos
-terraform -chdir=terraform/bootstrap init
-terraform -chdir=terraform/bootstrap apply -auto-approve
+Each run writes a JSON object with `incident_id`, `service`, the raw signal values, `risk_score`, `severity`, `recommended_action`, `owner`, and `generated_at_utc`.
 
-STATE_BUCKET=$(terraform -chdir=terraform/bootstrap output -raw state_bucket)
-LOCK_TABLE=$(terraform -chdir=terraform/bootstrap output -raw lock_table)
-ECR_BASE=$(terraform -chdir=terraform/bootstrap output -raw ecr_base_uri)
+## 10) Step-by-Step Guide (Local and Cloud)
 
-# 2. Build and push images (sources live in this repo's apps/)
-./scripts/build_push_images_v7.sh
-
-# 3. Shared layer — VPC + subnets + IGW
-terraform -chdir=terraform/shared init -reconfigure \
-  -backend-config="bucket=${STATE_BUCKET}" \
-  -backend-config="dynamodb_table=${LOCK_TABLE}" \
-  -backend-config="key=shared/v7/terraform.tfstate"
-terraform -chdir=terraform/shared apply -auto-approve
-
-# 4. Live layer — EKS via the module + remote state
-terraform -chdir=terraform/live init -reconfigure \
-  -backend-config="bucket=${STATE_BUCKET}" \
-  -backend-config="dynamodb_table=${LOCK_TABLE}" \
-  -backend-config="key=live/v7/terraform.tfstate"
-terraform -chdir=terraform/live apply -auto-approve \
-  -var "state_bucket=${STATE_BUCKET}"
-
-# 5. Wire kubectl + install Helm charts
-CLUSTER=$(terraform -chdir=terraform/live output -raw cluster_name)
-aws eks --region us-east-1 update-kubeconfig --name "$CLUSTER"
-
-for SVC in flask-api node-api web-ui; do
-  helm upgrade --install "$SVC" "helm/$SVC" \
-    --namespace platform --create-namespace \
-    --set image.repository="${ECR_BASE}/${SVC}"
-done
-
-kubectl get pods -n platform
-```
-
-### Automated apply (every `git push` to `main`)
-
-The bootstrap (state bucket + ECR) is run once locally — the per-push pipeline only manages `shared`, `live`, and `apps`.
-
-#### Why GitHub Actions needs OIDC (and what CI/CD even means here)
-
-CI/CD = **Continuous Integration / Continuous Delivery**. In plain language: every time you `git push`, a robot (GitHub Actions) checks out your code and runs `terraform apply` and `helm upgrade` for you, on a clean Ubuntu VM, with no human typing AWS credentials.
-
-That robot lives on GitHub's servers. It has no AWS access by default. Two ways to give it access:
-
-1. **The bad way — long-lived AWS access keys.** Paste an `AKIA...` access key + secret into a GitHub Secret. It works, but those keys never expire. If anyone leaks the repo settings, gets a malicious PR merged that prints `env`, or compromises a GitHub Actions runner, your AWS account is wide open until you manually rotate the key. This is how most production breaches start.
-2. **The good way — OIDC (OpenID Connect).** GitHub gives every workflow run a short-lived signed token (a JWT) that says "this run is from `repo:owner/name`, branch `main`, commit `abc123`." AWS already trusts GitHub as an identity provider. Your IAM role's trust policy says "if a token from GitHub for *my repo* shows up, let it assume me — for one hour." No keys are stored anywhere. Tokens expire. Trust is scoped to one specific repo.
-
-That is what `permissions: id-token: write` and `aws-actions/configure-aws-credentials` are doing in [.github/workflows/deploy.yml](.github/workflows/deploy.yml) — they request the GitHub-issued token and exchange it for temporary AWS credentials.
-
-> **Where this was first set up:** The IAM role and its OIDC trust policy were created back in **V3** (see V3's IAM/OIDC section). V7 *reuses* that same role — `arn:aws:iam::730335276920:role/t2s-gha-eks-deploy-prod`. You should not need to recreate it; you only need to tell *this* repo about it via a GitHub Secret.
-
-#### CI/CD + OIDC visual
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Dev as You (git push)
-    participant GH as GitHub Actions Runner
-    participant OIDC as GitHub OIDC Issuer<br/>(token.actions.githubusercontent.com)
-    participant STS as AWS STS
-    participant AWS as AWS APIs<br/>(S3, DynamoDB, EKS, ECR)
-
-    Dev->>GH: push to main triggers deploy.yml
-    GH->>OIDC: request id-token (sub=repo:owner/repo:ref:main)
-    OIDC-->>GH: signed JWT (short-lived)
-    GH->>STS: AssumeRoleWithWebIdentity<br/>(role=AWS_ROLE_ARN, token=JWT)
-    STS-->>GH: temporary access key + secret + session token (~1h)
-    GH->>AWS: terraform apply / helm upgrade
-    AWS-->>GH: resources created/updated
-    GH-->>Dev: green check on commit
-```
-
-No password, no long-lived key, no human in the loop after `git push`.
-
-#### One-time setup: tell this repo about the V3 role
-
-You need exactly one GitHub Secret on this repo: `AWS_ROLE_ARN`, set to the V3 role's ARN.
-
-**Step 1 — get the role ARN.** Use whichever you prefer:
-
-*Option A — AWS Console:*
-1. Sign in to the AWS Console for account `730335276920`.
-2. Go to **IAM → Roles**.
-3. In the search box, type `t2s-gha-eks-deploy-prod`.
-4. Click the role. The **ARN** field at the top of the summary is what you want — it should read `arn:aws:iam::730335276920:role/t2s-gha-eks-deploy-prod`.
-5. While you are there, click the **Trust relationships** tab and confirm the principal is `token.actions.githubusercontent.com` and the `sub` condition matches your GitHub repo (`repo:<owner>/<repo>:*`). If it does not list your repo, that is why GitHub Actions cannot assume the role — update the condition to include this repo.
-
-*Option B — AWS CLI:*
+### Step A — Understand
 
 ```sh
-# Get the ARN
-aws iam get-role \
-  --role-name t2s-gha-eks-deploy-prod \
-  --query 'Role.Arn' --output text
-
-# Inspect the trust policy (confirm your repo is allowed)
-aws iam get-role \
-  --role-name t2s-gha-eks-deploy-prod \
-  --query 'Role.AssumeRolePolicyDocument' --output json
+cat artifacts/aiops/risk-rules.yaml
+cat artifacts/aiops/aiops-incident-management.md
+cat artifacts/aiops/high-demand-aiops-engineer-blueprint.md
 ```
 
-The expected ARN: `arn:aws:iam::730335276920:role/t2s-gha-eks-deploy-prod`.
+Before building, be able to answer:
 
-**Step 2 — set the secret on this repo.**
+1. Which signals indicate an incident, and what point value each carries.
+2. How a risk score maps to a severity band.
+3. What first action is expected for each severity.
 
-*Option A — GitHub web UI:*
-1. Go to your repo on github.com.
-2. **Settings → Secrets and variables → Actions → New repository secret**.
-3. **Name:** `AWS_ROLE_ARN` (exact spelling, case-sensitive).
-4. **Secret:** `arn:aws:iam::730335276920:role/t2s-gha-eks-deploy-prod`
-5. Click **Add secret**.
+### Step B — Build (Local Setup)
 
-*Option B — `gh` CLI (faster):*
+**B1: Prerequisites** — install and verify Docker + Docker Compose, Terraform, AWS CLI, kubectl, Helm, `curl`, and `python3` (used by the Slack sender to parse evidence files).
 
-If you do not already have the GitHub CLI installed, install it for your OS:
+**B2: Bring up the local testing stack** — `docker-compose.yml` in this repo runs five services:
 
-- **macOS** (Homebrew):
-  ```sh
-  brew install gh
-  ```
-- **Linux** (Debian/Ubuntu):
-  ```sh
-  sudo apt update && sudo apt install gh -y
-  ```
-  Fedora/RHEL: `sudo dnf install gh`. Arch: `sudo pacman -S github-cli`. For other distros see https://github.com/cli/cli/blob/trunk/docs/install_linux.md.
-- **Windows** (winget, recommended on Windows 11/10):
-  ```powershell
-  winget install --id GitHub.cli
-  ```
-  Or with Chocolatey: `choco install gh`. Or with Scoop: `scoop install gh`.
+| Service | Image / build | Host port | Purpose |
+|---|---|---|---|
+| `flask-api` | `apps/flask-api` | `5050` → 5000 | App under test; serves `/`, `/metrics`, `/api/health`. |
+| `web-ui` | `apps/web-ui` | `8080` → 80 | V7 AIOps console; nginx also proxies `/api/` → `flask-api`, so `http://localhost:8080/api/health` works. |
+| `prometheus` | `prom/prometheus` | `9090` | Scrapes the app targets in `monitoring/prometheus.yml`; loads `monitoring/alert.rules.yml`; sends firing alerts to `alertmanager`. |
+| `grafana` | `grafana/grafana` | `3001` → 3000 | Login `admin` / `admin`. Add the Prometheus datasource (`http://prometheus:9090`), then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json`. |
+| `alertmanager` | `prom/alertmanager` | `9093` | Receives firing alerts from Prometheus and routes them per `monitoring/alertmanager/alertmanager.yml`. |
 
-After installing, authenticate once (opens a browser):
+> Note: `monitoring/prometheus.yml` is carried forward from V5 and also lists a `node-api` scrape target. V7 has no `node-api` service, so that target shows as **down** in Prometheus — that is expected. Remove the job from `monitoring/prometheus.yml` if you want a clean targets page.
 
 ```sh
-gh auth login
-gh --version   # confirm install
+docker compose up --build -d
+docker compose ps
+
+curl http://localhost:8080/api/health          # {"service":"flask-api","status":"ok","version":"v7"}
+curl http://localhost:5050/api/health          # same, hitting flask-api directly
+open http://localhost:8080                      # the V7 AIOps console
+open http://localhost:9090/targets              # flask-api should be UP (node-api will be down — see note above)
+open http://localhost:9093                      # Alertmanager
+open http://localhost:3001                      # Grafana (admin / admin) — add the datasource, import the dashboards
 ```
 
-Then set the secret on this repo (run from inside the cloned repo directory):
+**B3: Make the V7 scripts executable:**
 
 ```sh
-gh secret set AWS_ROLE_ARN \
-  --body "arn:aws:iam::730335276920:role/t2s-gha-eks-deploy-prod"
-
-# Verify
-gh secret list
+chmod +x scripts/aiops_score_and_summarize.sh \
+         scripts/aiops_local_incident_test.sh \
+         scripts/aiops_cloud_incident_test.sh \
+         slack/send_slack_webhook.sh
 ```
 
-You should see `AWS_ROLE_ARN` in the listing.
-
-#### Push and watch
+### Step C — Test (Local AIOps)
 
 ```sh
-git add .
-git commit -m "V7 - organized layers with CI/CD"
-git push origin main
+./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health flask-api 650 1.8 1 1 local-oncall
 ```
 
-Watch the run at `Repository → Actions`. You should see three green jobs in order: `deploy-shared → deploy-live → deploy-apps`.
+Argument order: `<api_url> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner>`. Every argument is optional and falls back to a default (the default URL is `http://localhost:8080/api/health` and the default service is `flask-api`) — `./scripts/aiops_local_incident_test.sh` alone works too.
 
-If `deploy-shared` fails immediately with `Could not load credentials from any providers`, the OIDC handshake failed — re-check Step 1 (role ARN spelled correctly, trust policy lists this repo) and Step 2 (secret name is exactly `AWS_ROLE_ARN`).
+What it does:
 
-## 9) Validation Checklist — Six Checks
+1. Verifies the health endpoint is reachable (`curl -fsS`).
+2. Echoes the incident signal values it will score.
+3. Calls `aiops_score_and_summarize.sh` with an auto-generated `incident_id` (`local-<UTC timestamp>`).
+4. Writes the evidence file to `artifacts/aiops/evidence/local/<incident_id>.json`.
+5. Prints recovery criteria to confirm (health endpoint up, SLO/SLI back to baseline).
 
-All six checks must pass before moving on to V8.
-
-- [ ] **Check 1 — Separate state files in S3:** `aws s3 ls s3://reliability-platform-v07-tfstate-$ACCOUNT/ --recursive | grep tfstate` lists both `shared/v7/terraform.tfstate` and `live/v7/terraform.tfstate`.
-- [ ] **Check 2 — Shared outputs available:** `terraform -chdir=terraform/shared output` shows `vpc_id`, `public_subnet_ids`, `private_subnet_ids`.
-- [ ] **Check 3 — Live used shared's VPC:** `terraform -chdir=terraform/live output` shows `cluster_name` and `cluster_endpoint`.
-- [ ] **Check 4 — GitHub Actions pipeline ran:** Three jobs (`deploy-shared → deploy-live → deploy-apps`) show green checkmarks on the `main` branch.
-- [ ] **Check 5 — State isolation proof:** `terraform -chdir=terraform/shared destroy -auto-approve` **fails** with an error showing `live` resources still reference `shared`'s VPC.
-- [ ] **Check 6 — Module works:** `terraform -chdir=terraform/live state list | grep module` lists `module.eks.*` resources.
-
-## 10) Troubleshooting
-
-- **`Error acquiring the state lock`:** Another apply is in flight. Wait, or release with `terraform force-unlock <LOCK_ID>` only after confirming no active run.
-- **`data.terraform_remote_state.shared.outputs.vpc_id is null`:** `shared` has not been applied yet, or the `key`/`bucket` in the remote state block does not match the `shared` backend. Pass `-var state_bucket=<bucket>` to live, or replace `YOUR_ACCOUNT_ID` in the literal default.
-- **GitHub Actions job: `Error: Could not assume role`:** The `AWS_ROLE_ARN` secret is missing, or the role's trust policy does not allow your repo + branch via GitHub OIDC.
-- **`deploy-apps` job: `kubectl` cannot connect:** The `aws eks update-kubeconfig` step failed — check the cluster name matches the `live` output.
-- **`deploy-apps` pods stuck in `ImagePullBackOff`:** ECR is empty for at least one of the three services. The pipeline's `build-images` job pushes images on any push that touches `apps/` or the workflow file. If the failing run was Terraform-only, the build step was skipped on purpose — push an empty commit to `apps/` (or run `./scripts/build_push_images_v7.sh` locally) to populate ECR. The `Diagnose failed rollout` step in the CI log will print the exact missing image reference.
-- **`terraform destroy` on `shared` fails with VPC dependency errors:** Correct. Destroy `live` first. This is the state isolation guarantee working as designed.
-
-## 11) Cleanup — Mandatory Reverse Order
-
-**Destroy order is mandatory: Helm → live → shared → bootstrap.**
-Never destroy `shared` before `live`. `live` reads `shared`'s remote state during its own destroy; destroying `shared` first causes `live`'s destroy to fail with confusing errors.
+Score one incident directly (note the trailing **output file** argument):
 
 ```sh
-chmod +x scripts/cleanup_v7.sh
-./scripts/cleanup_v7.sh
+./scripts/aiops_score_and_summarize.sh INC-001 flask-api 650 1.8 1 1 local-oncall artifacts/aiops/evidence/local/INC-001.json
 ```
 
-The script uninstalls Helm releases, deletes the `platform` namespace, reaps any orphan AWS load balancers, destroys `live`, destroys `shared`, drains the V7 state bucket, destroys `bootstrap` (including ECR repos and pushed images), and cleans up the kubectl context.
+#### Slack notifications — complete beginner walkthrough
 
-V5 and V6 bootstraps (if present) are left untouched.
+**What is this?** A Slack *Incoming Webhook* is a private URL. Anything you `POST` to that URL shows up as a message in one Slack channel. That's the whole trick — no bot, no login from the script, just a URL. The V7 scripts use it to page the on-call when an incident scores `high`.
 
-## 12) Next Version Preview
+##### Why you might see "nothing in Slack"
 
-In V8, you layer AIOps patterns on top of this CI/CD foundation — risk scoring on deploys, pattern detection across incidents, and auto-generated incident summaries pulled from logs and metrics.
+There are **two different no-send situations**, and both are normal:
+
+1. **You used `--dry-run`.** The `--dry-run` flag *never* posts to Slack — on purpose. It just prints the message in your terminal so you can check the wording. Example: `./slack/send_slack_webhook.sh --dry-run --message "..."` will *always* be silent in Slack. That is correct behavior.
+2. **`SLACK_WEBHOOK_URL` is not set.** If that environment variable is empty, the scripts fall back to dry-run mode automatically and just print the preview. You haven't done anything wrong — you just haven't given it a webhook URL yet.
+
+So before a real message can appear, two things must be true: **you are not passing `--dry-run`**, and **a real webhook URL is available** (via `SLACK_WEBHOOK_URL` or `--url`).
+
+##### Step 1 — Create a Slack Incoming Webhook (one time, ~2 minutes)
+
+1. Open <https://api.slack.com/apps> in a browser (sign in to your Slack workspace if asked).
+2. Click **Create New App** → **From scratch**.
+3. Give it a name like `erp-aiops-alerts`, pick the workspace you want alerts in, click **Create App**.
+4. In the left sidebar click **Incoming Webhooks**, then flip the toggle at the top to **On**.
+5. Scroll down, click **Add New Webhook to Workspace**.
+6. Pick the channel the alerts should land in (e.g. `#incidents` or just message yourself), click **Allow**.
+7. You're back on the Incoming Webhooks page. Under **Webhook URL** click **Copy**. It looks like:
+   `https://hooks.slack.com/services/YOUR/WEBHOOK/URL`
+
+> Keep that URL private — anyone who has it can post to your channel. Don't paste it into a public repo or a screenshot.
+
+##### Step 2 — Tell the scripts about your webhook URL
+
+Open a terminal **in this project folder** and run (paste your real URL):
+
+```sh
+export SLACK_WEBHOOK_URL='https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+```
+
+Check it actually took:
+
+```sh
+echo "$SLACK_WEBHOOK_URL"          # should print your URL, not a blank line
+```
+
+> This `export` only lasts for the current terminal window. Open a new tab and you'd have to do it again.
+
+**Make it permanent (recommended):** add the same line to your shell startup file so every new terminal has it.
+
+```sh
+echo 'export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"' >> ~/.zshrc
+source ~/.zshrc                    # apply it to the current terminal too
+echo "$SLACK_WEBHOOK_URL"          # confirm again
+```
+
+(If you use bash instead of zsh, use `~/.bashrc` in place of `~/.zshrc`.)
+
+##### Step 3 — Send a real message
+
+```sh
+# 1) Preview only — never touches Slack (safe to run anytime):
+./slack/send_slack_webhook.sh --dry-run --message "AIOps test from V7"
+
+# 2) Send for real — needs SLACK_WEBHOOK_URL set (Step 2):
+./slack/send_slack_webhook.sh --message "AIOps test from V7"
+
+# 3) Send without exporting anything — pass the URL right on the command line:
+./slack/send_slack_webhook.sh --url 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL' --message "AIOps test from V7"
+
+# 4) Build the alert from a real incident evidence file (generate one first so the file exists):
+./scripts/aiops_score_and_summarize.sh INC-001 flask-api 650 1.8 1 1 local-oncall artifacts/aiops/evidence/local/INC-001.json
+./slack/send_slack_webhook.sh --evidence-file artifacts/aiops/evidence/local/INC-001.json
+```
+
+**What success looks like:** the script prints `Slack alert sent.` and the message appears in your chosen channel within a second or two.
+
+**What failure looks like:** it prints `Slack did not accept the message. Response: ...` (or `invalid_token` / `no_service`) and exits with a non-zero status. That almost always means the URL is wrong, was revoked, or has a typo — go back to Step 1 and copy it again. The script is deliberately loud here so a bad URL never *looks* like it worked.
+
+##### Step 4 — Wire it into the incident scoring (automatic alerts)
+
+Once `SLACK_WEBHOOK_URL` is exported (Step 2), the scoring script sends a Slack alert on **every** run — and the wording reflects the severity (`:rotating_light:` for `high`, `:warning:` for `medium`, `:white_check_mark:` for `low`):
+
+```sh
+./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health flask-api 650 1.8 1 1 local-oncall
+```
+
+If `SLACK_WEBHOOK_URL` is *not* set, that same command instead prints:
+
+```text
+[Slack] SLACK_WEBHOOK_URL not set — skipping notification.
+        Message that would be sent: <severity> alert for <service> (risk_score=<n>)
+```
+
+— which is your cue to go do Step 2.
+
+##### Quick checklist if Slack still shows nothing
+
+- Did you leave off `--dry-run`? (`--dry-run` is *always* silent in Slack — that's its job.)
+- Does `echo "$SLACK_WEBHOOK_URL"` print your real `https://hooks.slack.com/services/...` URL in *this* terminal? If it's blank, re-run the `export` (Step 2) or `source ~/.zshrc`.
+- Did the script print `Slack alert sent.`? If it printed an error instead, the webhook URL is the problem — recreate/recopy it (Step 1).
+- Are you looking in the channel you picked in Step 1.6? The webhook only ever posts to that one channel.
+- Is `python3` installed? (`python3 --version`) The sender uses it to build the JSON payload and to parse `--evidence-file`.
+
+### Step D — Break the System (Local Failure Drill)
+
+```sh
+docker compose stop flask-api
+curl -i http://localhost:8080/api/health     # 502 from nginx — flask-api is gone
+open http://localhost:9090/targets            # flask-api now DOWN; the ServiceDown alert arms
+open http://localhost:9090/alerts             # ServiceDown moves Pending -> Firing after 30s
+open http://localhost:9093                     # the firing alert lands in Alertmanager
+```
+
+This is what an incident actually looks like in operations — a dependency goes away and the health check starts failing. Note how `./scripts/aiops_local_incident_test.sh` now fails fast at the `curl -fsS` health check, exactly as it should.
+
+### Step E — Fix the System
+
+```sh
+docker compose start flask-api
+curl http://localhost:8080/api/health         # back to {"status":"ok",...}
+./scripts/aiops_local_incident_test.sh
+```
+
+### Step F — Explain What Happened
+
+Document these three answers after every drill:
+
+1. What failed?
+2. Why did it fail?
+3. What fixed it?
+
+### Step G — Automate
+
+The automation is already in place — your job is to use and extend it:
+
+- `scripts/aiops_score_and_summarize.sh` — scoring + JSON evidence + Slack in one place.
+- `scripts/aiops_local_incident_test.sh` / `scripts/aiops_cloud_incident_test.sh` — repeatable test harnesses.
+- `.github/workflows/provision.yml` — on every push to `main`, runs `terraform-shared`, `terraform-live`, then `helm-deploy` (fintech, hospital, ui charts), then `notify`. Requires the repo secret `AWS_ROLE_TO_ASSUME` (an IAM role ARN with a GitHub OIDC trust policy — reuse the one from earlier versions).
+
+### Step H — Improve
+
+After each drill:
+
+1. Adjust thresholds and point values in `artifacts/aiops/risk-rules.yaml` (and keep `aiops_score_and_summarize.sh` in sync).
+2. Improve the quality of `recommended_action` text for each severity.
+3. Track and reduce mean time to detect and mean time to recover across drills.
+
+### Step I — Cloud Deployment and AIOps Testing
+
+**I1: Configure AWS access**
+
+```sh
+aws configure
+aws sts get-caller-identity
+```
+
+**I2: (Optional) Bootstrap remote state** — only if you do not already have a state backend from a prior version:
+
+```sh
+terraform -chdir=infrastructure/bootstrap init
+terraform -chdir=infrastructure/bootstrap apply -auto-approve
+```
+
+**I3: Deploy the shared layer**
+
+```sh
+terraform -chdir=environments/shared init
+terraform -chdir=environments/shared validate
+terraform -chdir=environments/shared plan  -var-file=shared.tfvars
+terraform -chdir=environments/shared apply -var-file=shared.tfvars
+```
+
+**I4: Fill in live network values** — edit `environments/live/live.tfvars` and replace the placeholders `vpc_id = "vpc-xxxxxxxx"` and the two `subnet-…` entries with real IDs.
+
+**I5: Deploy the live layer (EKS + ALB)**
+
+```sh
+terraform -chdir=environments/live init
+terraform -chdir=environments/live validate
+terraform -chdir=environments/live plan  -var-file=live.tfvars
+terraform -chdir=environments/live apply -var-file=live.tfvars
+```
+
+**I6: Install Helm charts** (the `provision.yml` pipeline also does this on push):
+
+```sh
+aws eks --region us-east-1 update-kubeconfig --name express-reliability-platform-eks-live
+helm upgrade --install fintech  ./environments/live/helm/fintech-chart  --namespace fintech  --create-namespace
+helm upgrade --install hospital ./environments/live/helm/hospital-chart --namespace hospital --create-namespace
+helm upgrade --install ui       ./environments/live/helm/ui-chart       --namespace ui       --create-namespace
+```
+
+**I7: Test cloud AIOps in `dev`**
+
+```sh
+./scripts/aiops_cloud_incident_test.sh dev node-api 700 2.2 1 2 cloud-oncall
+```
+
+Argument order: `<environment> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner>`. Valid environments are `dev`, `staging`, `prod` only.
+
+**I8: Promote to `staging`** after a stable recovery in `dev`:
+
+```sh
+./scripts/aiops_cloud_incident_test.sh staging node-api 650 1.5 1 1 cloud-oncall
+```
+
+**I9: Run a `prod` test only with approval** — the guardrail blocks it otherwise:
+
+```sh
+APPROVED_PROD_TEST=true ./scripts/aiops_cloud_incident_test.sh prod node-api 600 1.2 1 1 cloud-oncall
+```
+
+Cloud evidence lands in `artifacts/aiops/evidence/cloud/<env>-<timestamp>.json`.
+
+### Step J — Cleanup (Local)
+
+```sh
+docker compose down            # stop flask-api, web-ui, prometheus, grafana, alertmanager
+docker compose down -v         # also drop the grafana-data volume, if you want a clean slate
+```
+
+## 11) Validation Checklist
+
+- [ ] AIOps incident-management notes and risk rules are reviewed (`artifacts/aiops/`).
+- [ ] `docker compose up --build -d` brought up `flask-api`, `web-ui`, `prometheus`, `grafana`, and `alertmanager`; `http://localhost:8080/api/health` returns `status: ok` and Prometheus shows `flask-api` UP.
+- [ ] `risk-rules.yaml` thresholds and severity bands match `aiops_score_and_summarize.sh`.
+- [ ] Local AIOps test ran the health check and wrote a JSON evidence file to `artifacts/aiops/evidence/local/`.
+- [ ] Slack dry-run output is visible with no `SLACK_WEBHOOK_URL` set.
+- [ ] A real Slack alert fires when `SLACK_WEBHOOK_URL` is exported.
+- [ ] `send_slack_webhook.sh --evidence-file …` formats a readable message from a JSON file.
+- [ ] Cloud AIOps test wrote `dev` evidence to `artifacts/aiops/evidence/cloud/`.
+- [ ] Promotion to `staging` happened only after a stable `dev` recovery.
+- [ ] A `prod` test ran only with `APPROVED_PROD_TEST=true`.
+- [ ] Every incident summary includes severity, risk score, and a recommended first action.
+- [ ] Recovery is tied to SLO/SLI targets (health endpoint up, trends back to baseline).
+
+## 12) Troubleshooting
+
+- **Health endpoint fails locally** — make sure the local stack is up (`docker compose up --build -d` in this repo, then `docker compose ps`). `http://localhost:8080/api/health` is served by `web-ui` (nginx) and proxied to `flask-api`; if it returns `502`, `flask-api` is down — `docker compose up -d flask-api` or check `docker compose logs flask-api`.
+- **Port already in use** — `8080`, `5050`, `9090`, `3001`, or `9093` is taken by something else. Stop the other process or edit the port mappings in `docker-compose.yml`.
+- **Grafana shows no data / no dashboard** — Grafana is not auto-provisioned in V7. Log in (`admin` / `admin`), add a Prometheus datasource pointing at `http://prometheus:9090`, then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json` via **Dashboards → New → Import**.
+- **`node-api` target down in Prometheus** — expected: `monitoring/prometheus.yml` is carried over from V5 and lists a `node-api` job, but V7 ships no `node-api` service. Ignore it or delete that job from `monitoring/prometheus.yml`.
+- **No evidence file created** — confirm the scripts are executable (`chmod +x scripts/*.sh slack/*.sh`) and that `aiops_score_and_summarize.sh` received all 8 arguments (the last one is the output file path).
+- **Too many high-risk incidents** — tune thresholds / point values in `artifacts/aiops/risk-rules.yaml` and `aiops_score_and_summarize.sh`.
+- **Slack message not sending** — verify `SLACK_WEBHOOK_URL` is exported in the current shell; run `slack/send_slack_webhook.sh --dry-run` first to confirm message format; ensure `python3` is installed (the sender uses it to parse evidence and build the JSON payload).
+- **`Invalid environment` from the cloud test** — the first argument must be exactly `dev`, `staging`, or `prod`.
+- **`Prod tests require APPROVED_PROD_TEST=true`** — set that variable only after a formal approval.
+- **Terraform `live` plan/apply fails** — confirm real `vpc_id` and `subnet_ids` are set in `environments/live/live.tfvars` (the defaults are placeholders).
+- **GitHub Actions can't reach AWS** — the `AWS_ROLE_TO_ASSUME` repo secret is missing or its IAM role's OIDC trust policy doesn't allow this repo/branch.
+
+## 13) Cloud Cleanup
+
+```sh
+terraform -chdir=environments/live   destroy -var-file=live.tfvars
+terraform -chdir=environments/shared destroy -var-file=shared.tfvars
+```
+
+- Archive everything under `artifacts/aiops/evidence/` (local and cloud) as portfolio proof.
+- Record lessons learned and follow-up action items with owners.
+- Leave `infrastructure/bootstrap` in place if other versions share that state backend.
+
+## 14) Next Version Preview
+
+In V8 you build on V7 and connect the incident pipeline to real workflow tools — Slack, ServiceNow, Jira — and into chaos-engineering and auto-response loops, so a scored incident doesn't just get a message, it gets a ticket, an owner, and an automated first response.
 
 ---
 
-## 13) Web UI Guide — `apps/web-ui/index.html`
+## 15) Web UI Guide — `apps/web-ui/index.html`
 
 ### Platform Continuity
 
-The V7 UI keeps the same V2 regulated readiness console and evolves it with incident operations, SLOs, runbooks, and recovery evidence checks. Students should experience this as the same platform growing, not as a separate app.
+The V7 UI keeps the same V2 regulated-readiness console and evolves it with AIOps risk scoring and incident-triage checks. Students should experience this as the same platform growing, not a separate app.
 
 ### What the V7 UI Does
 
-The V7 `index.html` is the operational excellence console. It shows whether the platform team can detect, explain, escalate, fix, and prove recovery during an incident.
+The V7 `index.html` is the AIOps incident-intelligence console. It turns incident signals into a risk score, a severity label, and a recommended first action.
 
 The page checks:
 
-- Reliability through SLOs, SLIs, and tested runbooks.
-- Cost efficiency through incident cost visibility and reduced operational waste.
-- Security and compliance through auditable response evidence.
-- Intelligence readiness through structured incident data that can feed AIOps in V8.
+- Reliability impact from latency, error rate, and blast radius.
+- Cost-efficiency impact from alert noise and operational toil.
+- Security and compliance through incident evidence.
+- Intelligence maturity through AIOps scoring and summary generation.
 
 ### What It Is Used For
 
-Use the V7 UI when students begin talking like platform operators, not only builders. A regulated organization needs a repeatable operating model: who responds, what runbook is followed, what evidence is captured, and how recovery is validated.
+Use the V7 UI to explain AIOps in plain language — how an operations team moves from raw signals to prioritized action instead of guessing which alert matters most. Useful for:
 
-This UI is useful for:
-
-- Practicing incident-readiness walkthroughs.
-- Explaining SLO and SLI ownership.
-- Connecting runbooks to audit evidence.
-- Preparing students for automated AIOps triage in V8.
+- Demonstrating risk scoring from multiple incident inputs.
+- Practicing severity classification.
+- Explaining how AIOps reduces alert fatigue.
+- Preparing for V8's Slack / ServiceNow / Jira / chaos-workflow integration.
 
 ### How to Read the Results
 
-The UI generates an incident operations scorecard.
+The UI generates an AIOps incident scorecard.
 
 | Field | Meaning |
 |---|---|
-| `scenario` | The incident scenario being evaluated. |
-| `readiness_score` | Overall operational readiness score. |
-| `readiness_band` | Plain-language result of the assessment. |
-| `domains.reliability` | Drops when runbooks or SLOs are missing. |
-| `domains.cost_efficiency` | Reflects how well incidents are controlled and documented. |
-| `domains.security_compliance` | Drops when evidence is missing or incomplete. |
-| `domains.intelligence_aiops_mlops` | Improves when incident data is structured and ready for automation. |
+| `service` | The service being evaluated. |
+| `incident_risk_score` | Incident risk from 1 to 10. Higher is more urgent. |
+| `severity` | Severity label: `low`, `medium`, `high`, or `critical`. |
+| `readiness_score` | Overall platform readiness after considering incident risk. |
+| `recommended_first_action` | What the operator should do first. |
+| `next` | Points students toward V8 workflow automation. |
 
-For regulated environments, a strong V7 result should show tested runbooks, defined SLOs, and complete recovery evidence.
+Suggested risk interpretation (UI 1–10 scale):
+
+- `1–3` — Low: monitor and document.
+- `4–6` — Medium: investigate and attach evidence.
+- `7–8` — High: open an incident and notify the team.
+- `9–10` — Critical: escalate immediately and follow the runbook.
+
+> Note: the UI uses a 1–10 readability scale; the `aiops_score_and_summarize.sh` script uses a 0–100 scale with bands `low` 0–39 / `medium` 40–69 / `high` 70–100. Same idea, different resolution.

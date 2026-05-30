@@ -1,5 +1,0 @@
-apiVersion: v2
-name: flask-api
-description: Flask API for the Reliability Platform
-version: 1.0.0
-appVersion: "v2"

@@ -1,96 +1,62 @@
-# Express Reliability Platform V4 — Observability + Real-World Simulation
+# Express Reliability Platform V4: Your First AWS Deployment
 
-## 1) Builds on V3
+## 1) Version Purpose
 
-Before you start V4, copy your personal V3 repository to your local machine and rename it to V4:
+In Version 3, the three-service platform ran on your laptop with Docker Compose. In Version 4, you deploy the same platform to AWS manually so you understand every moving part — ECR, ECS Fargate, VPC, ALB, S3, and DynamoDB — before Version 5 layers monitoring and Terraform on top.
 
-```sh
-git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v03.git
-mv express-reliability-platform-v03 express-reliability-platform-v04
-cd express-reliability-platform-v04
-```
+By the end of V4, you will:
 
-Use the main class repository for scripts and canonical structure:
+- Configure the AWS CLI.
+- Create ECR repositories.
+- Build, tag, and push Docker images for `linux/amd64` (Fargate's default).
+- Provision a **dedicated VPC** with public subnets, an Internet Gateway, and a route table.
+- Create an IAM task execution role.
+- Pre-create CloudWatch log groups.
+- Create an ECS cluster, task definitions, and Fargate services.
+- Find public task IP addresses.
+- Validate the platform from the terminal and a web browser.
+- Clean up every cloud resource created by this version, including the VPC.
 
-- https://github.com/Here2ServeU/express-reliability-platform-course
+## 2) What's New in V4 (Latest Updates)
 
-## 2) Version Purpose
-
-Add observability to the platform and practice reliability engineering with controlled stress and failure scenarios. Run the full stack locally on Docker Compose, then deploy the application tier to AWS using Terraform.
-
----
-
-## 3) Plain Language Context
-
-**What is this version teaching you?**
-You add a live dashboard to your platform so you can see exactly what is happening inside it at any moment — how fast it is responding, how many errors it is producing, and whether it is healthy. Without this, running a platform is like driving a car with no dashboard: you have no idea how fast you are going or when you are about to run out of fuel.
-
-**How does a bank or hospital use this?**
-Banks monitor transaction response times in real time. A sudden spike in latency can indicate fraud traffic, a server overload, or a network failure. A hospital monitoring platform tracks whether patient-record requests are succeeding. When a metric crosses a threshold, engineers get an alert immediately — not an hour later when users start calling.
-
-**Key terms in plain language:**
-
-| Term | What It Means |
+| Update | Why |
 |---|---|
-| **Prometheus** | A program that collects numbers from your services every few seconds and stores them — like a health monitor taking readings continuously |
-| **Metrics** | Numbers that describe how your system is performing — request rate, error rate, response time, memory usage |
-| **Grafana** | A tool that draws metrics as charts and dashboards — like turning a spreadsheet of numbers into a visual graph |
-| **SLI (Service Level Indicator)** | The actual measured value — for example, the real p95 response time right now |
-| **SLO (Service Level Objective)** | The target you promise — for example, "p95 response time must stay under 500ms" |
-| **p95 (95th percentile)** | The response time that 95% of requests are faster than — so if p95 is 400ms, 95 out of 100 requests finished in 400ms or less |
-| **Alertmanager** | A tool connected to Prometheus that sends notifications when a metric crosses a threshold |
-| **Load generation** | Sending many requests to your system to observe how it behaves under real traffic |
-| **ECR** | AWS Elastic Container Registry — a private Docker registry that ECS pulls images from |
-| **ECS Fargate** | AWS-managed container runtime — you give it a task definition and it runs the container without you managing any servers |
-| **ALB** | Application Load Balancer — a public AWS endpoint that forwards HTTP traffic to your ECS tasks |
+| Dedicated VPC (`reliability-platform-v04-vpc`, CIDR `10.42.0.0/16`) | Some AWS accounts have no default VPC; building our own removes that dependency. |
+| Public subnets across up to 3 AZs | Spread tasks across availability zones for redundancy. |
+| Pre-created CloudWatch log groups | `AmazonECSTaskExecutionRolePolicy` doesn't grant `logs:CreateLogGroup`, so `awslogs-create-group=true` would fail at task startup. |
+| `docker build --platform linux/amd64` | Fargate runs `linux/amd64`; without this flag, Apple Silicon Macs produce arm64 images that Fargate can't pull. |
+| Idempotent deploy + cleanup scripts | Re-running either script is safe — existing resources are reused or skipped. |
+| `--force-new-deployment` on service updates | Bumps services onto the latest task definition revision automatically. |
+| IAM-role propagation wait | New roles take ~10s to be usable; the script waits before registering task definitions. |
 
----
+## 3) Key AWS Terms
 
+| Term | Plain Language Meaning |
+|---|---|
+| AWS | Amazon Web Services, the cloud provider used in this version. |
+| Region | A geographic cluster of AWS data centers. V4 uses `us-east-1`. |
+| IAM | Identity and Access Management. Who can do what in AWS. |
+| ECR | Elastic Container Registry. Private Docker image storage in AWS. |
+| ECS | Elastic Container Service. Runs Docker containers in AWS. |
+| Fargate | ECS mode where AWS manages the underlying servers. |
+| Task Definition | Blueprint for one container: image, CPU, memory, ports, logs. |
+| Service | Keeps the requested number of tasks running. |
+| Cluster | Logical namespace for ECS services. |
+| Security Group | Cloud firewall controlling inbound and outbound traffic. |
+| VPC | Your isolated AWS network. V4 creates a dedicated one. |
+| Subnet | A range of IP addresses inside a VPC, scoped to one Availability Zone. |
+| Internet Gateway (IGW) | The component that lets a VPC route traffic to/from the internet. |
+| Route Table | Rules that direct subnet traffic (e.g., `0.0.0.0/0 → IGW`). |
+| ENI | Elastic Network Interface. Fargate attaches one per task. |
+| Public IP | Internet-reachable address assigned to a Fargate task. |
+| CloudWatch Logs | AWS log storage for container output. |
+| Task Execution Role | IAM role ECS uses to pull images and write logs. |
 
-## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+## 4) Cost Reminder
 
-1. Understand: Read monitoring architecture and metric goals.
-2. Build: Start the monitored stack locally and configure dashboards.
-3. Test: Confirm targets are up and metrics change under load.
-4. Break: Trigger a controlled fault or stress event.
-5. Fix: Use metrics, logs, and alerts to recover.
-6. Explain: Document what failed, why it failed, and what fixed it.
-7. Automate: Add repeatable stress tests and alert checks.
-8. Improve: Tune SLI/SLO thresholds and alert quality.
+ECS Fargate tasks cost money while running. In this version you run three tasks, which is a small hourly cost during practice, but leaving them running for days can become real money. Run `./scripts/cleanup_v4.sh` after every practice session.
 
-## 5) What You Will Build
-
-- A monitored stack with service metrics in Prometheus.
-- Dashboards in Grafana for reliability visibility.
-- A repeatable method to test latency/error behavior.
-
-## 6) Why Terraform Is Included in V4
-
-Terraform is infrastructure-as-code (IaC): you define infrastructure in versioned files instead of creating it manually in a cloud console.
-
-- **Locally (Docker Compose):** the full stack — three application services, Prometheus, Grafana — with a working dashboard.
-- **On AWS (Terraform):** the application tier deployed to ECS Fargate behind an ALB, with images stored in ECR and Terraform state stored in S3 with DynamoDB locking.
-- A repeatable method to validate latency and error behavior in both environments.
-
-> **Scope note:** V4 deploys the **application tier** to AWS (web-ui, node-api, flask-api). Prometheus and Grafana stay local in V4 — they move to AWS in V5 (Kubernetes/EKS), which is the right place for managed observability.
-
-## 6) Architecture Diagrams
-
-## 7) Architecture Diagram (Mermaid)
-
-```mermaid
-flowchart LR
-    User[Browser] --> UI[Web UI]
-    UI --> Node[Node API]
-    UI --> Flask[Flask API]
-    Node --> MetricsN[/metrics/]
-    Flask --> MetricsF[/metrics/]
-    Prom[Prometheus] --> MetricsN
-    Prom --> MetricsF
-    Graf[Grafana] --> Prom
-```
-
-## 8) Project Structure
+## 5) Project Structure
 
 ```text
 express-reliability-platform-v04/
@@ -98,216 +64,376 @@ express-reliability-platform-v04/
 │   ├── flask-api/
 │   ├── node-api/
 │   └── web-ui/
-├── monitoring/
-│   ├── prometheus.yml
-│   ├── alert.rules.yml
-│   └── grafana-dashboard.json
 ├── docker-compose.yml
 ├── scripts/
-│   ├── cleanup_v4.sh
-│   └── tf_deploy.sh
-├── terraform/
-│   ├── bootstrap/         # S3 state bucket + DynamoDB lock table
-│   │   └── main.tf
-│   └── platform/          # ECR + VPC + ECS Fargate + ALB + IAM
-│       ├── alb.tf
-│       ├── backend.tf
-│       ├── ecr.tf
-│       ├── ecs.tf
-│       ├── iam.tf
-│       ├── networking.tf
-│       └── variables.tf
+│   ├── create_ecr_repos.sh
+│   ├── build_tag_push_ecr.sh
+│   ├── deploy_ecs.sh
+│   ├── get_public_ips.sh
+│   └── cleanup_v4.sh
 └── README.md
 ```
 
-## 9) Run Steps
+## 6) Setup
 
-1. Start the stack:
+Install the AWS CLI, then configure credentials:
 
-   ```sh
-   docker compose up --build
-   ```
+```sh
+aws configure
+```
 
-2. Open the endpoints:
-   - App UI: `http://localhost:8080`
-   - Node API: `http://localhost:3000`
-   - Flask API: `http://localhost:5050`
-   - Prometheus: `http://localhost:9090`
-   - Grafana: `http://localhost:3001`
+Use:
 
-   > **Note on port 5050:** macOS uses port 5000 for AirPlay Receiver, so the Flask API is mapped to host port `5050` in `docker-compose.yml`. Inside the Docker network, services still reach Flask on port `5000` via the service name `flask-api:5000`.
+- Default region name: `us-east-1`
+- Default output format: `json`
 
-3. Generate load with any HTTP tool (`hey`, `ab`, or browser refresh loops).
+Validate authentication:
 
-4. Log in to Grafana — see [Section 9](#9-grafana-first-time-login).
+```sh
+aws sts get-caller-identity
+```
 
-5. Import the starter dashboard — see [Section 10](#10-import-the-starter-dashboard).
+Expected: JSON containing `UserId`, `Account`, and `Arn`.
 
-6. Observe latency, request count, and error trends in Grafana.
+## 7) Local Test Gate
 
-## 9) Grafana First-Time Login
+Before deploying to AWS, confirm the platform still works locally:
 
-The first time you open Grafana at `http://localhost:3001`, it will ask you to sign in.
+```sh
+docker compose up --build
+```
 
-1. Sign in with the default credentials:
-   - **Username:** `admin`
-   - **Password:** `admin`
+Endpoints:
 
-2. Grafana will immediately prompt you to **set a new password**.
-   - For local learning environments, you can set anything memorable (for example, `admin123`).
-   - For any shared or non-local environment, choose a strong password — the default `admin/admin` is the most common attack target on exposed Grafana instances.
+- Node API: `http://localhost:3000`
+- Flask API: `http://localhost:5000`
+- Web UI: `http://localhost:8080`
 
-3. After setting the new password, you land on the Grafana home page. You are now ready to add a datasource and import the dashboard.
-
-> **Forgot the password you set?** Reset it inside the running Grafana container:
->
-> ```sh
-> docker compose exec grafana grafana-cli admin reset-admin-password admin
-> ```
->
-> Or wipe Grafana state entirely with `docker compose down -v` (this also deletes saved dashboards).
-
-## 10) Import the Starter Dashboard
-
-Use `monitoring/grafana-dashboard.json` as a prebuilt dashboard template so you do not have to create panels manually.
-
-1. Confirm Prometheus is collecting targets:
-   - Open `http://localhost:9090/targets`.
-   - Verify `node-api` and `flask-api` are `UP`.
-
-2. Add Prometheus as a Grafana datasource:
-   - In Grafana, go to **Connections -> Data sources -> Add data source**.
-   - Choose **Prometheus**.
-   - Set URL to `http://prometheus:9090` (this is the in-network address — Grafana reaches Prometheus by service name, not `localhost`).
-   - Click **Save & test**. You should see "Successfully queried the Prometheus API".
-
-3. Import the dashboard JSON. You have two ways to do this — pick whichever works for you:
-
-   **Option A — Upload the file:**
-   - Go to **Dashboards -> New -> Import**.
-   - Click **Upload dashboard JSON file** and select `monitoring/grafana-dashboard.json`.
-   - On the import screen, map `DS_PROMETHEUS` to the Prometheus datasource you just created.
-   - Click **Import**.
-
-   **Option B — Copy and paste the JSON:**
-   - Open `monitoring/grafana-dashboard.json` in your editor and copy the entire contents.
-   - In Grafana, go to **Dashboards -> New -> Import**.
-   - Paste the JSON into the **Import via panel json** text box.
-   - Click **Load**.
-   - Map `DS_PROMETHEUS` to your Prometheus datasource and click **Import**.
-
-4. Fix any panels that say "No data" (datasource not bound):
-
-   After import, individual panels can still be tied to the wrong datasource UID. Re-bind them one of two ways:
-
-   **Per-panel fix (recommended for one or two panels):**
-   - On the panel that shows "No data", click the **three dots (⋮)** next to the panel title.
-   - Choose **Edit**.
-   - At the bottom of the edit screen, find the **Data source** dropdown and select your **Prometheus** datasource.
-   - Click **Apply** (top right) and then **Save dashboard**.
-
-   **Bulk fix (faster if many panels are broken):**
-   - Click the **three dots (⋮)** at the top right of the dashboard.
-   - Choose **Settings -> JSON Model**.
-   - In the JSON, replace any `"datasource": { "uid": "..." }` blocks with `"datasource": "Prometheus"` (or paste the corrected JSON from `monitoring/grafana-dashboard.json`).
-   - Click **Save changes**, then **Save dashboard**.
-
-5. Validate the dashboard is working:
-   - Hit `http://localhost:3000/` and `http://localhost:5050/` several times to generate traffic.
-   - In Grafana, confirm panels show non-empty series (availability, Flask request rate, and process memory).
-
-6. If panels are still blank after re-binding the datasource, check these:
-   - Time range is too narrow: set the dashboard range to `Last 15 minutes`.
-   - Datasource mapping issue: re-import and confirm `DS_PROMETHEUS` is mapped correctly.
-   - No traffic yet: hit the API endpoints again to produce fresh metrics.
-
-## 10) Validation Checklist
-
-- [ ] Compose launches all app and monitoring services (`docker compose ps` shows them all `running` or `healthy`).
-- [ ] Prometheus targets at `http://localhost:9090/targets` show app services as `UP`.
-- [ ] Grafana login works and the password has been changed from the default.
-- [ ] Grafana can query the Prometheus datasource (Save & test succeeded).
-- [ ] Dashboard panels show non-empty series after generating load.
-
-## 11) Troubleshooting
-
-- **Port 5000 already in use** on macOS: that's AirPlay Receiver. Either disable it (System Settings -> General -> AirDrop & Handoff -> turn off **AirPlay Receiver**) or keep the `5050:5000` mapping already in `docker-compose.yml`.
-- **Prometheus target down:** verify the service name and port in `monitoring/prometheus.yml` match the container names in `docker-compose.yml`.
-- **Grafana empty dashboards:** confirm the Prometheus datasource URL is `http://prometheus:9090`, not `http://localhost:9090`.
-- **Grafana login keeps failing:** reset with `docker compose exec grafana grafana-cli admin reset-admin-password admin`, or wipe state with `docker compose down -v`.
-- **Container restart loops:** inspect logs with `docker compose logs <service>`.
-
-## 12) Cleanup
+Stop the stack:
 
 ```sh
 docker compose down
 ```
 
-Add `-v` (`docker compose down -v`) to also delete volumes — useful for resetting Grafana to a clean state.
+## 8) AWS Deployment Steps
+
+Run from the `express-reliability-platform-v04` directory.
+
+**0. Make the scripts executable**
+
+```sh
+chmod +x scripts/
+```
+
+**1. Create the ECR repositories:**
+
+```sh
+./scripts/create_ecr_repos.sh
+```
+
+**2. Build, tag, and push all three images** (forces `linux/amd64` for Fargate):
+
+```sh
+./scripts/build_tag_push_ecr.sh
+```
+
+> On Apple Silicon, builds go through QEMU emulation and take noticeably longer than native arm64 builds — this is expected.
+
+**3. Provision VPC, IAM, log groups, ECS cluster, task definitions, and Fargate services:**
+
+```sh
+./scripts/deploy_ecs.sh
+```
+
+The script is idempotent and prints each step's progress. It will:
+
+1. Ensure the ECS service-linked role exists.
+2. Create or reuse VPC `reliability-platform-v04-vpc` (`10.42.0.0/16`).
+3. Create or reuse the Internet Gateway.
+4. Create or reuse one public subnet per AZ (up to three: `10.42.1.0/24`, `10.42.2.0/24`, `10.42.3.0/24`).
+5. Create or reuse a route table with `0.0.0.0/0 → IGW`, associated with all subnets.
+6. Create or reuse the ECS cluster.
+7. Create or reuse the security group (opens `80`, `3000`, `5000`).
+8. Create or reuse the IAM task execution role.
+9. Wait for IAM propagation.
+10. Pre-create CloudWatch log groups (`/ecs/v04/flask-api`, `/ecs/v04/node-api`, `/ecs/v04/web-ui`).
+11. Register task definitions and create or update services with `--force-new-deployment`.
+12. Print a summary table of services.
+
+**4. Wait about 90 seconds, then fetch the public IPs:**
+
+```sh
+./scripts/get_public_ips.sh
+```
+
+## 9) Validate from the Terminal
+
+**Service health (does AWS think the platform is up?):**
+
+```sh
+aws ecs describe-services \
+  --cluster reliability-platform-v04 \
+  --services flask-api node-api web-ui \
+  --region us-east-1 \
+  --query 'services[].{name:serviceName,desired:desiredCount,running:runningCount,pending:pendingCount,status:status}' \
+  --output table
+```
+
+You want `running == desired == 1` and `status == ACTIVE` for all three.
+
+**Reachability test (HTTP 2xx == healthy):**
+
+```sh
+curl -sfv http://<web-ui-ip>/
+curl -sfv http://<flask-api-ip>:5000/
+curl -sfv http://<node-api-ip>:3000/
+```
+
+**Live application logs:**
+
+```sh
+aws logs tail /ecs/v04/flask-api --since 5m --region us-east-1 --follow
+aws logs tail /ecs/v04/node-api  --since 5m --region us-east-1 --follow
+aws logs tail /ecs/v04/web-ui    --since 5m --region us-east-1 --follow
+```
+
+After hitting an endpoint with curl or a browser, request lines should appear in the log stream.
+
+**Architecture sanity check** (confirms the amd64 fix worked):
+
+```sh
+aws ecs describe-tasks --cluster reliability-platform-v04 \
+  --tasks $(aws ecs list-tasks --cluster reliability-platform-v04 \
+    --service-name flask-api --region us-east-1 \
+    --query 'taskArns[0]' --output text) \
+  --region us-east-1 \
+  --query 'tasks[0].{lastStatus:lastStatus,health:healthStatus}'
+```
+
+`lastStatus: RUNNING` means the image was pulled and the container started successfully.
+
+## 10) Validate from the Browser
+
+The script in the previous section prints clickable URLs. Open them in any browser:
+
+| Service | URL pattern | What to expect |
+|---|---|---|
+| **web-ui** | `http://<web-ui-ip>/` | Rendered HTML page (the user-facing site). |
+| **flask-api** | `http://<flask-api-ip>:5000/` | JSON response from the root route. |
+| **node-api** | `http://<node-api-ip>:3000/` | JSON response from the root route. |
+
+Common endpoints worth trying:
+
+- `http://<flask-api-ip>:5000/health`
+- `http://<node-api-ip>:3000/health`
+
+> Public IPs are **ephemeral**. Every time ECS replaces a task (deploy, crash, manual stop), the new task gets a new public IP. For stable URLs, you would put an Application Load Balancer in front of the services — that's the kind of thing V4+ adds.
+
+### What to do if a page doesn't load
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Site can't be reached / timeout | Security group blocking, or task not running yet | Re-check service health; wait 60-90s after deploy |
+| Connection refused | App is binding to `127.0.0.1` instead of `0.0.0.0` inside the container | Update the app's listen address |
+| Page loads but missing data | Cross-service call failing inside the VPC | Check CloudWatch logs on the calling service |
+| 4xx/5xx | Application-level error | Check CloudWatch logs |
+
+## 11) Validation Checklist
+
+- [ ] `aws sts get-caller-identity` returns your AWS account.
+- [ ] VPC `reliability-platform-v04-vpc` exists and has 2-3 public subnets associated with a route table that routes `0.0.0.0/0` to the IGW.
+- [ ] ECR repos exist for `reliability-platform/flask-api`, `reliability-platform/node-api`, and `reliability-platform/web-ui`, each with a `latest` tag built for `linux/amd64`.
+- [ ] CloudWatch log groups `/ecs/v04/flask-api`, `/ecs/v04/node-api`, `/ecs/v04/web-ui` exist.
+- [ ] ECS cluster `reliability-platform-v04` is `ACTIVE`.
+- [ ] Services `flask-api`, `node-api`, and `web-ui` each show `running=1` and `desired=1`.
+- [ ] `curl -sf http://<web-ui-ip>/` returns 2xx.
+- [ ] Opening the web-ui URL in a browser renders the platform HTML.
+- [ ] CloudWatch logs show request lines after you hit an endpoint.
+
+## 12) Troubleshooting
+
+**Task fails to start with `CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`:**
+
+You're on Apple Silicon and built without `--platform linux/amd64`. Re-run `./scripts/build_tag_push_ecr.sh` (it now passes the flag), then force a redeploy:
+
+```sh
+for SVC in flask-api node-api web-ui; do
+  aws ecs update-service --cluster reliability-platform-v04 \
+    --service $SVC --force-new-deployment --region us-east-1 > /dev/null
+done
+```
+
+**Task fails to start with `AccessDeniedException: logs:CreateLogGroup`:**
+
+This means a log group is missing. Pre-create them:
+
+```sh
+for SVC in flask-api node-api web-ui; do
+  aws logs create-log-group --log-group-name "/ecs/v04/$SVC" --region us-east-1 2>/dev/null || true
+done
+```
+
+Then bounce the services with `--force-new-deployment`.
+
+**`ServiceSchedulerInitiated` stop code:**
+
+Not an error — this is the scheduler stopping an old task as part of a normal deployment cycle. Check `runningCount` on the service; if it's `1`, the new task is healthy.
+
+**Service stuck at `running=0, pending=1`:**
+
+```sh
+aws ecs describe-services \
+  --cluster reliability-platform-v04 --services flask-api \
+  --region us-east-1 \
+  --query 'services[0].events[0:5]'
+```
+
+The most recent event message tells you why. Common causes: image pull failure, log group missing, subnet has no public IP route.
+
+**Cannot pull image (image exists in ECR but pull fails):**
+
+```sh
+aws ecr list-images --repository-name reliability-platform/flask-api --region us-east-1
+aws iam list-attached-role-policies --role-name ecsExecRole-v04
+```
+
+The execution role must have `AmazonECSTaskExecutionRolePolicy` attached.
+
+**Access denied on AWS calls:**
+
+```sh
+aws configure list
+aws sts get-caller-identity
+```
+
+**Browser shows blank page or won't connect:**
+
+- Confirm the task is `RUNNING`, not just `PENDING`.
+- Confirm the security group has inbound rules for `80`, `3000`, and `5000`.
+- Confirm the task's subnet has `map-public-ip-on-launch=true` (the deploy script sets this).
+- Check CloudWatch log groups under `/ecs/v04/<service-name>` for application errors.
+
+## 13) Cleanup
+
+Run cleanup immediately after each practice session:
+
+```sh
+./scripts/cleanup_v4.sh
+```
+
+The cleanup script tears down (in dependency order):
+
+1. Scales services to zero.
+2. Deletes ECS services.
+3. Deletes the ECS cluster.
+4. Deletes CloudWatch log groups (`/ecs/v04/*`).
+5. Deletes ECR repositories and all images.
+6. Detaches and deletes the IAM task execution role.
+7. Waits for Fargate ENIs to drain.
+8. Deletes the security group.
+9. Disassociates and deletes route tables.
+10. Deletes subnets.
+11. Detaches and deletes the Internet Gateway.
+12. Deletes the VPC.
+13. Prunes local Docker resources.
+
+After cleanup, verify nothing was left behind:
+
+```sh
+aws ecs list-clusters --region us-east-1
+aws ec2 describe-vpcs --filters Name=tag:Name,Values=reliability-platform-v04-vpc \
+  --query 'Vpcs[].VpcId' --output text --region us-east-1
+aws ecr describe-repositories --region us-east-1 \
+  --query 'repositories[?starts_with(repositoryName, `reliability-platform/`)].repositoryName'
+```
+
+All three commands should return empty / no matches.
+
+## 14) GitHub Actions OIDC Trust Policy
+
+V4 is deployed manually from your laptop, but the platform's security story already calls for OIDC instead of long-lived AWS access keys. The trust policy below is the V4-scoped version of what V4+ will use when GitHub Actions assumes an AWS role via OIDC.
+
+Replace `<your-github-owner>` with your GitHub org or username. The `sub` claim is pinned to the `express-reliability-platform-v04` repo specifically:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Federated": "arn:aws:iam::730335276920:oidc-provider/token.actions.githubusercontent.com"
+    },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:<your-github-owner>/express-reliability-platform-v04:*"
+      }
+    }
+  }]
+}
+```
+
+**Tightening the `sub` claim (recommended for prod):**
+
+| Goal | Replace `:*` with |
+|---|---|
+| Only the `main` branch | `:ref:refs/heads/main` |
+| Only a GitHub environment named `production` | `:environment:production` |
+| Only tagged releases | `:ref:refs/tags/*` |
+
+You do not need this policy to complete V4, but creating the OIDC provider and role now means V4's GitHub Actions workflow can assume it without any code changes.
+
+## 15) Next Version Preview
+
+Version 4 replaces the manual AWS commands with Terraform, so deployment and cleanup become repeatable infrastructure-as-code workflows.
 
 ---
 
-# Part B — Deploy and Validate on AWS (Terraform)
-
-## 14) AWS Prerequisites and Stack Overview
-
-**Prerequisites:**
-- AWS CLI v2 configured (`aws configure`) with credentials that can create VPC, ECS, ALB, IAM, ECR, S3, and DynamoDB resources.
-- Terraform ≥ 1.5.
-- Docker running locally (used to build images before pushing to ECR).
-
-## 13) Next Version Preview
-
-In V5, you build on V4 by moving to Kubernetes on EKS and adding self-healing and autoscaling concepts.
-
----
-
-## 14) Web UI Guide — `apps/web-ui/index.html`
+## 16) Web UI Guide — `apps/web-ui/index.html`
 
 ### Platform Continuity
 
-The V4 UI keeps the same V2 regulated readiness console and evolves it with observability checks. Students should experience this as the same platform growing, not as a separate app.
+The V4 UI keeps the same V2 regulated readiness console and evolves it with cloud promotion checks. Students should experience this as the same platform growing, not as a separate app.
 
 ### What the V4 UI Does
 
-The V4 `index.html` is the operational visibility console. It explains and scores whether the platform has enough observability to support regulated fintech or healthcare operations.
+The V4 `index.html` is the cloud promotion readiness console. It shows how the V2 platform starts becoming suitable for regulated cloud environments by checking:
 
-The page focuses on:
-
-- Reliability signals from health checks and latency posture.
-- Cost visibility through dashboard-driven utilization review.
-- Security and compliance evidence through captured metrics and screenshots.
-- Intelligence readiness by building the telemetry foundation needed for AIOps.
-
-It also includes local operations links for:
-
-- Node API: `http://localhost:3000`
-- Flask API: `http://localhost:5000`
-- Prometheus: `http://localhost:9090`
-- Grafana: `http://localhost:3001`
+- Reliability of the promotion path from local work to cloud environments.
+- Cost awareness for dev, staging, and production targets.
+- Security maturity through IAM, OIDC, and avoidance of long-lived static keys.
+- Intelligence maturity through early telemetry and deployment signals.
 
 ### What It Is Used For
 
-Use the V4 UI to show students why observability is required before a platform can be trusted. A bank or hospital must be able to answer basic questions quickly: Is the service up? Is latency rising? Are dashboards populated? Do we have evidence for an audit or incident review?
+Use the V4 UI when explaining whether a bank or hospital workload is ready to move from local development into cloud-hosted environments. Students can use it during demos to show that regulated delivery is not only about "does the app run?" but also "can we prove identity, environment separation, and release evidence?"
 
-This UI is useful for:
+The UI is useful for:
 
-- Demonstrating the connection between application health and monitoring tools.
-- Guiding students through Prometheus and Grafana validation.
-- Creating screenshots for evidence packs.
-- Preparing for V5 Kubernetes reliability controls.
+- Practicing release gate conversations.
+- Explaining dev, staging, and prod readiness.
+- Connecting cloud deployment work to regulated audit expectations.
+- Showing how V4 prepares the platform for V4 observability.
 
 ### How to Read the Results
 
-The JSON output describes observability readiness.
+The UI generates a JSON scorecard with four domain scores and a readiness band.
 
 | Field | Meaning |
 |---|---|
-| `readiness_score` | Overall observability readiness score from 0 to 100. |
-| `readiness_band` | Plain-language status of the platform. |
-| `domains.reliability` | Impacted by dashboard availability and latency posture. |
-| `domains.cost_efficiency` | Improves when dashboards provide utilization visibility. |
-| `domains.security_compliance` | Improves when screenshots and metric evidence are captured. |
-| `domains.intelligence_aiops_mlops` | Shows whether telemetry is strong enough for later AIOps work. |
+| `version` | Confirms this is the V4 cloud promotion assessment. |
+| `platform` | The workload or application being evaluated. |
+| `environment` | The selected target environment: `dev`, `staging`, or `prod`. |
+| `readiness_score` | Overall score from 0 to 100. |
+| `readiness_band` | Plain-language result such as `controlled pilot` or `production ready`. |
+| `domains.security_compliance` | Strongly affected by identity maturity and release evidence. |
+| `next` | The next capability students should build in V4. |
 
-If dashboards are missing or latency is above target, expect reliability and intelligence scores to drop. If evidence is missing, expect the security/compliance score to drop.
+Read the result this way:
+
+- A high score means the platform has a credible cloud promotion story.
+- A lower security score usually means IAM, OIDC, or release evidence needs attention.
+- A lower reliability score usually means the environment gate is not ready for regulated workloads.

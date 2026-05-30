@@ -72,7 +72,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 9: ITSM and Chaos</span>
+      <span class="badge">Version 10: Healthcare Telemetry</span>
     </div>
   </header>
 
@@ -86,38 +86,38 @@
     <div class="workspace">
       <section aria-labelledby="assessment-title">
         <h2 id="assessment-title">V9 Readiness Assessment</h2>
-        <p class="muted">V9 keeps the same platform console and adds enterprise incident workflow: Slack, ServiceNow, Jira, chaos drills, and recovery validation.</p>
+        <p class="muted">V9 keeps the same platform console and adds advanced healthcare telemetry: robot or IoMT status, clinical workflow signals, and predictive remediation.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">90</strong><small>Chaos-tested recovery</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">84</strong><small>Reduced response toil</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">90</strong><small>Auditable ITSM records</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">90</strong><small>AIOps plus workflow</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">92</strong><small>Telemetry and SLO checks</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">86</strong><small>Efficient response automation</small></div>
+          <div class="metric"><span>Security</span><strong id="securityScore">90</strong><small>Healthcare audit boundary</small></div>
+          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">92</strong><small>Predictive remediation</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
-            Chaos experiment
-            <input id="platformInput" value="latency-sev2-drill" autocomplete="off" />
+            Hospital workflow
+            <input id="platformInput" value="medication-delivery-robot" autocomplete="off" />
           </label>
           <label>
-            Alerting
-            <select id="alert"><option value="slack">Slack configured</option><option value="dry">Dry-run only</option><option value="none">No alerting</option></select>
+            Telemetry health
+            <select id="telemetry"><option value="good">Healthy signals</option><option value="warn">Warning signals</option><option value="critical">Critical telemetry</option></select>
           </label>
           <label>
-            ITSM coverage
-            <select id="itsm"><option value="both">ServiceNow and Jira</option><option value="one">One ticketing tool</option><option value="none">No ITSM</option></select>
+            Robot or IoMT status
+            <select id="robot"><option value="ready">Ready</option><option value="battery">Low battery</option><option value="fault">Fault detected</option></select>
           </label>
           <label>
-            Recovery proof
-            <select id="recovery"><option value="complete">Recovery validated</option><option value="partial">Partial validation</option><option value="missing">No validation</option></select>
+            Remediation maturity
+            <select id="remediation"><option value="predictive">Predictive guidance</option><option value="guided">Guided runbook</option><option value="manual">Manual response</option></select>
           </label>
           <div class="actions">
             <button type="submit">Run V9 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate ITSM and chaos readiness.</pre>
+        <pre id="output">Ready to evaluate healthcare telemetry readiness.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
@@ -130,8 +130,8 @@
           <div class="version"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></div>
           <div class="version"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></div>
           <div class="version"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
-          <div class="version current"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
-          <div class="version"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></div>
+          <div class="version"><strong>V8</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
+          <div class="version current"><strong>V9</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></div>
           <div class="version"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></div>
         </div>
       </aside>
@@ -139,7 +139,7 @@
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V9, the platform adds <strong>ITSM, alerting, and chaos workflow</strong>.</p>
+      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V9, the platform adds <strong>Healthcare telemetry and predictive remediation</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -160,10 +160,10 @@
         <span class="pill">FinOps guardrails</span>
         <span class="pill">AIOps triage</span>
         <span class="pill">MLOps readiness</span>
-        <span class="pill">Slack alert</span>
-        <span class="pill">ServiceNow ticket</span>
-        <span class="pill">Jira issue</span>
-        <span class="pill">Chaos drill</span>
+        <span class="pill">Hospital telemetry</span>
+        <span class="pill">Robot simulation</span>
+        <span class="pill">IoMT signals</span>
+        <span class="pill">Predictive remediation</span>
       </div>
 
       <div class="creator-panel">
@@ -196,13 +196,14 @@
       const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
       const extra = {};
 
-      const alert = document.getElementById("alert").value;
-      const itsm = document.getElementById("itsm").value;
-      const recovery = document.getElementById("recovery").value;
-      const reliability = clamp(94 - (recovery === "missing" ? 30 : recovery === "partial" ? 12 : 0));
-      const cost = clamp(88 - (alert === "none" ? 12 : alert === "dry" ? 5 : 0));
-      const security = clamp(94 - (itsm === "none" ? 34 : itsm === "one" ? 12 : 0) - (recovery === "missing" ? 8 : 0));
-      const intelligence = clamp(94 - (alert === "none" ? 14 : 0) - (itsm === "none" ? 12 : 0));
+      const telemetry = document.getElementById("telemetry").value;
+      const robot = document.getElementById("robot").value;
+      const remediation = document.getElementById("remediation").value;
+      const reliability = clamp(96 - (telemetry === "critical" ? 30 : telemetry === "warn" ? 12 : 0) - (robot === "fault" ? 18 : robot === "battery" ? 8 : 0));
+      const cost = clamp(90 - (remediation === "manual" ? 12 : remediation === "guided" ? 5 : 0));
+      const security = clamp(92 - (telemetry === "critical" ? 6 : 0));
+      const intelligence = clamp(96 - (remediation === "manual" ? 28 : remediation === "guided" ? 10 : 0));
+      extra.recommended_action = robot === "fault" ? "Remove affected robot from active route, notify operations, validate fallback workflow." : telemetry === "critical" ? "Open clinical operations incident and validate telemetry source." : "Continue monitoring and attach telemetry evidence.";
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
@@ -212,10 +213,10 @@
 
       output.textContent = JSON.stringify({
         platform,
-        version: "v9",
+        version: "v09",
         readiness_score: total,
         readiness_grade: grade(total),
-        focus: "ITSM, alerting, and chaos workflow",
+        focus: "Healthcare telemetry and predictive remediation",
         domains: {
           reliability,
           cost_efficiency: cost,
@@ -223,12 +224,12 @@
           intelligence_aiops_mlops: intelligence
         },
         version_adds: [
-          "Slack alert",
-          "ServiceNow ticket",
-          "Jira issue",
-          "Chaos drill"
+          "Hospital telemetry",
+          "Robot simulation",
+          "IoMT signals",
+          "Predictive remediation"
 ],
-        next: "Move to V10 for healthcare telemetry, cyber-physical reliability, and predictive remediation.",
+        next: "Move to capstone to personalize and present the full regulated platform.",
         ...extra
       }, null, 2);
     }

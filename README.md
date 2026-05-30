@@ -14,11 +14,11 @@ This program teaches you to build exactly that kind of system — step by step, 
 
 Think of your platform like a hospital building:
 
-- The **foundation** (V1–V3) is the concrete and steel — it must be solid before anything else is added.
-- The **monitoring systems** (V4–V6) are the fire alarms, security cameras, and vital-sign monitors — they tell you instantly when something is wrong.
-- The **response procedures** (V7–V8) are the emergency protocols — the step-by-step instructions staff follow when an alarm goes off.
-- The **intelligent systems** (V9) are the automatic notifications — the system pages the right doctor, logs the incident, and files a report without anyone having to make a phone call.
-- The **automation layer** (V10) is the self-operating equipment — the building adjusts the temperature, locks doors, and routes patients without waiting for someone to push a button.
+- The **foundation** (V1–V3) is the concrete and steel — local app, container image, then a multi-service stack — it must be solid before anything else is added.
+- The **cloud and observability layer** (V4–V6) puts the platform on AWS, instruments it with metrics and alerts, then organizes infrastructure into reusable, cost-aware modules with Helm.
+- The **operational intelligence layer** (V7–V8) detects, scores, summarizes, and routes incidents — into Slack, ServiceNow, and Jira — and exercises the pipeline with chaos drills.
+- The **automation layer** (V9) is the self-operating equipment — predictive remediation that begins recovery before a human pages.
+- The **capstone** (V10) is the finished, documented platform you present in interviews and to clients.
 
 ---
 
@@ -86,37 +86,36 @@ Each version builds directly on the previous one. **Never skip a version.**
 
 | Version | What You Learn | Real-World Value |
 |---|---|---|
-| **V1** | Run your first program on your laptop | Every bank engineer does this before touching a server |
-| **V2** | Package three services into Docker containers | Guarantees the same behavior on every computer |
-| **V3** | Deploy to the cloud with automated scripts | Rebuild the entire cloud stack from code in minutes |
-| **V4** | Add dashboards and health monitoring | See response time, error rate, and saturation in real time |
-| **V5** | Move to Kubernetes self-healing clusters | Services restart automatically without human action |
-| **V6** | Build disciplined, repeatable cloud infrastructure | Any engineer can recreate the setup from code — auditable |
-| **V7** | Add runbooks, incident response, and chaos drills | Follow documented procedures when something breaks at 2am |
-| **V8** | Add AI-powered incident scoring and detection | Score and summarize incidents automatically |
-| **V9** | Slack alerts + ServiceNow + Jira ticket automation | Alert your team and file tickets in 60 seconds, not 10 minutes |
-| **V10** | Full automation and recovery at scale | Detect, alert, ticket, and begin recovery without waiting for a human |
-| **Capstone** | Complete reference platform | A finished, documented system ready for enterprise delivery or an interview |
+| **V1** | Run your first program on your laptop | Every engineer does this before touching a shared server |
+| **V2** | Containerize the single service with Docker | Same artifact runs identically on every machine |
+| **V3** | Orchestrate Node API, Flask API, and Web UI with Docker Compose | One command brings up the full local platform |
+| **V4** | Deploy to AWS: ECR, ECS, VPC, ALB, S3, DynamoDB | Rebuild the entire cloud stack from code in minutes |
+| **V5** | Monitoring with Prometheus, Grafana, Alertmanager — plus an intro to Terraform | See response time, error rate, saturation, and provision the cloud with code |
+| **V6** | Apps, platform, Helm charts, and operational scripts | Disciplined, repeatable infrastructure any engineer can recreate |
+| **V7** | AIOps incident scoring, summaries, and Slack routing | Score and triage incidents automatically |
+| **V8** | ServiceNow + Jira ticket automation and chaos drills | File tickets in 60 seconds, not 10 minutes — and exercise the full pipeline |
+| **V9** | Healthcare telemetry and predictive remediation | Detect, alert, ticket, and begin recovery before a human pages |
+| **V10** | Capstone — complete reference platform | A finished, documented system ready for enterprise delivery or an interview |
 
 ---
 
 ## The 5 Phases
 
 ```
-Phase 1 — Foundations (V1–V3)
-  You have a full platform running on your computer and deployed in the cloud.
+Phase 1 — Local Foundations (V1–V3)
+  Run the app, containerize it, orchestrate the three services on Docker Compose.
 
-Phase 2 — Observability (V4–V6)
-  You can see exactly what your platform is doing at all times.
+Phase 2 — Cloud + Observability (V4–V6)
+  Deploy to AWS, instrument with Prometheus/Grafana, organize infrastructure with Helm.
 
-Phase 3 — Deep Visibility (V7–V8)
-  You can detect, score, and respond to incidents with documented runbooks.
+Phase 3 — Operational Intelligence (V7–V8)
+  Score incidents with AIOps, route to Slack, auto-file ServiceNow/Jira tickets, run chaos drills.
 
-Phase 4 — Intelligence (V9)
-  Your platform alerts your team on Slack and files ITSM tickets automatically.
+Phase 4 — Predictive Remediation (V9)
+  Healthcare telemetry feeds predictive remediation that recovers before a human pages.
 
-Phase 5 — Automation (V10)
-  Your platform can begin recovering from incidents on its own.
+Phase 5 — Capstone (V10)
+  The finished, documented platform you present in interviews and to clients.
 ```
 
 ---
@@ -156,7 +155,7 @@ cd express-reliability-platform-v0Y
 Before every cloud deployment, run the local test and confirm it passes:
 
 ```sh
-cd ../express-reliability-platform-v04
+cd ../express-reliability-platform-v03
 docker compose up --build -d
 curl http://localhost:8080/api/health
 docker compose down

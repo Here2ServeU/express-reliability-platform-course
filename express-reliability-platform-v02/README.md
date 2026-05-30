@@ -1,38 +1,6 @@
-# Express Reliability Platform V2
+# Express Reliability Platform V2 — Containerize a Single Service
 
-## 1) Version Purpose
-
-Version 2 is a containerized three-service platform designed for local reliability testing.
-
----
-
-## 2) Plain Language Context
-
-**What is this version teaching you?**
-You will wrap your three services inside Docker containers so they all start with one command and run identically on any computer. This is like putting each ingredient of a recipe into a labeled package, then bundling all the packages into one box — anyone can open the box and follow the same instructions.
-
-**How does a bank or hospital use this?**
-Financial institutions and hospitals require that code behaves identically in development, testing, and production. A bug that only appears on one engineer's laptop but not on the server can cause transactions to fail or patient data to be corrupted. Docker eliminates that problem by guaranteeing the environment is always the same.
-
-**Key terms in plain language:**
-
-| Term | What It Means |
-|---|---|
-| **Docker** | A tool that packages your program and all its dependencies into a self-contained box called a container |
-| **Container** | A running instance of a packaged program — isolated from everything else on the computer |
-| **Docker Image** | The blueprint for a container — like a recipe. Running the image creates a container |
-| **Docker Compose** | A tool that starts multiple containers together with a single command using a `docker-compose.yml` file |
-| **docker-compose.yml** | A configuration file that describes every service, what image it uses, and how services connect to each other |
-| **Port mapping** | Connecting a port inside a container to a port on your computer — `8080:80` means "when my browser hits port 8080, forward it to port 80 inside the container" |
-
-**Expected result at the end of this version:**
-- `docker compose up --build -d` starts all three services with no errors.
-- `http://localhost:8080` shows the web UI.
-- `curl http://localhost:8080/api/health` returns `{"status": "ok"}`.
-
----
-
-## 3) Builds on V1
+## 1) Builds on V1
 
 Before you start V2, copy your personal V1 repository to your local machine and rename it to V2:
 
@@ -42,348 +10,212 @@ mv express-reliability-platform-v01 express-reliability-platform-v02
 cd express-reliability-platform-v02
 ```
 
-Then sync your folder structure with the class repository V2 layout.
-
-Class repository (scripts and canonical structure):
+Use the main class repository for scripts and canonical structure:
 
 - https://github.com/Here2ServeU/express-reliability-platform-course
 
+## 2) Version Purpose
 
-## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
+V1 ran the Express service directly on your laptop with `npm start`. That works for one engineer on one machine — until the laptop changes, the Node version changes, or someone else tries to run it.
 
-1. Understand: Read `Version Purpose` and `Plain Language Context`.
-2. Build: Complete the container setup steps in order.
-3. Test: Validate UI and API endpoints from this README.
-4. Break: Stop one service container intentionally (for example, `docker compose stop flask-api`).
-5. Fix: Use `docker compose logs` and restart the failed service.
-6. Explain: Document what failed, why it failed, and what fixed it.
-7. Automate: Add script-based checks for startup and health validation.
-8. Improve: Re-run end-to-end checks and update reliability guardrails.
+V2 wraps the same service in a Docker container. The container has the runtime, the dependencies, and the start command baked in. The image you build on your laptop is byte-for-byte the same image that will run on a CI runner, on a teammate's machine, or on an AWS Fargate task.
+
+**V2 Goal:** Build a Docker image for the single Express service, run it as a container, see the health endpoint respond, then stop it cleanly.
+
+---
+
+## 3) Plain Language Context
+
+**What is this version teaching you?**
+You take the V1 app and put it inside a box that already contains everything it needs to run. That box (the container image) is portable: any computer with Docker can open the box and get exactly the same service. You stop worrying about whose laptop has which Node version.
+
+**How does a bank or hospital use this?**
+A bug that only shows up on one engineer's machine but not on the production server can corrupt transactions or patient records. Docker eliminates that whole class of problem by making the runtime identical everywhere. Every regulated platform ships as container images for this reason.
+
+**Key terms in plain language:**
+
+| Term | What It Means |
+|---|---|
+| **Docker** | A tool that packages a program plus its runtime and dependencies into a single artifact |
+| **Image** | The packaged artifact — a recipe + ingredients in one file |
+| **Container** | A running instance of an image — like a process, but isolated from the host |
+| **Dockerfile** | The text file that describes how to build the image, step by step |
+| **Tag** | A label on an image — `myapp:v2` is the `v2` tag of the `myapp` image |
+| **Port mapping** | `-p 3000:3000` forwards your laptop's port 3000 into the container's port 3000 |
+| **Healthcheck** | A command Docker runs inside the container to confirm the service is still answering |
+| **`.dockerignore`** | Tells the build to skip files (like `node_modules`) when copying into the image |
+
+**Expected result at the end of this version:**
+- `docker build` produces an image named `express-reliability-v02:local`.
+- `docker run -p 3000:3000 express-reliability-v02:local` starts the service.
+- `http://localhost:3000` shows the V2 page.
+- `curl http://localhost:3000/health` returns `{"status":"ok","service":"web-service","version":"v2"}`.
+- `docker ps` shows the container as healthy.
+- The cleanup script removes both the container and the image.
+
+---
+
+## 4) Training Workflow (Understand → Build → Test → Break → Fix → Explain → Automate → Improve)
+
+1. **Understand:** Read sections 2 and 3 before touching anything.
+2. **Build:** Follow the `Run Steps` exactly.
+3. **Test:** Use the `Validation Checklist` to confirm each step.
+4. **Break:** `docker stop` the container while a request is in flight.
+5. **Fix:** Use `docker logs` to see what happened, then `docker start` to recover.
+6. **Explain:** Write down what you saw and why the healthcheck mattered.
+7. **Automate:** Use the scripts in `scripts/` so the workflow is one command, not five.
+8. **Improve:** Try a multi-stage Dockerfile, then compare image sizes.
 
 ## 5) What You Will Build
 
-- `node-api` (Express): receives `/health` and `/score` requests
-- `flask-api` (Flask): computes a simple risk score used by `node-api`
+- A `Dockerfile` for the single Express service.
+- A `.dockerignore` so build context stays small.
+- A built image tagged `express-reliability-v02:local`.
+- A running container exposing port 3000 with a healthcheck.
+- Three scripts: `build.sh`, `run.sh`, `cleanup_v2.sh`.
 
-## 6) Use Cases (V2)
-
-- Local reliability demo for interview, classroom, or architecture walkthroughs.
-- Integration testing across UI, Node, and Flask layers using one `docker compose` stack.
-- API observability and troubleshooting practice with container logs and health checks.
-- Safe sandbox for trying resilience ideas (timeouts, retries, fallback behavior) before production systems.
-
-## 7) Architecture Diagram (Mermaid)
+## 6) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
-  Browser --> UI[web-ui :80]
-  UI -->|/api/*| Node[node-api :3000]
-  Node --> Flask[flask-api :5000]
+    Dockerfile[Dockerfile] -->|docker build| Image[Image<br/>express-reliability-v02:local]
+    Image -->|docker run| Container[Container<br/>port 3000]
+    User[Browser User] --> HostPort[localhost:3000]
+    HostPort --> Container
+    Container --> Health[/health endpoint/]
 ```
 
-## 8) Project Structure
+## 7) Project Structure
 
 ```text
 express-reliability-platform-v02/
-├── docker-compose.yml
-├── apps/
-│   ├── flask-api/
-│   │   ├── app.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
-│   ├── node-api/
-│   │   ├── index.js
-│   │   ├── package.json
-│   │   └── Dockerfile
-│   └── web-ui/
-│       ├── index.html
-│       ├── nginx.conf
-│       └── Dockerfile
+├── Dockerfile
+├── .dockerignore
+├── .gitignore
+├── index.js
+├── package.json
+├── public/
+│   └── index.html
+├── scripts/
+│   ├── build.sh
+│   ├── run.sh
+│   └── cleanup_v2.sh
 └── README.md
 ```
 
-## 9) Linux Prerequisites
+## 8) Run Steps
 
-Install:
-- Docker Engine
-- Docker Compose plugin (`docker compose`)
-- `curl`
-
-Optional tools used in troubleshooting:
-- `lsof`
-- `wget`
-
-## 10) Quick Start (Linux)
-
-1. Move into the v02 directory:
+### Step 1 — Confirm Docker is installed
 
 ```sh
-cd express-reliability-platform-v02
+docker --version
+docker info
 ```
 
-2. Build and start all services in detached mode:
+If `docker info` errors, start Docker Desktop and re-run.
+
+### Step 2 — Build the image
 
 ```sh
-docker compose up --build -d
+./scripts/build.sh
 ```
 
-3. Open the UI:
-
-```text
-http://localhost:8080
-```
-
-4. Validate end-to-end flow:
+Or manually:
 
 ```sh
-curl http://localhost:8080/api/health
-curl "http://localhost:8080/api/score?input=test"
+docker build --platform linux/amd64 -t express-reliability-v02:local .
 ```
 
-Expected example response:
+Confirm:
+
+```sh
+docker images express-reliability-v02
+```
+
+### Step 3 — Run the container
+
+```sh
+./scripts/run.sh
+```
+
+Or manually:
+
+```sh
+docker run -d --name erp-v02 -p 3000:3000 --restart unless-stopped express-reliability-v02:local
+```
+
+### Step 4 — Verify the service
+
+```sh
+docker ps --filter "name=erp-v02"
+curl http://localhost:3000/health
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+Expected `/health` response:
 
 ```json
-{
-  "version": "v2",
-  "flask_response": {
-    "input": "test",
-    "risk_score": 28,
-    "logic": "Risk based on input length (placeholder)"
-  }
-}
+{ "status": "ok", "service": "web-service", "version": "v2" }
 ```
 
-## 11) Promotion Path
-
-V2 is your local test gate with Docker Compose.
-
-1. Pass all local checks in this README.
-2. Commit your changes.
-3. Move to V3 to start Terraform and cloud promotion with `dev -> staging -> prod`.
-
-## 12) Day-2 Operations
-
-Check running services:
+### Step 5 — Watch the logs
 
 ```sh
-docker compose ps
+docker logs -f erp-v02
 ```
 
-View logs:
+Press `Ctrl + C` to detach (the container keeps running).
+
+### Step 6 — Stop and remove
 
 ```sh
-docker compose logs -f
-docker compose logs -f node-api
-docker compose logs -f flask-api
-docker compose logs -f web-ui
+./scripts/cleanup_v2.sh
 ```
 
-Stop everything:
+Or manually:
 
 ```sh
-docker compose down
+docker rm -f erp-v02
+docker rmi express-reliability-v02:local
 ```
 
-## 13) Service-Level Validation
+## 9) Break and Fix Drill
 
-Run a request through full stack:
+1. With the container running, in another terminal: `docker stop erp-v02`.
+2. Refresh the browser — the page fails to load.
+3. Run `docker ps -a` and note the container is `Exited`.
+4. Recover: `docker start erp-v02`.
+5. Refresh again — the page loads. The `--restart unless-stopped` flag would also have brought it back on Docker daemon restart.
+
+Write 3–5 sentences in your notes: what failed, what you observed, what fixed it.
+
+## 10) Validation Checklist
+
+- [ ] `docker build` completes with no errors.
+- [ ] `docker images express-reliability-v02` lists the `local` tag.
+- [ ] `docker run` starts the container and `docker ps` shows it as `healthy` after ~15 seconds.
+- [ ] `curl http://localhost:3000/health` returns the expected JSON.
+- [ ] `http://localhost:3000` renders the V2 page with the "Version 2: Containerized Service" badge.
+- [ ] `docker logs erp-v02` shows the `Server running on port 3000` startup line.
+- [ ] `./scripts/cleanup_v2.sh` removes both the container and the image.
+
+## 11) Troubleshooting
+
+- **`Cannot connect to the Docker daemon`:** start Docker Desktop and re-run.
+- **`port is already allocated`:** another process holds port 3000. `lsof -i :3000` then either stop it or set `HOST_PORT=3001 ./scripts/run.sh`.
+- **Container exits immediately:** `docker logs erp-v02` shows the error. Most often a typo in `index.js` or a missing dependency in `package.json`.
+- **`exec format error` on Apple Silicon:** rebuild with `--platform linux/amd64` (the build script already does this).
+- **Healthcheck stuck on `starting`:** wait 15–20 seconds; the first probe happens after the `--start-period`.
+
+## 12) Cleanup
 
 ```sh
-curl "http://localhost:8080/api/score?input=reliability"
+./scripts/cleanup_v2.sh
 ```
 
-Validate Node to Flask networking from inside the Node container:
+This removes the container and the local image. No cloud resources were created in V2.
 
-```sh
-docker exec node-api wget -qO- http://flask-api:5000/health
-docker exec node-api wget -qO- "http://flask-api:5000/score?input=reliability"
-```
+## 13) Next Version Preview
 
-## 14) Troubleshooting
-
-Port `8080` already in use:
-
-- Change mapping in `docker-compose.yml` from `8080:80` to `8090:80`
-- Relaunch with:
-
-```sh
-docker compose up --build -d
-```
-
-Port `5000` already in use on host:
-
-```sh
-lsof -i :5000
-kill -9 <PID>
-```
-
-On macOS, port `5000` is often used by Control Center / AirPlay Receiver. This V2 Compose file maps Flask to host port `5001` while keeping container port `5000` unchanged:
-
-```yaml
-ports:
-  - "5001:5000"
-```
-
-Use `http://localhost:5001` from your browser or host terminal when calling Flask directly. Inside Docker, services still call `http://flask-api:5000`.
-
-API fails even though containers are up:
-
-```sh
-docker compose logs -f node-api
-docker compose logs -f flask-api
-docker compose ps
-```
-
-Force clean rebuild:
-
-```sh
-docker compose down --volumes --remove-orphans
-docker system prune -af
-docker compose up --build -d
-```
-
-## 15) Cleanup
-
-```sh
-docker compose down --remove-orphans
-docker image prune -f
-```
-
----
-## 16) Linux Command Reference
-
-This section explains every Linux command used in this README.
-
-`cd express-reliability-platform-v02`
-- `cd`: changes the current shell directory.
-- Used to run all subsequent Docker commands from the v02 project root.
-
-`docker compose up --build -d`
-- `docker compose up`: creates and starts services from `docker-compose.yml`.
-- `--build`: rebuilds images before starting containers.
-- `-d`: runs containers in detached (background) mode.
-
-`curl http://localhost:8080/api/health`
-- `curl`: sends HTTP requests from terminal.
-- Used to verify the API endpoint is reachable via the UI proxy.
-
-`curl "http://localhost:8080/api/score?input=test"`
-- Same `curl` behavior, but this request includes a query string (`input=test`).
-- Used to test the reliability scoring flow.
-
-`docker compose ps`
-- Lists compose-managed containers and current states (`Up`, `Exited`, etc.).
-- Used for quick health checks of all services.
-
-`docker compose logs -f`
-- Shows logs from all services.
-- `-f`: follow mode (stream logs live).
-
-`docker compose logs -f node-api`
-- Streams logs only for the `node-api` service.
-- Used when debugging Express-side failures.
-
-`docker compose logs -f flask-api`
-- Streams logs only for the `flask-api` service.
-- Used when debugging scoring logic or Flask errors.
-
-`docker compose logs -f web-ui`
-- Streams logs for the Nginx UI container.
-- Used to debug reverse proxy or static file issues.
-
-`docker compose down`
-- Stops and removes compose resources for the current project.
-
-`docker exec node-api wget -qO- http://flask-api:5000/health`
-- `docker exec`: runs a command inside an existing container.
-- `node-api`: target container name.
-- `wget -qO- <url>`:
-  - `-q`: quiet output (no progress noise).
-  - `-O-`: write response body to stdout.
-- Used to test container-to-container network calls from Node to Flask.
-
-`docker exec node-api wget -qO- "http://flask-api:5000/score?input=reliability"`
-- Same as above, but tests the Flask `/score` endpoint with query params.
-
-`lsof -i :5000`
-- `lsof`: lists open files/process handles.
-- `-i :5000`: filters to processes listening/using port `5000`.
-- Used to find port conflicts on Linux hosts.
-
-`kill -9 <PID>`
-- Sends signal `9` (`SIGKILL`) to force-stop a process.
-- Used only when a process blocks required ports and does not stop gracefully.
-
-`docker compose down --volumes --remove-orphans`
-- `--volumes`: removes attached named and anonymous volumes.
-- `--remove-orphans`: removes containers not defined in current compose file.
-- Used to reset state when stale data or old containers cause failures.
-
-`docker system prune -af`
-- Removes unused Docker data (images, containers, networks, build cache).
-- `-a`: includes unused images, not only dangling ones.
-- `-f`: skips confirmation prompt.
-- Used to recover disk space and force fresh image rebuilds.
-
-`docker compose down --remove-orphans`
-- Standard shutdown plus orphan cleanup.
-
-`docker image prune -f`
-- Removes dangling/unused images to reclaim storage.
-- `-f`: skips interactive confirmation.
-
----
-
-## 17) Web UI Guide — `apps/web-ui/index.html`
-
-### Platform Continuity
-
-V2 is the baseline user experience for the course platform. The `index.html` introduces the regulated readiness console, the four scoring domains, the V2 -> V10 -> Capstone growth path, the market-inspired capability map, and the capstone creator preview. Later versions keep this same platform shell and add one new maturity layer at a time.
-
-### What the V2 UI Does
-
-The V2 `index.html` is the first version of the T2S regulated platform readiness console. It gives students a simple browser-based way to explain what the platform is checking for in fintech and healthcare environments:
-
-- Reliability: availability, latency, and incident posture.
-- Cost efficiency: cloud spend discipline and utilization awareness.
-- Security and compliance: evidence, access, and audit controls.
-- Intelligence: early AI, AIOps, and MLOps maturity.
-
-The page also keeps the original V2 backend integration through the **Call V2 API Score** button. That button calls:
-
-```text
-/api/score?input=<platform-name>
-```
-
-### What It Is Used For
-
-Use the V2 UI to introduce the platform concept to students, interviewers, or clients before the system becomes more advanced in later versions. It is intentionally simple: students enter a platform name, choose a few readiness options, and generate a JSON scorecard.
-
-This version is useful for:
-
-- Demonstrating the UI -> Node API -> Flask API request path.
-- Explaining why regulated organizations care about reliability, cost, security, and intelligent operations.
-- Showing the full V2 -> V10 -> Capstone learning path from the first working UI.
-
-### How to Read the Results
-
-The readiness output is JSON so students can practice reading structured operational evidence.
-
-Key fields:
-
-| Field | Meaning |
-|---|---|
-| `readiness_score` | Overall score from 0 to 100 across the four domains. |
-| `readiness_grade` | Plain-language interpretation such as `controlled pilot` or `production ready`. |
-| `domains.reliability` | How ready the platform is from a stability and availability perspective. |
-| `domains.cost_efficiency` | Whether spend and utilization look controlled. |
-| `domains.security_compliance` | Whether audit evidence and security controls are strong enough. |
-| `domains.intelligence_aiops_mlops` | Whether the platform has automation, AIOps, or MLOps maturity. |
-| `next_student_builds` | What students will add in later versions. |
-
-Suggested interpretation:
-
-- `85-100`: Strong candidate for production-style discussion.
-- `70-84`: Good controlled pilot; document remaining gaps.
-- `55-69`: Needs targeted improvement before regulated use.
-- `<55`: High risk; fix reliability, evidence, or automation gaps first.
+In **V3**, you stop running one container by hand and orchestrate three services together — a Node API, a Flask API, and a Web UI — with Docker Compose. The single-service skills from V2 (Dockerfile, build, run, healthcheck, logs) become the building blocks for the multi-service platform.

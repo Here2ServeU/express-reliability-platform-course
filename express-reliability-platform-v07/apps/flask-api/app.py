@@ -1,20 +1,26 @@
-from flask import Flask
+from flask import Flask, jsonify
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+
 app = Flask(__name__)
-c = Counter('flask_requests_total', 'Total requests to Flask API')
+requests_total = Counter("flask_requests_total", "Total requests to Flask API")
 
-@app.route('/')
+
+@app.route("/")
 def home():
-    c.inc()
-    return 'Flask API v7 running!'
+    requests_total.inc()
+    return "Flask API v8 running!"
 
-@app.route('/health')
+
+@app.route("/api/health")
 def health():
-    return {'status': 'ok', 'service': 'flask-api'}, 200
+    requests_total.inc()
+    return jsonify(status="ok", service="flask-api", version="v7")
 
-@app.route('/metrics')
+
+@app.route("/metrics")
 def metrics():
-    return generate_latest(c), 200, {'Content-Type': CONTENT_TYPE_LATEST}
+    return generate_latest(requests_total), 200, {"Content-Type": CONTENT_TYPE_LATEST}
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
