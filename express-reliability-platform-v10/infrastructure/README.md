@@ -544,4 +544,4 @@ aws dynamodb delete-table --table-name terraform-state-lock
 
 ---
 
-**Questions?** Review the [capstone README](../README.md) or check the [reference architecture](../docs/reference-architecture.md).
+**Questions?** Review the [V10 README](../README.md) or the [capstone reference architecture](../../express-reliability-platform-capstone/docs/reference-architecture.md).

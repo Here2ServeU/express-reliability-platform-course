@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: express-platform-services
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - service: node-api
+            path: infrastructure/helm/charts/node-api
+          - service: flask-api
+            path: infrastructure/helm/charts/flask-api
+          - service: web-ui
+            path: infrastructure/helm/charts/web-ui
+  template:
+    metadata:
+      name: '{{service}}'
+      namespace: argocd
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      labels:
+        app: '{{service}}'
+        platform: express-reliability-platform
+    spec:
+      project: express-platform
+      source:
+        repoURL: https://github.com/YOUR_ORG/express-reliability-platform-capstone.git
+        targetRevision: main
+        path: '{{path}}'
+        helm:
+          valueFiles:
+            - values.yaml
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: express-platform
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      revisionHistoryLimit: 5

@@ -1,222 +1,240 @@
-# Express Reliability Platform V10 — Capstone: Golden Reference Platform
+# Express Reliability Platform V10 — AIOps, GitOps & Observability
 
-V10 is the **final integrated platform** that combines all lessons from V1–V9 into one implementation and operating model suitable for regulated healthcare and fintech environments. This is the version you present at interviews and to clients.
+## 1) Builds on V9
 
-Use this folder as your students’ and clients’ **golden platform reference** for:
+Before you start V10, copy your personal V9 repository to your local machine and rename it to V10:
 
-- Interview preparation
-- Client solution architecture
-- Reliability and compliance operating model
-- Evidence-driven delivery and audits
+```sh
+git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v09.git
+mv express-reliability-platform-v09 express-reliability-platform-v10
+cd express-reliability-platform-v10
+```
 
----
+Use the main class repository for scripts and canonical structure:
 
-## 1) Capstone Mission
+- https://github.com/Here2ServeU/express-reliability-platform-course
 
-Build and operate one platform that is:
+## 2) Version Purpose
 
-- Reliable by design
-- Secure by default
-- Observable end-to-end
-- Auditable for regulated environments
-- Explainable to both technical and non-technical stakeholders
+V10 is the **operating brain** of the platform. It takes everything you built in
+V1–V9 and wires it into a closed incident loop across three domains:
 
----
+1. **Intelligence layer (AIOps)** — detect anomalies, score the risk, and summarize the incident.
+2. **GitOps (ArgoCD)** — deploy and self-heal from Git; roll back to the last good revision automatically.
+3. **Observability & Alerting** — Prometheus/Grafana/Alertmanager watch the golden signals and route
+   alerts to **Slack**, where each alert names the **exact script the engineer runs to resolve the issue**.
 
-## 2) Versions Unified in This Capstone
+The whole point of V10: a single signal travels from **detect → score → alert → resolve → self-heal**
+without anyone hunting for the runbook.
 
-| Capability | Source Version(s) | Capstone Outcome |
-|---|---|---|
-| Local app foundation | V1 | Fast local bootstrap + developer workflow |
-| Containerizing a single service | V2 | Portable runtime artifact, reproducible builds |
-| Orchestrating the three-service platform locally | V3 | Multi-service baseline with Docker Compose |
-| First AWS deployment (ECR/ECS/VPC/ALB/S3/DynamoDB) | V4 | Cloud deployment muscle memory, manually proven |
-| Monitoring (Prometheus/Grafana/Alertmanager) + intro to Terraform | V5 | Proactive observability, infrastructure as code |
-| Apps + platform + Helm + scripts | V6 | Repeatable, cost-aware infrastructure |
-| AIOps incident scoring and Slack routing | V7 | Faster triage, machine-readable evidence |
-| ITSM (ServiceNow + Jira) + chaos drills | V8 | Auditable ticket trail, exercised pipeline |
-| Healthcare telemetry + predictive remediation | V9 | Self-healing operating model |
+> The capstone (the compilation of V1–V10) now lives in
+> [`express-reliability-platform-capstone/`](../express-reliability-platform-capstone/). V10 is the
+> focused technical build the capstone references for its intelligence, GitOps, and observability story.
 
----
+## 3) Plain Language Context
 
-## 3) Golden Architecture (High Level)
+**What is this version teaching you?**
+When something breaks, three things must happen automatically: the system must *notice* (intelligence),
+the system must *keep deploying and healing itself* (GitOps), and the right human must be *told exactly
+what to do* (observability + alerting). V10 connects all three so an incident becomes a copy-paste fix
+instead of a 2am investigation.
+
+**How does a bank or hospital use this?**
+Regulators expect detection, response, and recovery to be fast, consistent, and documented. AIOps removes
+guesswork from triage, GitOps makes every change reversible and auditable through Git, and an alert that
+names its own fix shrinks mean-time-to-recovery and removes tribal knowledge.
+
+**Expected result at the end of this version:**
+- `./scripts/run_intelligence_loop.sh latency node-api` runs detect → score → Slack alert end to end.
+- The Slack alert names a runnable command, e.g. `./remediation/resolve_incident.sh latency node-api`.
+- Prometheus + Alertmanager fire real alerts that reach Slack through the bridge.
+- ArgoCD keeps the three services synced and self-healing from Git.
+- Everything has a dry-run / no-credential path so you can practice safely.
+
+## 4) The Three Domains
+
+### Domain 1 — Intelligence layer (AIOps)  `aiops/`
+
+| File | What it does |
+|---|---|
+| `aiops/detect_anomaly.py` | Compares a measured signal to its SLO threshold and returns `ANOMALY`/`NORMAL`. |
+| `aiops/score_and_summarize.py` | Scores risk (0–100), assigns severity, writes incident **evidence JSON**, and names the resolve command. |
+
+### Domain 2 — GitOps (ArgoCD)  `infrastructure/`, `policies/`, `.github/`
+
+| Path | What it does |
+|---|---|
+| `infrastructure/argocd/project.yaml` | ArgoCD `AppProject` with RBAC and allowed namespaces. |
+| `infrastructure/argocd/applicationsets/platform-services.yaml` | One ApplicationSet deploys node-api, flask-api, web-ui from Git. |
+| `infrastructure/argocd/applications/node-api.yaml` | Single-app example with auto-sync, self-heal, and prune. |
+| `infrastructure/helm/charts/*` | Helm charts ArgoCD renders and applies. |
+| `infrastructure/terraform/*` | EKS + VPC the platform runs on. |
+| `policies/opa/*` | OPA policies enforced in CI before sync. |
+| `.github/workflows/ci-cd-pipeline.yaml` | Scan → build → push → **ArgoCD sync** → compliance check. |
+
+### Domain 3 — Observability & Alerting  `monitoring/`, `alerting/`, `remediation/`
+
+| File | What it does |
+|---|---|
+| `monitoring/prometheus.yml` | Scrapes the services and loads the alert rules. |
+| `monitoring/alert.rules.yml` | Golden-signal alerts; each carries a `resolve_command` annotation. |
+| `monitoring/alertmanager/alertmanager.yml` | Routes firing alerts to the Slack bridge. |
+| `monitoring/grafana-dashboard*.json` | Golden-signal dashboards. |
+| `alerting/alertmanager_webhook.py` | Receives Alertmanager webhooks and posts Slack messages that name the resolve script. |
+| `alerting/send_slack_alert.py` | Posts a rich AIOps alert from an evidence file (also names the resolve script). |
+| `remediation/resolve_incident.sh` | **The script the engineer runs to resolve the incident.** |
+
+## 5) Architecture Diagram (Mermaid)
 
 ```mermaid
 flowchart LR
-    U[Users / Partners] --> WAF[WAF + Edge Protection]
-    WAF --> ALB[ALB / Ingress]
-    ALB --> UI[Web UI Service]
-    UI --> NODE[Node API]
-    UI --> FLASK[Flask API]
+    subgraph OBS[Observability & Alerting]
+      PROM[Prometheus] --> AM[Alertmanager]
+      GRAF[Grafana]
+    end
+    subgraph INTEL[Intelligence - AIOps]
+      DET[detect_anomaly] --> SCORE[score_and_summarize]
+      SCORE --> EV[(evidence JSON)]
+    end
+    subgraph GITOPS[GitOps - ArgoCD]
+      GIT[Git repo] --> ARGO[ArgoCD]
+      ARGO --> K8S[EKS workloads]
+    end
 
-    NODE --> DATA[(Transactional Data Store)]
-    FLASK --> DATA
-
-    NODE --> OBS[Telemetry Pipeline]
-    FLASK --> OBS
-    UI --> OBS
-
-    OBS --> PROM[Prometheus]
-    OBS --> GRAF[Grafana]
-    OBS --> ALERT[Alerting + Slack]
-
-    ALERT --> RUNBOOK[Runbooks + Incident Workflow]
-    RUNBOOK --> REMED[Automated / Guided Remediation]
-
-    IAC[Terraform Modules] --> CLOUD[AWS Account(s)]
-    CI[GitHub Actions + OIDC] --> CLOUD
-    CLOUD --> EKS[EKS Runtime]
-    CLOUD --> ECS[ECS Runtime]
+    K8S --> PROM
+    PROM --> GRAF
+    AM --> BRIDGE[alertmanager_webhook]
+    EV --> SLACKMSG[send_slack_alert]
+    BRIDGE --> SLACK[Slack channel]
+    SLACKMSG --> SLACK
+    SLACK --> ENG[On-call engineer]
+    ENG --> RESOLVE[resolve_incident.sh]
+    RESOLVE --> GIT
+    RESOLVE --> K8S
 ```
 
----
-
-## 4) Regulated Environment Best Practices Included
-
-### Security and Identity
-- Least-privilege IAM roles and scoped service accounts
-- OIDC-based CI/CD federation (no long-lived static credentials)
-- Secrets managed outside source code
-- Network segmentation and environment isolation (`shared`, `live`)
-
-### Reliability Engineering
-- Defined SLO/SLI catalog with error budgets
-- Health probes, autoscaling policies, and graceful degradation
-- Incident severity model with runbook-driven response
-- Disaster recovery exercises with documented recovery objectives
-
-### Compliance and Audit Readiness
-- Traceable change management through Git + PR workflows
-- Control evidence pack (who changed what, when, and why)
-- Standardized incident documentation and post-incident review
-- Data handling boundaries for healthcare and fintech workloads
-
-### Observability and AIOps
-- Golden signals: latency, traffic, errors, saturation
-- Alert thresholds aligned to SLO commitments
-- Risk scoring and incident summarization for fast triage
-- Simulation-driven validation before production promotion
-
----
-
-## 5) Program Delivery Model (How Students and Clients Use It)
-
-1. Build capability in sequence from V1 → V9.
-2. Use this V10 capstone to consolidate everything into one final operating platform.
-3. Complete all templates under `artifacts/`.
-4. Use `docs/interview-and-client-playbook.md` to present architecture and outcomes.
-5. Use `docs/controls-matrix.md` during client onboarding and audits.
-
----
-
-## 6) Capstone Exit Criteria (Golden Standard)
-
-A student/client implementation is considered complete when all are true:
-
-- [ ] Architecture diagram matches deployed reality.
-- [ ] SLO/SLI definitions exist per critical service.
-- [ ] Alerting, runbooks, and escalation path are tested.
-- [ ] IaC workflow is reproducible across environments.
-- [ ] Security controls and evidence artifacts are documented.
-- [ ] At least one reliability simulation and one DR drill are completed.
-- [ ] Interview/client walkthrough can be delivered in 15 minutes.
-
----
-
-## 7) Folder Structure
+## 6) Project Structure
 
 ```text
 express-reliability-platform-v10/
-├── README.md
-├── docs/
-│   ├── reference-architecture.md
-│   ├── controls-matrix.md
-│   ├── implementation-roadmap.md
-│   └── interview-and-client-playbook.md
-└── artifacts/
-    ├── compliance/
-    │   └── evidence-pack-checklist.md
-    ├── runbooks/
-    │   └── incident-runbook-template.md
-    └── sre/
-        └── slo-sli-catalog-template.md
+├── aiops/
+│   ├── detect_anomaly.py
+│   └── score_and_summarize.py
+├── alerting/
+│   ├── alertmanager_webhook.py
+│   └── send_slack_alert.py
+├── remediation/
+│   └── resolve_incident.sh
+├── monitoring/
+│   ├── prometheus.yml
+│   ├── alert.rules.yml
+│   ├── alertmanager/alertmanager.yml
+│   ├── grafana-dashboard.json
+│   └── grafana-dashboard-golden-signals.json
+├── infrastructure/        <- GitOps: ArgoCD + Helm + Terraform
+├── policies/opa/          <- policy-as-code enforced in CI
+├── scripts/
+│   ├── run_intelligence_loop.sh
+│   ├── simulate_latency.py
+│   ├── simulate_500_error.py
+│   └── simulate_cpu_memory.py
+├── apps/web-ui/index.html <- V10 readiness console (3 domains)
+├── artifacts/evidence/    <- generated incident evidence JSON
+├── docker-compose.observability.yml
+├── .github/workflows/ci-cd-pipeline.yaml
+└── README.md
 ```
 
----
+## 7) Step-by-Step Guide
 
-## 8) Next Step
+### Step A — Run the intelligence loop (no credentials needed)
 
-Start with `docs/implementation-roadmap.md` and execute Phase 1 through Phase 6 in order.
-
----
-
-## 9) Web UI Guide — `apps/web-ui/index.html`
-
-### Platform Continuity
-
-The capstone UI keeps the same V2 regulated readiness console and completes it as the final student-owned platform. It should feel like the same platform students have matured from V2 through V10, now ready for a portfolio, interview, or client walkthrough.
-
-### What the Capstone UI Does
-
-The capstone `index.html` is the final regulated platform readiness console. It combines the learning path from V2 through V10 into one portfolio-ready interface that a student can present to interviewers, clients, banks, hospitals, and other high-trust organizations.
-
-The page checks:
-
-- Reliability: SLOs, SLIs, runbooks, chaos drills, and recovery validation.
-- Cost efficiency: FinOps tagging, ownership, and governance.
-- Security and compliance: mapped controls, audit evidence, and regulated operating practices.
-- Intelligence: AIOps, MLOps readiness, predictive remediation, and operational automation.
-
-It also includes a **creator name** field. When a student enters their name and generates the scorecard, the page saves that creator name in browser `localStorage` and displays:
-
-```text
-Final project created by <student name>, T2S regulated platform engineer.
+```sh
+chmod +x scripts/run_intelligence_loop.sh remediation/resolve_incident.sh
+./scripts/run_intelligence_loop.sh latency node-api
 ```
 
-### What It Is Used For
+This runs detect → score → Slack alert (dry-run unless `SLACK_WEBHOOK_URL` is set) and prints the
+resolve command. Available signals: `latency`, `error_rate`, `cpu`, `pod_kill`.
 
-Use the capstone UI as the final presentation surface for the entire program. The goal is for each student to show that they can build and explain a complete regulated reliability platform, not just individual scripts or infrastructure pieces.
+Run the stages individually:
 
-This UI is useful for:
+```sh
+python3 scripts/simulate_latency.py
+python3 aiops/detect_anomaly.py --signal latency --value 1200
+python3 aiops/score_and_summarize.py --signal latency --service node-api
+python3 alerting/send_slack_alert.py --evidence-file artifacts/evidence/INC-LATENCY.json
+```
 
-- Final student demos.
-- Interview portfolio walkthroughs.
-- Client architecture conversations.
-- Capstone grading and review.
-- Showing how the platform compares conceptually to mature observability, FinOps, ITSM, and AIOps tools.
+### Step B — Wire alerts to Slack for real
 
-### How to Read the Results
+```sh
+export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+./scripts/run_intelligence_loop.sh error_rate flask-api
+```
 
-The capstone UI generates a final JSON scorecard.
+### Step C — Bring up observability and route real alerts
 
-| Field | Meaning |
-|---|---|
-| `version` | Confirms this is the capstone assessment. |
-| `creator` | Student or engineer presenting the platform. |
-| `platform` | Final project or platform name. |
-| `target_industry` | Intended industry focus: fintech, healthcare, or both. |
-| `readiness_score` | Overall capstone score from 0 to 100. |
-| `readiness_band` | Final interpretation: `golden reference`, `portfolio ready`, `needs final polish`, or `not capstone ready`. |
-| `domains.reliability` | Measures operational resilience and recovery readiness. |
-| `domains.cost_efficiency` | Measures FinOps and governance maturity. |
-| `domains.security_compliance` | Measures controls, audit evidence, and regulated readiness. |
-| `domains.intelligence_aiops_mlops` | Measures AIOps, MLOps, and remediation maturity. |
-| `portfolio_message` | A plain-language statement students can use in their final presentation. |
+```sh
+docker compose -f docker-compose.observability.yml up -d
+# In a second terminal, start the Slack bridge (dry-runs without SLACK_WEBHOOK_URL):
+python3 alerting/alertmanager_webhook.py
+# Prometheus http://localhost:9090  |  Alertmanager http://localhost:9093  |  Grafana http://localhost:3000
+```
 
-Suggested interpretation:
+When an alert fires, Alertmanager posts to the bridge, which sends a Slack message that ends with the
+exact `resolve_command` from `monitoring/alert.rules.yml`.
 
-- `90-100`: Golden reference. Strong final portfolio story.
-- `80-89`: Portfolio ready. Good for demos, with minor polish.
-- `70-79`: Needs final polish. Review missing evidence or controls.
-- `<70`: Not capstone ready. Strengthen reliability, evidence, controls, or automation.
+### Step D — Resolve the incident with one script
 
-### How Students Customize It
+Copy the command from the Slack alert and run it (dry-run first to preview the actions):
 
-1. Open the capstone UI in a browser.
-2. Enter the student's name in **Creator name**.
-3. Enter a final platform name.
-4. Select the target industry and maturity options.
-5. Click **Generate Capstone Scorecard**.
-6. Use the displayed creator credit and JSON scorecard in the final presentation.
+```sh
+DRY_RUN=1 ./remediation/resolve_incident.sh latency node-api   # preview
+./remediation/resolve_incident.sh latency node-api             # execute
+```
 
-The creator name is saved only in the current browser through `localStorage`; it is not sent to a server.
+### Step E — GitOps deploy (ArgoCD)
+
+See [infrastructure/README.md](infrastructure/README.md) for the full Terraform → ArgoCD walkthrough.
+
+```sh
+kubectl apply -f infrastructure/argocd/project.yaml
+kubectl apply -f infrastructure/argocd/applicationsets/platform-services.yaml
+argocd app list
+```
+
+Because ArgoCD runs with `selfHeal: true`, the `error_rate` remediation prefers a **GitOps rollback**
+(`argocd app rollback`) so the platform reconciles back to the last good revision automatically.
+
+## 8) Validation Checklist
+
+- [ ] `./scripts/run_intelligence_loop.sh latency node-api` completes and prints an evidence JSON.
+- [ ] An evidence file appears under `artifacts/evidence/`.
+- [ ] `send_slack_alert.py` dry-run shows the resolve command.
+- [ ] With `SLACK_WEBHOOK_URL` set, a real Slack message arrives.
+- [ ] `docker compose -f docker-compose.observability.yml up -d` starts Prometheus, Alertmanager, Grafana.
+- [ ] `alertmanager_webhook.py` receives an alert and formats a Slack message naming the resolve script.
+- [ ] `DRY_RUN=1 ./remediation/resolve_incident.sh latency node-api` prints the remediation plan.
+- [ ] ArgoCD ApplicationSet syncs the three services.
+
+## 9) Troubleshooting
+
+- **Slack not sending**: confirm `SLACK_WEBHOOK_URL` is exported; run with `--dry-run` first.
+- **Alertmanager can't reach the bridge**: the compose file maps `host.docker.internal`; on Linux the
+  `extra_hosts: host-gateway` mapping handles it. Confirm the bridge is listening on `:5001`.
+- **No evidence file**: ensure `artifacts/evidence/` is writable (the scorer creates it automatically).
+- **ArgoCD app OutOfSync**: `argocd app sync <app> --prune`; check controller logs.
+
+## 10) Web UI Guide — `apps/web-ui/index.html`
+
+The V10 UI is the **Intelligence, GitOps & Observability console**. It keeps the same platform look
+students have used since V2 and scores the platform across the three V10 domains: intelligence (AIOps),
+GitOps (ArgoCD), and observability & alerting. Generate the scorecard to get a JSON readiness summary
+with a band of `production ready`, `operationally solid`, `needs hardening`, or `not operational`.
+
+## 11) Next Step — The Capstone
+
+Once V10 is green, assemble the full story in
+[`express-reliability-platform-capstone/`](../express-reliability-platform-capstone/) — the compilation
+of V1–V10 you present in interviews and to clients.
