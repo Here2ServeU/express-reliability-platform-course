@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: express-platform
+  namespace: argocd
+spec:
+  description: Express Reliability Platform Project
+  sourceRepos:
+    - 'https://github.com/YOUR_ORG/express-reliability-platform-capstone.git'
+    - '*'
+  destinations:
+    - namespace: express-platform
+      server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
+    - namespace: security
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  roles:
+    - name: platform-admin
+      description: Platform administrators
+      policies:
+        - p, proj:express-platform:platform-admin, applications, *, express-platform/*, allow
+      groups:
+        - platform-admins
+    - name: developer
+      description: Platform developers
+      policies:
+        - p, proj:express-platform:developer, applications, get, express-platform/*, allow
+        - p, proj:express-platform:developer, applications, sync, express-platform/*, allow
+      groups:
+        - developers

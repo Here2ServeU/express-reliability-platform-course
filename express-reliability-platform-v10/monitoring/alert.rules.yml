@@ -1,0 +1,50 @@
+groups:
+  - name: platform-alerts
+    rules:
+
+      - alert: ServiceDown
+        expr:  up == 0
+        for:   30s
+        labels:
+          severity: critical
+          signal:   pod_kill
+        annotations:
+          summary:         '{{ $labels.job }} is DOWN'
+          description:     'Service {{ $labels.job }} has been unreachable for 30 consecutive seconds.'
+          resolve_command: './remediation/resolve_incident.sh pod_kill {{ $labels.job }}'
+
+      - alert: HighErrorRate
+        expr:  rate(http_requests_total{status=~'5..'}[5m]) > 0.05
+        for:   1m
+        labels:
+          severity: warning
+          signal:   error_rate
+        annotations:
+          summary:         'High 5xx error rate on {{ $labels.job }}'
+          description:     'More than 5% of requests are returning server errors.'
+          resolve_command: './remediation/resolve_incident.sh error_rate {{ $labels.job }}'
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 0.5
+        for:   2m
+        labels:
+          severity: warning
+          signal:   latency
+        annotations:
+          summary:         'p95 latency above 500ms on {{ $labels.job }}'
+          description:     'p95 latency has exceeded the 500ms SLO for 2 minutes.'
+          resolve_command: './remediation/resolve_incident.sh latency {{ $labels.job }}'
+
+      - alert: HighCpuSaturation
+        expr:  avg(rate(process_cpu_seconds_total[5m])) by (job) > 0.85
+        for:   2m
+        labels:
+          severity: warning
+          signal:   cpu
+        annotations:
+          summary:         'CPU saturation above 85% on {{ $labels.job }}'
+          description:     'Sustained CPU saturation can cause request queueing and latency.'
+          resolve_command: './remediation/resolve_incident.sh cpu {{ $labels.job }}'

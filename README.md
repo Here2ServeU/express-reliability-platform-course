@@ -17,8 +17,8 @@ Think of your platform like a hospital building:
 - The **foundation** (V1–V3) is the concrete and steel — local app, container image, then a multi-service stack — it must be solid before anything else is added.
 - The **cloud and observability layer** (V4–V6) puts the platform on AWS, instruments it with metrics and alerts, then organizes infrastructure into reusable, cost-aware modules with Helm.
 - The **operational intelligence layer** (V7–V8) detects, scores, summarizes, and routes incidents — into Slack, ServiceNow, and Jira — and exercises the pipeline with chaos drills.
-- The **automation layer** (V9) is the self-operating equipment — predictive remediation that begins recovery before a human pages.
-- The **capstone** (V10) is the finished, documented platform you present in interviews and to clients.
+- The **automation layer** (V9–V10) is the self-operating equipment — V9 adds predictive remediation, and V10 closes the loop with AIOps, GitOps (ArgoCD), and observability/alerting that routes incidents to Slack with the exact script an engineer runs to resolve them.
+- The **capstone** is a standalone, self-contained platform — it bundles the application services, CI/CD (GitHub Actions), GitOps (ArgoCD), AIOps, observability and alerting, and FinOps into one deployable project you present in interviews and to clients.
 
 ---
 
@@ -95,7 +95,67 @@ Each version builds directly on the previous one. **Never skip a version.**
 | **V7** | AIOps incident scoring, summaries, and Slack routing | Score and triage incidents automatically |
 | **V8** | ServiceNow + Jira ticket automation and chaos drills | File tickets in 60 seconds, not 10 minutes — and exercise the full pipeline |
 | **V9** | Healthcare telemetry and predictive remediation | Detect, alert, ticket, and begin recovery before a human pages |
-| **V10** | Capstone — complete reference platform | A finished, documented system ready for enterprise delivery or an interview |
+| **V10** | AIOps + GitOps (ArgoCD) + Observability/Alerting with resolve-by-script | Detect, deploy, alert, and resolve incidents end to end — the operating brain |
+| **Capstone** | Standalone platform: apps + CI/CD + GitOps + AIOps + Observability/Alerting + FinOps | A finished, self-contained system ready for enterprise delivery or an interview |
+
+---
+
+## Platform Architecture
+
+The diagram below is the architecture you build incrementally across V1–V10 and present from the
+capstone. Users hit an edge-protected ingress; GitOps (ArgoCD) delivers the workloads from Git;
+observability watches the golden signals; and the intelligence layer turns alerts into incidents that
+are routed to Slack with a one-command fix and reconciled back to Git state.
+
+```mermaid
+flowchart TB
+    U[Users / Partners] --> WAF[WAF + Edge Protection]
+    WAF --> ALB[ALB / Ingress Controller]
+    ALB --> UI[Web UI]
+    UI --> NODE[Node API]
+    UI --> FLASK[Flask Scoring API]
+    NODE --> DATA[(Transactional Data Store)]
+    FLASK --> DATA
+
+    subgraph DELIVERY["GitOps Delivery — V4, V6, V10"]
+      direction LR
+      GIT[Git Repository] --> CI[GitHub Actions + OIDC]
+      CI --> SCAN[Trivy · Snyk · OPA policy gate]
+      SCAN --> ECR[(ECR images)]
+      SCAN --> ARGO[ArgoCD]
+      ARGO --> K8S[EKS Workloads]
+    end
+    K8S -.runs.-> NODE
+    K8S -.runs.-> FLASK
+    K8S -.runs.-> UI
+
+    subgraph OBSERVE["Observability — V5, V10"]
+      direction LR
+      NODE --> PROM[Prometheus]
+      FLASK --> PROM
+      UI --> PROM
+      PROM --> GRAF[Grafana dashboards]
+      PROM --> AM[Alertmanager]
+    end
+
+    subgraph INTEL["Intelligence & Response — V7, V8, V9, V10"]
+      direction LR
+      AM --> AIOPS[AIOps: detect + risk score + summarize]
+      AIOPS --> SLACK[Slack alert with resolve script]
+      AIOPS --> ITSM[ServiceNow / Jira tickets]
+      AIOPS --> REMED[Predictive / guided remediation]
+    end
+
+    SLACK --> ENG[On-call Engineer]
+    ENG --> REMED
+    REMED -->|rollback / change| GIT
+    REMED -->|restart / scale| K8S
+
+    IAC[Terraform Modules — V5, V6, V10] --> CLOUD[AWS Account / VPC]
+    CLOUD --> K8S
+```
+
+> Full written breakdown: [capstone reference architecture](express-reliability-platform-capstone/docs/reference-architecture.md).
 
 ---
 
@@ -114,8 +174,13 @@ Phase 3 — Operational Intelligence (V7–V8)
 Phase 4 — Predictive Remediation (V9)
   Healthcare telemetry feeds predictive remediation that recovers before a human pages.
 
-Phase 5 — Capstone (V10)
-  The finished, documented platform you present in interviews and to clients.
+Phase 5 — The Operating Brain (V10)
+  AIOps detection + scoring, GitOps delivery with ArgoCD, and observability/alerting that
+  routes incidents to Slack with the exact script the engineer runs to resolve them.
+
+Capstone — Standalone Platform
+  A self-contained project bundling the apps, CI/CD (GitHub Actions), GitOps (ArgoCD), AIOps,
+  observability + alerting, and FinOps into one documented, presentable system.
 ```
 
 ---
