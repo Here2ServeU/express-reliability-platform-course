@@ -1,4 +1,4 @@
-# Controls Matrix — Golden Platform
+# Controls Matrix: Golden Platform
 
 Use this matrix as your default baseline when implementing or assessing a regulated environment.
 

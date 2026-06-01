@@ -39,7 +39,7 @@ done
 
 echo 'Step 6: Detach policy and delete IAM role...'
 aws iam detach-role-policy --role-name ecsExecRole-v04 \
-  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
+  --policy-arn arn:aws:iam:aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
 aws iam delete-role --role-name ecsExecRole-v04 2>/dev/null || true
 
 # ---------- Network teardown ----------
@@ -99,7 +99,7 @@ else
       aws ec2 disassociate-route-table --association-id $ASSOC \
         --region $REGION 2>/dev/null || true
     done
-    # Skip the main RT — AWS deletes it when the VPC is removed.
+    # Skip the main RT: AWS deletes it when the VPC is removed.
     IS_MAIN=$(aws ec2 describe-route-tables --route-table-ids $RT_ID \
       --query 'RouteTables[0].Associations[?Main==`true`] | length(@)' \
       --output text --region $REGION 2>/dev/null)
@@ -136,7 +136,7 @@ else
   echo 'Step 13: Delete VPC...'
   aws ec2 delete-vpc --vpc-id $VPC_ID --region $REGION 2>/dev/null \
     && echo "  Deleted VPC: $VPC_ID" \
-    || echo "  Could not delete VPC $VPC_ID — check the AWS console for stragglers."
+    || echo "  Could not delete VPC $VPC_ID: check the AWS console for stragglers."
 fi
 
 # ---------- End network teardown ----------

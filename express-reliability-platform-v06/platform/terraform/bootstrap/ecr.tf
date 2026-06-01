@@ -1,5 +1,5 @@
 # ECR repos live in bootstrap (not the eks stack) because images must be
-# pushed before the eks apply runs Helm — and Helm install pulls them. Keeping
+# pushed before the eks apply runs Helm: and Helm install pulls them. Keeping
 # this in bootstrap means: bootstrap → repos exist → push images → eks apply
 # → Helm install pulls cleanly. No -target= dance, no chicken-and-egg.
 resource "aws_ecr_repository" "services" {

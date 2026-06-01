@@ -33,7 +33,7 @@ variable "environment" {
 variable "owner" {
   type        = string
   default     = "platform-team"
-  description = "Team or person responsible for the stack. Goes into the Owner tag — this is who FinOps and on-call escalate to."
+  description = "Team or person responsible for the stack. Goes into the Owner tag; this is who FinOps and on-call escalate to."
 }
 
 variable "cost_center" {
@@ -92,5 +92,5 @@ variable "monthly_budget_usd" {
 
 variable "budget_alert_email" {
   type        = string
-  description = "Email that receives budget alerts. Must be deliverable — first alert from a new account triggers an SES bounce-test."
+  description = "Email that receives budget alerts. Must be deliverable: first alert from a new account triggers an SES bounce-test."
 }

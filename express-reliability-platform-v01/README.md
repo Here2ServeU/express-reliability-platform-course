@@ -1,4 +1,4 @@
-# Express Reliability Platform V1 — Local Foundation
+# Express Reliability Platform V1: Local Foundation
 
 ## 1) Version Purpose
 
@@ -18,14 +18,14 @@ Every new engineer joining a bank's technology team runs the platform locally on
 
 | Term | What It Means |
 |---|---|
-| **Terminal** | A text window where you type instructions directly to your computer — like texting commands instead of clicking icons |
-| **Node.js** | A program that lets your computer run JavaScript code — JavaScript is the language this project's API is written in |
-| **npm** | Node's package manager — it downloads the software pieces your program needs, like an app store for code libraries |
-| **localhost** | Your own computer's address — `http://localhost:3000` means "open port 3000 on this computer" |
-| **Port** | A numbered door on your computer that programs listen on — port 3000 is where your app waits for browser requests |
+| **Terminal** | A text window where you type instructions directly to your computer: like texting commands instead of clicking icons |
+| **Node.js** | A program that lets your computer run JavaScript code: JavaScript is the language this project's API is written in |
+| **npm** | Node's package manager; it downloads the software pieces your program needs, like an app store for code libraries |
+| **localhost** | Your own computer's address: `http://localhost:3000` means "open port 3000 on this computer" |
+| **Port** | A numbered door on your computer that programs listen on: port 3000 is where your app waits for browser requests |
 | **GitHub** | A website that stores your code online, tracks every change, and lets you share your work with employers |
 | **Git** | The tool on your computer that saves code history and pushes it to GitHub |
-| **SSH Key** | A secure digital key that proves your identity to GitHub — safer than a password |
+| **SSH Key** | A secure digital key that proves your identity to GitHub: safer than a password |
 
 **Expected result at the end of this version:**
 - Your browser opens `http://localhost:3000` and shows the app.
@@ -95,9 +95,9 @@ express-reliability-platform-v01/
 
 ## 8) GitHub Account Setup and First Push
 
-This section walks you from zero to a live GitHub repository. Complete it in order even if you already have a GitHub account — it also covers authentication best practices required for later versions.
+This section walks you from zero to a live GitHub repository. Complete it in order even if you already have a GitHub account; it also covers authentication best practices required for later versions.
 
-### Step 1 — Create a GitHub Account
+### Step 1: Create a GitHub Account
 
 1. Go to [https://github.com](https://github.com) and click **Sign up**.
 2. Enter your email address, create a password, and choose a username.
@@ -105,7 +105,7 @@ This section walks you from zero to a live GitHub repository. Complete it in ord
 3. Verify your email address when GitHub sends the confirmation link.
 4. On the welcome screen, choose **Free** plan.
 
-### Step 2 — Configure Git on Your Machine
+### Step 2: Configure Git on Your Machine
 
 Open a terminal and set your identity. Git attaches this to every commit:
 
@@ -127,9 +127,9 @@ user.name=Your Full Name
 user.email=you@example.com
 ```
 
-### Step 3 — Set Up Authentication (SSH Key)
+### Step 3: Set Up Authentication (SSH Key)
 
-GitHub requires authentication when you push code. The recommended method is an SSH key — it is more secure than typing a password each time.
+GitHub requires authentication when you push code. The recommended method is an SSH key; it is more secure than typing a password each time.
 
 **Generate a new SSH key:**
 
@@ -175,25 +175,25 @@ Expected response:
 Hi YOUR_USERNAME! You've successfully authenticated, but GitHub does not provide shell access.
 ```
 
-### Step 4 — Create a New Repository on GitHub
+### Step 4: Create a New Repository on GitHub
 
 1. Click the **+** icon in the top-right corner of GitHub and select **New repository**.
 2. Fill in the details:
    - **Repository name:** `express-reliability-platform-v01`
-   - **Description:** `V1 — Local Express reliability service`
+   - **Description:** `V1: Local Express reliability service`
    - **Visibility:** Public (recommended for your portfolio)
-   - **Do NOT** initialize with a README, `.gitignore`, or license — you already have these locally.
+   - **Do NOT** initialize with a README, `.gitignore`, or license; you already have these locally.
 3. Click **Create repository**.
 4. GitHub shows a page with push instructions. Keep this page open for the next step.
 
-### Step 5 — Push V1 to GitHub
+### Step 5: Push V1 to GitHub
 
 In your terminal, from inside the `express-reliability-platform-v01` folder:
 
 ```sh
 git init
 git add .
-git commit -m "V1: local foundation — Express reliability service"
+git commit -m "V1: local foundation: Express reliability service"
 git branch -M main
 git remote add origin git@github.com:YOUR_USERNAME/express-reliability-platform-v01.git
 git push -u origin main
@@ -209,7 +209,7 @@ git log --oneline
 
 Then open your repository page on GitHub and confirm the files are visible.
 
-### Step 6 — Protect the Main Branch (Best Practice)
+### Step 6: Protect the Main Branch (Best Practice)
 
 Once V1 is pushed, set a branch protection rule so you never accidentally force-push over `main`:
 
@@ -238,7 +238,7 @@ This is standard practice in every professional engineering team.
 - **`npm` command not found:** reinstall Node.js LTS from [https://nodejs.org](https://nodejs.org).
 - **Git push denied / Permission denied (publickey):** re-run `ssh -T git@github.com` and ensure the SSH key was added correctly to GitHub Settings → SSH Keys.
 - **`remote: Repository not found`:** double-check the repository URL and that you created the repository in Step 4 before pushing.
-- **Two-factor authentication prompt in browser:** GitHub 2FA does not affect SSH-based pushes — you only need the SSH key configured in Step 3.
+- **Two-factor authentication prompt in browser:** GitHub 2FA does not affect SSH-based pushes; you only need the SSH key configured in Step 3.
 
 ## 11) Cleanup
 
@@ -250,7 +250,7 @@ In V2, you wrap this same single Express service in a Docker container so the ru
 
 ---
 
-## 13) Web UI Guide — `public/index.html`
+## 13) Web UI Guide: `public/index.html`
 
 ### What the V1 UI Does
 

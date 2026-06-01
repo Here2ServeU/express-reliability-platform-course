@@ -1,7 +1,7 @@
 ###############################################################################
 # V6 root composition.
 #
-# This file is intentionally thin — every meaningful resource lives in a
+# This file is intentionally thin; every meaningful resource lives in a
 # module under ../modules/. The root just wires modules together and sets
 # the default_tags that FinOps/cost reports rely on.
 #
@@ -28,7 +28,7 @@ terraform {
 }
 
 # Single source of truth for tags applied to every taggable AWS resource.
-# default_tags are merged with per-resource tags inside each module — so the
+# default_tags are merged with per-resource tags inside each module: so the
 # modules don't need to know about Environment, Owner, or CostCenter at all.
 # This is the canonical FinOps tagging pattern: tag once at the provider, get
 # it on everything Terraform creates.
@@ -62,7 +62,7 @@ provider "aws" {
 }
 
 # Naming prefix used by modules for VPC / IAM / cluster names. Includes env
-# so every env gets its own IAM roles and cluster — IAM is account-global, so
+# so every env gets its own IAM roles and cluster: IAM is account-global, so
 # without the env suffix two stacks in the same account would collide.
 locals {
   name_prefix  = "${var.project_name}-${var.version_suffix}-${var.environment}"
@@ -106,7 +106,7 @@ module "eks_cluster" {
 module "budget" {
   source = "../modules/budget"
 
-  # Use the untagged provider so CreateBudget doesn't call TagResource —
+  # Use the untagged provider so CreateBudget doesn't call TagResource
   # see the aws.untagged provider block above for why.
   providers = {
     aws = aws.untagged
@@ -119,7 +119,7 @@ module "budget" {
   # Scope the budget to this stack's spend by tag. Requires the Environment
   # and App tags to be activated as Cost Allocation Tags in the Billing
   # console (one-time, account-global). Until activated, this filter matches
-  # nothing — see modules/budget/main.tf for the full caveat.
+  # nothing: see modules/budget/main.tf for the full caveat.
   cost_filter_tags = {
     Environment = var.environment
     App         = var.project_name
@@ -147,5 +147,5 @@ output "environment" {
 
 output "monthly_budget_usd" {
   value       = var.monthly_budget_usd
-  description = "Monthly budget cap (USD) — alerts fire at 80% and 100%."
+  description = "Monthly budget cap (USD): alerts fire at 80% and 100%."
 }

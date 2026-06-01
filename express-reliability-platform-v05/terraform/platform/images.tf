@@ -1,12 +1,12 @@
 ###############################################################################
-# Option 2 — Terraform-native build, tag, and push.
+# Option 2: Terraform-native build, tag, and push.
 #
 # When var.build_images = true, Terraform itself drives the image pipeline:
 #   1. docker_image.services       → docker buildx build --platform linux/amd64
 #   2. docker_registry_image.svc   → docker push to ECR
 #
 # When var.build_images = false (default), every resource here has an empty
-# for_each so Terraform creates nothing — and students run the bash pipeline
+# for_each so Terraform creates nothing: and students run the bash pipeline
 # (scripts/build_push_images.sh, Option 1) instead.
 #
 # Either way the docker daemon must be running on the machine that executes

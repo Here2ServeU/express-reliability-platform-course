@@ -1,5 +1,5 @@
 #!/bin/bash
-# Note: no `set -e` — we want to keep going if one of the three services fails
+# Note: no `set -e`; we want to keep going if one of the three services fails
 # to register or update so the others still get deployed. Errors are reported inline.
 
 REGION="us-east-1"
@@ -119,7 +119,7 @@ else
   echo "Reusing route table: $RT_ID"
 fi
 
-# Associate every subnet with the route table (idempotent — skip if already associated).
+# Associate every subnet with the route table (idempotent: skip if already associated).
 for SUBNET_ID in $(echo $SUBNETS | tr ',' ' '); do
   ASSOC=$(aws ec2 describe-route-tables --route-table-ids $RT_ID \
     --query "RouteTables[0].Associations[?SubnetId=='$SUBNET_ID'].RouteTableAssociationId" \
@@ -167,9 +167,9 @@ aws iam create-role \
 
 aws iam attach-role-policy \
   --role-name ecsExecRole-v04 \
-  --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
+  --policy-arn arn:aws:iam:aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
 
-EXEC_ROLE="arn:aws:iam::${ACCOUNT_ID}:role/ecsExecRole-v04"
+EXEC_ROLE="arn:aws:iam:${ACCOUNT_ID}:role/ecsExecRole-v04"
 
 echo '=== Step 8: Wait for IAM role to propagate ==='
 for i in 1 2 3 4 5 6; do
@@ -214,7 +214,7 @@ for SVC in flask-api node-api web-ui; do
        --execution-role-arn $EXEC_ROLE \
        --container-definitions "$CONTAINER_DEF" \
        --region $REGION > /dev/null; then
-    echo "  [$SVC] ERROR: task definition registration failed — skipping service."
+    echo "  [$SVC] ERROR: task definition registration failed: skipping service."
     continue
   fi
 
@@ -237,7 +237,7 @@ for SVC in flask-api node-api web-ui; do
       && echo "  [$SVC] Created on port $PORT" \
       || echo "  [$SVC] ERROR: create-service failed."
   else
-    echo "  [$SVC] Service exists — updating to new task definition..."
+    echo "  [$SVC] Service exists: updating to new task definition..."
     aws ecs update-service \
       --cluster $CLUSTER \
       --service $SVC \

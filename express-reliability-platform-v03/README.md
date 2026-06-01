@@ -1,15 +1,15 @@
-# Express Reliability Platform V3 — Local Orchestration with Docker Compose
+# Express Reliability Platform V3: Local Orchestration with Docker Compose
 
 ## 1) Version Purpose
 
-Version 3 takes the single containerized service from V2 and orchestrates a three-service platform — Node API, Flask API, and Web UI — with Docker Compose, so one command brings the whole stack up locally.
+Version 3 takes the single containerized service from V2 and orchestrates a three-service platform: Node API, Flask API, and Web UI: with Docker Compose, so one command brings the whole stack up locally.
 
 ---
 
 ## 2) Plain Language Context
 
 **What is this version teaching you?**
-You will wrap your three services inside Docker containers so they all start with one command and run identically on any computer. This is like putting each ingredient of a recipe into a labeled package, then bundling all the packages into one box — anyone can open the box and follow the same instructions.
+You will wrap your three services inside Docker containers so they all start with one command and run identically on any computer. This is like putting each ingredient of a recipe into a labeled package, then bundling all the packages into one box: anyone can open the box and follow the same instructions.
 
 **How does a bank or hospital use this?**
 Financial institutions and hospitals require that code behaves identically in development, testing, and production. A bug that only appears on one engineer's laptop but not on the server can cause transactions to fail or patient data to be corrupted. Docker eliminates that problem by guaranteeing the environment is always the same.
@@ -19,11 +19,11 @@ Financial institutions and hospitals require that code behaves identically in de
 | Term | What It Means |
 |---|---|
 | **Docker** | A tool that packages your program and all its dependencies into a self-contained box called a container |
-| **Container** | A running instance of a packaged program — isolated from everything else on the computer |
-| **Docker Image** | The blueprint for a container — like a recipe. Running the image creates a container |
+| **Container** | A running instance of a packaged program: isolated from everything else on the computer |
+| **Docker Image** | The blueprint for a container: like a recipe. Running the image creates a container |
 | **Docker Compose** | A tool that starts multiple containers together with a single command using a `docker-compose.yml` file |
 | **docker-compose.yml** | A configuration file that describes every service, what image it uses, and how services connect to each other |
-| **Port mapping** | Connecting a port inside a container to a port on your computer — `8080:80` means "when my browser hits port 8080, forward it to port 80 inside the container" |
+| **Port mapping** | Connecting a port inside a container to a port on your computer: `8080:80` means "when my browser hits port 8080, forward it to port 80 inside the container" |
 
 **Expected result at the end of this version:**
 - `docker compose up --build -d` starts all three services with no errors.
@@ -42,7 +42,7 @@ mv express-reliability-platform-v02 express-reliability-platform-v03
 cd express-reliability-platform-v03
 ```
 
-Then sync your folder structure with the class repository V3 layout — V3 adds the Flask API and Web UI alongside the V2 Node service, and replaces `docker run` with `docker compose`.
+Then sync your folder structure with the class repository V3 layout: V3 adds the Flask API and Web UI alongside the V2 Node service, and replaces `docker run` with `docker compose`.
 
 Class repository (scripts and canonical structure):
 
@@ -155,7 +155,7 @@ Expected example response:
 
 ## 11) Promotion Path
 
-V3 is your local test gate with Docker Compose — the last fully-local stop before V4 pushes the same stack to AWS.
+V3 is your local test gate with Docker Compose: the last fully-local stop before V4 pushes the same stack to AWS.
 
 1. Pass all local checks in this README.
 2. Commit your changes.
@@ -334,7 +334,7 @@ This section explains every Linux command used in this README.
 
 ---
 
-## 17) Web UI Guide — `apps/web-ui/index.html`
+## 17) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 

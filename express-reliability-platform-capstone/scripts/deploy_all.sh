@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Capstone deploy-all — bring up the standalone platform end to end.
+# Capstone deploy-all: bring up the standalone platform end to end.
 #
 # The capstone is a self-contained project: it owns the application services,
 # the AIOps intelligence layer, GitOps (ArgoCD), observability + alerting, and
@@ -33,7 +33,7 @@ step() {
   eval "$cmd"
 }
 
-echo "Capstone deploy-all — root: $ROOT"
+echo "Capstone deploy-all: root: $ROOT"
 
 # --- 1) Application services (local build) --------------------------------
 step "Build application images (node-api, flask-api, web-ui)" \

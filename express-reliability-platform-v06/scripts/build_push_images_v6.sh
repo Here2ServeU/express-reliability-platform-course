@@ -74,7 +74,7 @@ aws ecr get-login-password --region "${REGION}" | \
 
 echo "=== Building and pushing ==="
 # EKS nodes (and ECS Fargate) run linux/amd64. On Apple Silicon a plain
-# `docker build` produces linux/arm64, which the cluster cannot pull —
+# `docker build` produces linux/arm64, which the cluster cannot pull
 # you would see "image Manifest does not contain descriptor matching platform
 # 'linux/amd64'". buildx --platform linux/amd64 --push handles both archs.
 for SVC in "${SERVICES[@]}"; do

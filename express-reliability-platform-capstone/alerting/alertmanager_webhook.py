@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Alerting bridge — Alertmanager webhook -> Slack.
+Alerting bridge: Alertmanager webhook -> Slack.
 
 Prometheus Alertmanager POSTs firing/resolved alerts to this small HTTP server.
 For each alert it builds a Slack message that includes the `resolve_command`
@@ -15,7 +15,7 @@ Behavior:
   - If SLACK_WEBHOOK_URL is set, it forwards each alert to Slack.
   - Otherwise it prints the message (dry-run), so it works with no credentials.
 
-This uses only the Python standard library — no pip install required.
+This uses only the Python standard library: no pip install required.
 """
 
 import os
@@ -38,7 +38,7 @@ def format_alert(alert: dict) -> str:
     resolve = annotations.get("resolve_command", "see runbook")
 
     lines = [
-        f"{icon} *{labels.get('alertname', 'Alert')}* — {status.upper()} ({sev})",
+        f"{icon} *{labels.get('alertname', 'Alert')}*: {status.upper()} ({sev})",
         f"*Service:* {labels.get('job', 'N/A')}",
         f"*Summary:* {annotations.get('summary', 'N/A')}",
         f"*Detail:* {annotations.get('description', 'N/A')}",
@@ -95,7 +95,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main() -> None:
     mode = "forwarding to Slack" if SLACK_WEBHOOK_URL else "DRY RUN (set SLACK_WEBHOOK_URL to forward)"
-    print(f"Alertmanager->Slack bridge listening on 0.0.0.0:{PORT}/alerts — {mode}")
+    print(f"Alertmanager->Slack bridge listening on 0.0.0.0:{PORT}/alerts: {mode}")
     HTTPServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 

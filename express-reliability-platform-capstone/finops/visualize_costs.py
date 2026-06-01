@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-FinOps — visualize a cost breakdown as a terminal bar chart.
+FinOps: visualize a cost breakdown as a terminal bar chart.
 
 Reads a JSON map of {service: amount} (from check_costs.py output you saved, or
 any cost export) and prints a proportional ASCII bar chart so cost hot-spots are
-obvious at a glance — no plotting libraries required.
+obvious at a glance: no plotting libraries required.
 
 Usage:
   # Pipe or pass a JSON file of {"service": amount, ...}

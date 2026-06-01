@@ -1,4 +1,4 @@
-# Express Reliability Platform V2 — Containerize a Single Service
+# Express Reliability Platform V2: Containerize a Single Service
 
 ## 1) Builds on V1
 
@@ -16,7 +16,7 @@ Use the main class repository for scripts and canonical structure:
 
 ## 2) Version Purpose
 
-V1 ran the Express service directly on your laptop with `npm start`. That works for one engineer on one machine — until the laptop changes, the Node version changes, or someone else tries to run it.
+V1 ran the Express service directly on your laptop with `npm start`. That works for one engineer on one machine: until the laptop changes, the Node version changes, or someone else tries to run it.
 
 V2 wraps the same service in a Docker container. The container has the runtime, the dependencies, and the start command baked in. The image you build on your laptop is byte-for-byte the same image that will run on a CI runner, on a teammate's machine, or on an AWS Fargate task.
 
@@ -37,10 +37,10 @@ A bug that only shows up on one engineer's machine but not on the production ser
 | Term | What It Means |
 |---|---|
 | **Docker** | A tool that packages a program plus its runtime and dependencies into a single artifact |
-| **Image** | The packaged artifact — a recipe + ingredients in one file |
-| **Container** | A running instance of an image — like a process, but isolated from the host |
+| **Image** | The packaged artifact: a recipe + ingredients in one file |
+| **Container** | A running instance of an image: like a process, but isolated from the host |
 | **Dockerfile** | The text file that describes how to build the image, step by step |
-| **Tag** | A label on an image — `myapp:v2` is the `v2` tag of the `myapp` image |
+| **Tag** | A label on an image: `myapp:v2` is the `v2` tag of the `myapp` image |
 | **Port mapping** | `-p 3000:3000` forwards your laptop's port 3000 into the container's port 3000 |
 | **Healthcheck** | A command Docker runs inside the container to confirm the service is still answering |
 | **`.dockerignore`** | Tells the build to skip files (like `node_modules`) when copying into the image |
@@ -105,7 +105,7 @@ express-reliability-platform-v02/
 
 ## 8) Run Steps
 
-### Step 1 — Confirm Docker is installed
+### Step 1: Confirm Docker is installed
 
 ```sh
 docker --version
@@ -114,7 +114,7 @@ docker info
 
 If `docker info` errors, start Docker Desktop and re-run.
 
-### Step 2 — Build the image
+### Step 2: Build the image
 
 ```sh
 ./scripts/build.sh
@@ -132,7 +132,7 @@ Confirm:
 docker images express-reliability-v02
 ```
 
-### Step 3 — Run the container
+### Step 3: Run the container
 
 ```sh
 ./scripts/run.sh
@@ -144,7 +144,7 @@ Or manually:
 docker run -d --name erp-v02 -p 3000:3000 --restart unless-stopped express-reliability-v02:local
 ```
 
-### Step 4 — Verify the service
+### Step 4: Verify the service
 
 ```sh
 docker ps --filter "name=erp-v02"
@@ -159,7 +159,7 @@ Expected `/health` response:
 { "status": "ok", "service": "web-service", "version": "v2" }
 ```
 
-### Step 5 — Watch the logs
+### Step 5: Watch the logs
 
 ```sh
 docker logs -f erp-v02
@@ -167,7 +167,7 @@ docker logs -f erp-v02
 
 Press `Ctrl + C` to detach (the container keeps running).
 
-### Step 6 — Stop and remove
+### Step 6: Stop and remove
 
 ```sh
 ./scripts/cleanup_v2.sh
@@ -183,12 +183,12 @@ docker rmi express-reliability-v02:local
 ## 9) Break and Fix Drill
 
 1. With the container running, in another terminal: `docker stop erp-v02`.
-2. Refresh the browser — the page fails to load.
+2. Refresh the browser: the page fails to load.
 3. Run `docker ps -a` and note the container is `Exited`.
 4. Recover: `docker start erp-v02`.
-5. Refresh again — the page loads. The `--restart unless-stopped` flag would also have brought it back on Docker daemon restart.
+5. Refresh again: the page loads. The `--restart unless-stopped` flag would also have brought it back on Docker daemon restart.
 
-Write 3–5 sentences in your notes: what failed, what you observed, what fixed it.
+Write 3:5 sentences in your notes: what failed, what you observed, what fixed it.
 
 ## 10) Validation Checklist
 
@@ -206,7 +206,7 @@ Write 3–5 sentences in your notes: what failed, what you observed, what fixed 
 - **`port is already allocated`:** another process holds port 3000. `lsof -i :3000` then either stop it or set `HOST_PORT=3001 ./scripts/run.sh`.
 - **Container exits immediately:** `docker logs erp-v02` shows the error. Most often a typo in `index.js` or a missing dependency in `package.json`.
 - **`exec format error` on Apple Silicon:** rebuild with `--platform linux/amd64` (the build script already does this).
-- **Healthcheck stuck on `starting`:** wait 15–20 seconds; the first probe happens after the `--start-period`.
+- **Healthcheck stuck on `starting`:** wait 15:20 seconds; the first probe happens after the `--start-period`.
 
 ## 12) Cleanup
 
@@ -218,4 +218,4 @@ This removes the container and the local image. No cloud resources were created 
 
 ## 13) Next Version Preview
 
-In **V3**, you stop running one container by hand and orchestrate three services together — a Node API, a Flask API, and a Web UI — with Docker Compose. The single-service skills from V2 (Dockerfile, build, run, healthcheck, logs) become the building blocks for the multi-service platform.
+In **V3**, you stop running one container by hand and orchestrate three services together: a Node API, a Flask API, and a Web UI: with Docker Compose. The single-service skills from V2 (Dockerfile, build, run, healthcheck, logs) become the building blocks for the multi-service platform.

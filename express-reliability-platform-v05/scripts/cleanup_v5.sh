@@ -3,7 +3,7 @@
 # stack on AWS (ECS, ALB, ECR, IAM, networking), and destroys the bootstrap
 # stack (S3 state bucket + DynamoDB lock table).
 #
-# Note: no `set -e` — we want each step to keep going even if a previous one
+# Note: no `set -e`; we want each step to keep going even if a previous one
 # partially failed, so a half-cleaned-up environment can be finished off.
 
 REGION="us-east-1"
@@ -21,10 +21,10 @@ echo '=== Step 0: Local Docker cleanup (stack, volumes, orphans) ==='
 # `down -v` removes named volumes declared in docker-compose.yml (e.g. grafana-data)
 # `--remove-orphans` removes containers from prior compose configs that no longer exist
 docker compose down -v --remove-orphans 2>/dev/null
-# Belt-and-braces — explicitly drop the grafana volume in case it lingered.
+# Belt-and-braces: explicitly drop the grafana volume in case it lingered.
 docker volume rm express-reliability-platform-v05_grafana-data 2>/dev/null
 docker volume ls | grep grafana \
-  && echo '  (grafana volume still present — leftover from a different project)' \
+  && echo '  (grafana volume still present: leftover from a different project)' \
   || echo '  grafana volume gone'
 
 echo '=== Step 1: Read bootstrap outputs (need state-bucket name to init platform) ==='
@@ -104,14 +104,14 @@ if [ -n "$STATE_BUCKET" ] && [ "$STATE_BUCKET" != "null" ]; then
   # before destroy.
   #
   # The JMESPath flattens [Versions, DeleteMarkers] together so a single
-  # batch drains both types — earlier versions of this script queried each
+  # batch drains both types: earlier versions of this script queried each
   # type separately, which broke for buckets where the first 1000 listing
   # entries were all one type (the other type's loop would see 0 and exit
   # while leaving entries on later pages).
   #
   # --no-paginate + --max-keys 1000 gives us exactly one API response per
   # iteration. After delete-objects removes those, the next iteration's
-  # listing call returns the next ≤1000 surviving entries — the loop
+  # listing call returns the next ≤1000 surviving entries: the loop
   # terminates only when the bucket is fully empty.
 
   drain_bucket() {
@@ -146,7 +146,7 @@ terraform -chdir=terraform/bootstrap init -input=false >/dev/null 2>&1
 # Apply first so force_destroy=true (added in main.tf) is recorded in state.
 # Without this, an older state file would still say force_destroy=false and
 # the provider's own bucket-drain logic would not run, so a destroy against a
-# non-empty bucket would 409. This apply is a no-op for AWS resources — it
+# non-empty bucket would 409. This apply is a no-op for AWS resources; it
 # only updates Terraform's record of the resource attributes.
 terraform -chdir=terraform/bootstrap apply -auto-approve >/dev/null 2>&1 || true
 terraform -chdir=terraform/bootstrap destroy -auto-approve

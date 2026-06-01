@@ -22,7 +22,7 @@ variable "memory" {
   default = "512"
 }
 
-# Option 2 toggle — when true, Terraform itself builds, tags, and pushes the
+# Option 2 toggle: when true, Terraform itself builds, tags, and pushes the
 # service images via the kreuzwerker/docker provider (see images.tf). When
 # false (the default), images are pushed by scripts/build_push_images.sh
 # before `terraform apply` runs.

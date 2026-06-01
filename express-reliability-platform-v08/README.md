@@ -1,4 +1,4 @@
-# Express Reliability Platform V8 — Operational Intelligence + ITSM Integration
+# Express Reliability Platform V8: Operational Intelligence + ITSM Integration
 
 ## 1) Builds on V7
 
@@ -21,10 +21,10 @@ V8 completes the operational intelligence loop. You detect incidents using AIOps
 ## 3) Plain Language Context
 
 **What is this version teaching you?**
-When your system detects a problem, it should not wait for an engineer to notice — it should instantly send a Slack message to the team, open a ticket in the company's incident tracking system, and record everything. This is like a hospital paging system: the moment a patient monitor alarm fires, the right doctor gets paged AND the event is automatically logged in the patient record — all before anyone manually makes a phone call.
+When your system detects a problem, it should not wait for an engineer to notice; it should instantly send a Slack message to the team, open a ticket in the company's incident tracking system, and record everything. This is like a hospital paging system: the moment a patient monitor alarm fires, the right doctor gets paged AND the event is automatically logged in the patient record: all before anyone manually makes a phone call.
 
 **How does a bank or hospital use this?**
-Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) require that every incident is logged in an auditable system within a specific timeframe. Manual ticket creation is slow and error-prone. Automated ITSM integration guarantees every incident is captured — even at 3am when no one is watching — and gives auditors a complete trail.
+Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) require that every incident is logged in an auditable system within a specific timeframe. Manual ticket creation is slow and error-prone. Automated ITSM integration guarantees every incident is captured: even at 3am when no one is watching: and gives auditors a complete trail.
 
 **Expected result at the end of this version:**
 - `./chaos/run_chaos_drill.sh` runs four experiments and produces output for each pipeline stage.
@@ -34,7 +34,7 @@ Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) 
 
 ## 4) Training Workflow (Understand -> Build -> Test -> Break -> Fix -> Explain -> Automate -> Improve)
 
-1. Understand: Review the full pipeline — simulation → AIOps → Slack → ITSM → runbook.
+1. Understand: Review the full pipeline: simulation → AIOps → Slack → ITSM → runbook.
 2. Build: Configure Slack webhook, ITSM credentials, and chaos drill scripts.
 3. Test: Run end-to-end chaos drills and validate every pipeline stage produces output.
 4. Break: Trigger one controlled failure mode and watch alerts and tickets appear.
@@ -59,7 +59,7 @@ Compliance regulations in banking (SOX, PCI-DSS) and healthcare (HIPAA, HITECH) 
 - **Jira**: project and issue tracker used by engineering teams. REST API v3 creates issues with priority, labels, and rich text.
 - **Chaos engineering**: intentionally injecting failures (latency, errors, crashes) in a controlled way to find weaknesses before customers do.
 - **Blast radius**: the number of services or users affected when a failure spreads.
-- **Full pipeline drill**: one command that injects a failure, scores it, alerts via Slack, and opens ITSM tickets — proving every layer is connected.
+- **Full pipeline drill**: one command that injects a failure, scores it, alerts via Slack, and opens ITSM tickets: proving every layer is connected.
 
 ## 7) Architecture Diagram (Mermaid)
 
@@ -103,7 +103,7 @@ express-reliability-platform-v08/
 
 ## 9) Step-by-Step Guide (Local and Cloud)
 
-### Step A — Understand
+### Step A: Understand
 
 Read the chaos drill script and ITSM scripts before running anything:
 
@@ -120,7 +120,7 @@ What you should understand before building:
 2. What environment variables each integration requires.
 3. What `--dry-run` mode does and why to use it first.
 
-### Step B — Build: Configure Integrations
+### Step B: Build: Configure Integrations
 
 #### B1: Slack Incoming Webhook
 
@@ -183,7 +183,7 @@ python3 itsm/create_jira_issue.py --dry-run \
   --evidence-file artifacts/aiops/evidence/local/INC-001.json
 ```
 
-### Step C — Test: Local Docker Gate
+### Step C: Test: Local Docker Gate
 
 Run the mandatory local gate before any chaos drill:
 
@@ -195,7 +195,7 @@ docker compose down
 cd ../express-reliability-platform-v08
 ```
 
-### Step D — Break: Run a Chaos Drill
+### Step D: Break: Run a Chaos Drill
 
 Run the full pipeline with a single command:
 
@@ -238,7 +238,7 @@ python3 aiops/check_slo_sli.py
 python3 aiops/predict_and_remediate.py
 ```
 
-### Step E — Fix
+### Step E: Fix
 
 Apply remediation steps from `dr/runbook.txt`. Verify recovery:
 
@@ -249,7 +249,7 @@ curl http://localhost:8080/api/health
 cd ../express-reliability-platform-v08
 ```
 
-### Step F — Explain
+### Step F: Explain
 
 Document three answers after every drill:
 
@@ -257,9 +257,9 @@ Document three answers after every drill:
 2. What did AIOps detect and score?
 3. What did the ITSM ticket capture, and what fixed it?
 
-### Step G — Automate
+### Step G: Automate
 
-The chaos drill is already a single script — wire it into CI/CD:
+The chaos drill is already a single script: wire it into CI/CD:
 
 ```sh
 # In a GitHub Actions workflow:
@@ -271,7 +271,7 @@ The chaos drill is already a single script — wire it into CI/CD:
     SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 ```
 
-### Step H — Improve
+### Step H: Improve
 
 After each drill cycle:
 
@@ -279,7 +279,7 @@ After each drill cycle:
 - Improve ITSM ticket descriptions to capture all required triage fields.
 - Add new chaos experiments for scenarios not yet covered.
 
-### Step I — Cloud Deployment
+### Step I: Cloud Deployment
 
 1. Configure AWS access:
 
@@ -348,7 +348,7 @@ In V9, you build post-book extension labs covering robotics simulation, quantum-
 
 ---
 
-## 14) Web UI Guide — `apps/web-ui/index.html`
+## 14) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 

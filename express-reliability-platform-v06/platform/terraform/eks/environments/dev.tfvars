@@ -1,9 +1,9 @@
-# Dev environment — sized for "small enough to leave running by accident
+# Dev environment: sized for "small enough to leave running by accident
 # without burning the budget." One small node, tight budget, alert email
 # to the platform team.
 environment = "dev"
 
-# Distinct from V5's 10.42.0.0/16 and from prod's 10.44.0.0/16 — peerable
+# Distinct from V5's 10.42.0.0/16 and from prod's 10.44.0.0/16: peerable
 # without overlaps if a later version needs cross-env networking.
 vpc_cidr = "10.43.0.0/16"
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Intelligence layer — anomaly detection.
+Intelligence layer: anomaly detection.
 
 Compares a measured signal against its SLO threshold and decides whether the
 behavior is anomalous. This is the first stage of the AIOps loop:

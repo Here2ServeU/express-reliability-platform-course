@@ -1,4 +1,4 @@
-# Dedicated VPC for the platform — no reliance on the AWS default VPC, which
+# Dedicated VPC for the platform: no reliance on the AWS default VPC, which
 # may be missing in some accounts (matches the V3 deploy_ecs.sh approach).
 
 data "aws_availability_zones" "available" {

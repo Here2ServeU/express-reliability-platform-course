@@ -1,4 +1,4 @@
-# Reference Architecture — Regulated Healthcare + Fintech Platform
+# Reference Architecture: Regulated Healthcare + Fintech Platform
 
 This document defines the target architecture pattern for the capstone.
 
@@ -63,7 +63,7 @@ Teams should tailor targets to client context and business criticality.
 ## 7) Incident Operations Pattern
 
 - Detect via alerts tied to SLI thresholds
-- Triage via severity model (SEV1–SEV4)
+- Triage via severity model (SEV1:SEV4)
 - Mitigate with runbook-first approach
 - Communicate status at fixed intervals
 - Complete post-incident review with corrective actions

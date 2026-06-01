@@ -1,4 +1,4 @@
-# Express Reliability Platform V5 — Monitoring with Prometheus, Grafana, and Alertmanager
+# Express Reliability Platform V5: Monitoring with Prometheus, Grafana, and Alertmanager
 
 ## 1) Builds on V4
 
@@ -17,7 +17,7 @@ Use the main class repository for scripts and canonical structure:
 
 ## 2) Version Purpose
 
-Install Prometheus, Grafana, and Alertmanager. Instrument Node API with `prom-client`. Build a live dashboard. Write three alert rules. Prove that `ServiceDown` fires when a container stops. Then re-deploy the application tier on AWS — but instead of the manual shell scripts you used in V4, codify the same VPC, ECR, ECS, and ALB infrastructure with **Terraform** (your first taste of Infrastructure as Code).
+Install Prometheus, Grafana, and Alertmanager. Instrument Node API with `prom-client`. Build a live dashboard. Write three alert rules. Prove that `ServiceDown` fires when a container stops. Then re-deploy the application tier on AWS: but instead of the manual shell scripts you used in V4, codify the same VPC, ECR, ECS, and ALB infrastructure with **Terraform** (your first taste of Infrastructure as Code).
 
 ---
 
@@ -27,7 +27,7 @@ Install Prometheus, Grafana, and Alertmanager. Instrument Node API with `prom-cl
 Your platform runs, but right now you are flying blind. If a container crashes at 2am, you learn about it from an angry user email the next morning. Monitoring changes that. Prometheus collects numbers from your services every 15 seconds. Grafana turns those numbers into live graphs. Alertmanager pages you the moment a threshold is crossed. You catch problems in seconds instead of hours.
 
 **How does a bank or hospital use this?**
-Banks watch transaction latency in real time — a sudden spike can mean fraud, server overload, or a network issue. Hospitals watch patient-portal request success rates. In both cases, a human gets alerted the moment a metric crosses a threshold, not an hour later when users start calling.
+Banks watch transaction latency in real time: a sudden spike can mean fraud, server overload, or a network issue. Hospitals watch patient-portal request success rates. In both cases, a human gets alerted the moment a metric crosses a threshold, not an hour later when users start calling.
 
 **The four golden signals (Google SRE):**
 
@@ -46,15 +46,15 @@ Banks watch transaction latency in real time — a sudden spike can mean fraud, 
 | **Grafana** | Reads Prometheus data and draws live charts, graphs, and gauges |
 | **Alertmanager** | Receives alerts fired by Prometheus, groups them, and routes to Slack/email/webhooks |
 | **prom-client** | The npm package that adds metric tracking and the `/metrics` endpoint to Node.js |
-| **Counter** | A metric that only increases — total requests, total errors |
-| **Gauge** | A metric that goes up and down — memory used, active connections |
+| **Counter** | A metric that only increases: total requests, total errors |
+| **Gauge** | A metric that goes up and down: memory used, active connections |
 | **Histogram** | Bucketed observations used to calculate p50, p95, p99 latency |
 | **Label** | A key=value tag on a metric, e.g. `{method="GET", status="200"}` |
 | **`up`** | Built-in metric: 1 = Prometheus can scrape this service, 0 = cannot reach it |
 | **firing** | An alert whose condition has been true longer than its `for:` duration |
-| **ECR** | AWS Elastic Container Registry — a private Docker registry that ECS pulls images from |
-| **ECS Fargate** | AWS-managed container runtime — give it a task definition and it runs the container without you managing servers |
-| **ALB** | Application Load Balancer — a public AWS endpoint that forwards HTTP traffic to your ECS tasks |
+| **ECR** | AWS Elastic Container Registry: a private Docker registry that ECS pulls images from |
+| **ECS Fargate** | AWS-managed container runtime: give it a task definition and it runs the container without you managing servers |
+| **ALB** | Application Load Balancer: a public AWS endpoint that forwards HTTP traffic to your ECS tasks |
 
 **Expected result at the end of this version:**
 - `http://localhost:9090/targets` shows `node-api` and `flask-api` as **UP**.
@@ -78,10 +78,10 @@ Banks watch transaction latency in real time — a sudden spike can mean fraud, 
 
 ## 5) What You Will Build
 
-- **Locally (Docker Compose):** the full V5 stack — three application services plus Prometheus, Grafana, and Alertmanager — with a working dashboard and three alert rules.
+- **Locally (Docker Compose):** the full V5 stack: three application services plus Prometheus, Grafana, and Alertmanager: with a working dashboard and three alert rules.
 - **On AWS (Terraform):** the application tier deployed to ECS Fargate behind an ALB, with images stored in ECR and Terraform state in S3 + DynamoDB. Same V4 architecture (dedicated VPC, `linux/amd64` images, full-teardown cleanup), but now expressed as code instead of imperative shell scripts.
 
-> **Scope note:** V5 ships the **application tier** to AWS. Prometheus, Grafana, and Alertmanager stay local in V5 — they move to Kubernetes (EKS) in V6, which is the right place for managed observability.
+> **Scope note:** V5 ships the **application tier** to AWS. Prometheus, Grafana, and Alertmanager stay local in V5; they move to Kubernetes (EKS) in V6, which is the right place for managed observability.
 
 ## 6) Architecture Diagrams
 
@@ -156,7 +156,7 @@ express-reliability-platform-v05/
 
 ---
 
-# Part A — Build and Validate Locally (Docker Compose)
+# Part A: Build and Validate Locally (Docker Compose)
 
 ## 8) Local Run Steps
 
@@ -177,8 +177,8 @@ express-reliability-platform-v05/
    ```
 
 3. Open the monitoring UIs:
-   - Prometheus: `http://localhost:9090` — check **Status → Targets** (both UP) and **Alerts** (3 rules, inactive)
-   - Grafana: `http://localhost:3001` — login `admin` / `admin`
+   - Prometheus: `http://localhost:9090`: check **Status → Targets** (both UP) and **Alerts** (3 rules, inactive)
+   - Grafana: `http://localhost:3001`: login `admin` / `admin`
    - Alertmanager: `http://localhost:9093`
    - App UI: `http://localhost:8080`
    - Flask API: `http://localhost:5050`
@@ -188,12 +188,12 @@ express-reliability-platform-v05/
 
 4. Configure Grafana:
    - **Connections → Data Sources → Add data source → Prometheus**
-   - URL: `http://prometheus:9090` (NOT `localhost` — Grafana resolves by container name inside Docker)
+   - URL: `http://prometheus:9090` (NOT `localhost`: Grafana resolves by container name inside Docker)
    - **Save and test**
 
-5. Build the dashboard. You have two options — pick one (or import both and compare):
+5. Build the dashboard. You have two options: pick one (or import both and compare):
 
-   **Option A — Build from scratch (learning path).** Create four panels using the queries below. This is the exercise: you'll learn what each PromQL expression does by typing it.
+   **Option A: Build from scratch (learning path).** Create four panels using the queries below. This is the exercise: you'll learn what each PromQL expression does by typing it.
 
    | Panel | Query |
    |---|---|
@@ -204,16 +204,16 @@ express-reliability-platform-v05/
 
    Save as **Platform Overview**.
 
-   **Option B — Import the production-grade dashboard (reference path).** In Grafana go to **Dashboards → New → Import → Upload JSON file** and pick [monitoring/grafana-dashboard-golden-signals.json](express-reliability-platform-v05/monitoring/grafana-dashboard-golden-signals.json). When prompted, select your Prometheus data source. This dashboard mirrors what SRE teams at Fortune 500 companies actually run:
+   **Option B: Import the production-grade dashboard (reference path).** In Grafana go to **Dashboards → New → Import → Upload JSON file** and pick [monitoring/grafana-dashboard-golden-signals.json](express-reliability-platform-v05/monitoring/grafana-dashboard-golden-signals.json). When prompted, select your Prometheus data source. This dashboard mirrors what SRE teams at Fortune 500 companies actually run:
 
-   - **SLO summary row** — four glanceable stat tiles (Service Health, Traffic, p95 Latency, Error %) with green/yellow/red thresholds baked in.
-   - **Templated `$job` variable** — one dropdown filters every panel; works for any service, no query edits required.
-   - **`$__rate_interval`** instead of hard-coded `[5m]` — Grafana auto-picks the rate window based on your zoom level.
+   - **SLO summary row**: four glanceable stat tiles (Service Health, Traffic, p95 Latency, Error %) with green/yellow/red thresholds baked in.
+   - **Templated `$job` variable**: one dropdown filters every panel; works for any service, no query edits required.
+   - **`$__rate_interval`** instead of hard-coded `[5m]`: Grafana auto-picks the rate window based on your zoom level.
    - **p50 / p95 / p99 latency** in one panel so you can see tail latency, not just the median.
-   - **Latency heatmap** — surfaces bimodal distributions that a single p95 number hides.
+   - **Latency heatmap**: surfaces bimodal distributions that a single p95 number hides.
    - **Stacked status-code mix** (2xx / 3xx / 4xx / 5xx) with fixed colors so error spikes are visible at a glance.
-   - **Deploy annotations** — orange vertical lines mark every container restart, so a latency spike that lined up with a deploy is obvious.
-   - **Saturation row** — process memory and CPU per service, completing the four golden signals.
+   - **Deploy annotations**: orange vertical lines mark every container restart, so a latency spike that lined up with a deploy is obvious.
+   - **Saturation row**: process memory and CPU per service, completing the four golden signals.
 
    The starter file [monitoring/grafana-dashboard.json](express-reliability-platform-v05/monitoring/grafana-dashboard.json) is still there as the V4-style reference.
 
@@ -247,7 +247,7 @@ express-reliability-platform-v05/
 - **No alert rules in Prometheus UI**: `alert.rules.yml` is not mounted. Check the `volumes:` section of the `prometheus` service.
 - **Grafana can't reach Prometheus**: Use `http://prometheus:9090` (Docker DNS), not `http://localhost:9090`.
 - **Dashboards vanished after restart**: The `grafana-data` named volume was removed. Avoid `docker volume rm` unless you mean to reset Grafana.
-- **Container restart loops**: `docker compose logs <service>` shows the crash reason — YAML indentation errors in `prometheus.yml` are common.
+- **Container restart loops**: `docker compose logs <service>` shows the crash reason: YAML indentation errors in `prometheus.yml` are common.
 
 ## 11) Local Cleanup
 
@@ -261,7 +261,7 @@ Or run the full-teardown script (Part B, Section 17) which handles local + AWS +
 
 ---
 
-# Part B — Deploy and Validate on AWS (Terraform)
+# Part B: Deploy and Validate on AWS (Terraform)
 
 ## 12) AWS Prerequisites and Stack Overview
 
@@ -277,29 +277,15 @@ Or run the full-teardown script (Part B, Section 17) which handles local + AWS +
 | **Bootstrap** | `terraform/bootstrap/` | S3 state bucket, DynamoDB state lock table | Once per AWS account |
 | **Platform** | `terraform/platform/` | VPC, public subnets, IGW, security groups, ECR repos, ECS cluster + tasks, ALB, IAM | Every deploy |
 
-The Platform stack stores its state in the bucket the Bootstrap stack created — that's why Bootstrap runs first. V5's state file is at the key `platform/v5/terraform.tfstate` so it does not collide with V4.
+The Platform stack stores its state in the bucket the Bootstrap stack created; that's why Bootstrap runs first. V5's state file is at the key `platform/v5/terraform.tfstate` so it does not collide with V4.
 
 You can deploy in two ways:
-- **Path A — Manual:** run each phase by hand. Use this the first time so you see what each step does.
-- **Path B — Scripted:** one command end to end. Use this on subsequent deploys.
+- **Path A: Manual:** run each phase by hand. Use this the first time so you see what each step does.
+- **Path B: Scripted:** one command end to end. Use this on subsequent deploys.
 
-## 13) Path A — Manual Deployment
+## 13) Path A: Manual Deployment
 
-### 13.1) Phase 1 — Bootstrap (state backend)
-
-Creates the S3 bucket and DynamoDB lock table that Terraform will use for state.
-
-```sh
-terraform -chdir=terraform/bootstrap init
-terraform -chdir=terraform/bootstrap apply
-```
-
-Note the two outputs: `state_bucket` (e.g. `reliability-platform-tfstate-123456789012`) and `account_id`.
-
-> **If you already ran V4's bootstrap:** the bucket and DynamoDB table from V4 are reused. Terraform sees no changes.
-
-
-### 13.1) Phase 1 — Bootstrap (state backend)
+### 13.1) Phase 1: Bootstrap (state backend)
 
 Creates the S3 bucket and DynamoDB lock table that Terraform will use for state.
 
@@ -312,7 +298,21 @@ Note the two outputs: `state_bucket` (e.g. `reliability-platform-tfstate-1234567
 
 > **If you already ran V4's bootstrap:** the bucket and DynamoDB table from V4 are reused. Terraform sees no changes.
 
-### 13.2) Phase 2 — ECR (image registry and image push)
+
+### 13.1) Phase 1: Bootstrap (state backend)
+
+Creates the S3 bucket and DynamoDB lock table that Terraform will use for state.
+
+```sh
+terraform -chdir=terraform/bootstrap init
+terraform -chdir=terraform/bootstrap apply
+```
+
+Note the two outputs: `state_bucket` (e.g. `reliability-platform-tfstate-123456789012`) and `account_id`.
+
+> **If you already ran V4's bootstrap:** the bucket and DynamoDB table from V4 are reused. Terraform sees no changes.
+
+### 13.2) Phase 2: ECR (image registry and image push)
 
 The Platform stack creates ECR repos as part of its apply. ECS tasks need images in those repos to start successfully, so we apply ECR first, push images, then apply the rest.
 
@@ -334,7 +334,7 @@ The Platform stack creates ECR repos as part of its apply. ECS tasks need images
    terraform -chdir=terraform/platform apply -target=aws_ecr_repository.services
    ```
 
-4. Build and push the three service images to ECR. We build for `linux/amd64` explicitly because ECS Fargate runs that architecture by default — Apple Silicon Macs would otherwise produce `linux/arm64` images that Fargate cannot pull:
+4. Build and push the three service images to ECR. We build for `linux/amd64` explicitly because ECS Fargate runs that architecture by default: Apple Silicon Macs would otherwise produce `linux/arm64` images that Fargate cannot pull:
 
    ```sh
    ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
@@ -353,7 +353,7 @@ The Platform stack creates ECR repos as part of its apply. ECS tasks need images
    done
    ```
 
-### 13.3) Phase 3 — ECS (compute platform)
+### 13.3) Phase 3: ECS (compute platform)
 
 Now apply the rest of the Platform stack: VPC, subnets, IGW, route table, security groups, ECS cluster, ECS task definitions, ECS services, ALB, IAM execution role, CloudWatch log groups.
 
@@ -367,15 +367,15 @@ Get the public URL:
 terraform -chdir=terraform/platform output alb_dns_name
 ```
 
-Wait 3–5 minutes for ECS tasks to start and register with the ALB.
+Wait 3:5 minutes for ECS tasks to start and register with the ALB.
 
-## 14) Path B — Scripted Deployment
+## 14) Path B: Scripted Deployment
 
 ```sh
 ./scripts/tf_deploy.sh
 ```
 
-The script runs all three phases back to back: it applies Bootstrap, reads `state_bucket` and `account_id` from Bootstrap's outputs, feeds them into the Platform stack via `terraform init -backend-config=...` (so you don't have to edit `backend.tf` manually), creates the ECR repos, builds and pushes `linux/amd64` images, and applies the rest of the platform. The script is idempotent — re-running it after a code change rebuilds and pushes new images, and Terraform applies whatever has drifted.
+The script runs all three phases back to back: it applies Bootstrap, reads `state_bucket` and `account_id` from Bootstrap's outputs, feeds them into the Platform stack via `terraform init -backend-config=...` (so you don't have to edit `backend.tf` manually), creates the ECR repos, builds and pushes `linux/amd64` images, and applies the rest of the platform. The script is idempotent: re-running it after a code change rebuilds and pushes new images, and Terraform applies whatever has drifted.
 
 ## 15) Validate the Platform on AWS
 
@@ -418,7 +418,7 @@ echo "$ALB"
 curl -I "$ALB"
 ```
 
-You should get an `HTTP/1.1 200 OK` response. Open the URL in a browser to see the V5 Web UI — same UI you saw locally at `http://localhost:8080`.
+You should get an `HTTP/1.1 200 OK` response. Open the URL in a browser to see the V5 Web UI: same UI you saw locally at `http://localhost:8080`.
 
 ### 15.4) Generate load and watch logs
 
@@ -449,10 +449,10 @@ You should see request log lines flowing as you hit the ALB.
 
 ## 16) AWS Troubleshooting
 
-- **`CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`:** you built the image on an Apple Silicon Mac (M1/M2/M3), so Docker produced `linux/arm64`, but ECS Fargate task definitions default to `linux/amd64`. Rebuild with `docker buildx build --platform linux/amd64 ... --push` (the script and the manual instructions above already do this — re-run them).
-- **`Error: no matching EC2 VPC found`:** your account has no default VPC. The current Terraform creates its own VPC (`10.42.0.0/16`); if you see this error you are running an older `networking.tf` — pull the latest.
-- **ECS task stuck in `PROVISIONING` or repeatedly stopping:** check the task's stopped reason — usually means the image is missing in ECR (Phase 2 wasn't run) or the task can't pull from ECR (NAT/IGW/security group issue). Inspect with `aws ecs describe-tasks --cluster reliability-platform-cluster --tasks <task-arn>`.
-- **ALB returns 503:** target group has no healthy targets yet. Wait 60–90 seconds after ECS reports `RUNNING` for the health check to flip green, or inspect target health: `aws elbv2 describe-target-health --target-group-arn <arn>`.
+- **`CannotPullContainerError: image Manifest does not contain descriptor matching platform 'linux/amd64'`:** you built the image on an Apple Silicon Mac (M1/M2/M3), so Docker produced `linux/arm64`, but ECS Fargate task definitions default to `linux/amd64`. Rebuild with `docker buildx build --platform linux/amd64 ... --push` (the script and the manual instructions above already do this: re-run them).
+- **`Error: no matching EC2 VPC found`:** your account has no default VPC. The current Terraform creates its own VPC (`10.42.0.0/16`); if you see this error you are running an older `networking.tf`: pull the latest.
+- **ECS task stuck in `PROVISIONING` or repeatedly stopping:** check the task's stopped reason: usually means the image is missing in ECR (Phase 2 wasn't run) or the task can't pull from ECR (NAT/IGW/security group issue). Inspect with `aws ecs describe-tasks --cluster reliability-platform-cluster --tasks <task-arn>`.
+- **ALB returns 503:** target group has no healthy targets yet. Wait 60:90 seconds after ECS reports `RUNNING` for the health check to flip green, or inspect target health: `aws elbv2 describe-target-health --target-group-arn <arn>`.
 - **`docker push` fails with "name unknown":** ECR repo doesn't exist yet. Re-run Phase 2 step 3.
 - **Terraform apply errors with `state lock`:** another apply is in flight, or a previous one was killed. Check `aws dynamodb scan --table-name terraform-state-lock`. Force-unlock only as a last resort.
 
@@ -462,17 +462,17 @@ You should see request log lines flowing as you hit the ALB.
 ./scripts/cleanup_v5.sh
 ```
 
-This is a **full teardown** — local + AWS. The script:
+This is a **full teardown**: local + AWS. The script:
 
-1. **Local Docker cleanup** — `docker compose down -v --remove-orphans` stops the stack, removes named volumes (including `grafana-data`), and clears any orphan containers from prior compose configs.
+1. **Local Docker cleanup**: `docker compose down -v --remove-orphans` stops the stack, removes named volumes (including `grafana-data`), and clears any orphan containers from prior compose configs.
 2. Re-inits the Platform stack against the Bootstrap backend (so it can talk to the state in S3).
-3. `terraform destroy` on the Platform stack — removes ECS, ALB, ECR (with images, thanks to `force_delete = true`), IAM, CloudWatch log groups, VPC, subnets, IGW, route table, security groups.
-4. **Defensive ECR sweep** — runs `aws ecr delete-repository --force` against any leftover `reliability-platform/*` repositories. Idempotent: if Terraform already deleted them, this is a no-op. If state drifted or destroy was interrupted, this catches the survivors.
-5. Removes all local Docker images touched by V5 — locally-built services (`flask-api`, `node-api`, `web-ui`), their ECR-tagged copies (`<account>.dkr.ecr.<region>.amazonaws.com/reliability-platform/*`), and the pulled monitoring images (`prom/prometheus`, `grafana/grafana`, `prom/alertmanager`). Then runs `docker system prune -f` to reclaim disk.
+3. `terraform destroy` on the Platform stack: removes ECS, ALB, ECR (with images, thanks to `force_delete = true`), IAM, CloudWatch log groups, VPC, subnets, IGW, route table, security groups.
+4. **Defensive ECR sweep**: runs `aws ecr delete-repository --force` against any leftover `reliability-platform/*` repositories. Idempotent: if Terraform already deleted them, this is a no-op. If state drifted or destroy was interrupted, this catches the survivors.
+5. Removes all local Docker images touched by V5: locally-built services (`flask-api`, `node-api`, `web-ui`), their ECR-tagged copies (`<account>.dkr.ecr.<region>.amazonaws.com/reliability-platform/*`), and the pulled monitoring images (`prom/prometheus`, `grafana/grafana`, `prom/alertmanager`). Then runs `docker system prune -f` to reclaim disk.
 6. Empties the state S3 bucket of all object versions and delete markers (versioned buckets can't be terraform-destroyed while non-empty).
-7. `terraform destroy` on the Bootstrap stack — removes the S3 bucket and the DynamoDB lock table.
-8. Verifies: lists ECS clusters, ALBs, ECR repos, state buckets, and the lock table — all should be empty/missing.
-9. **Local Terraform artifacts cleanup** — removes `.terraform/`, `.terraform.lock.hcl`, `terraform.tfstate*`, and `tfplan` files from both `terraform/bootstrap/` and `terraform/platform/`. These survive `terraform destroy` and would otherwise contain stale references to destroyed resources.
+7. `terraform destroy` on the Bootstrap stack: removes the S3 bucket and the DynamoDB lock table.
+8. Verifies: lists ECS clusters, ALBs, ECR repos, state buckets, and the lock table: all should be empty/missing.
+9. **Local Terraform artifacts cleanup**: removes `.terraform/`, `.terraform.lock.hcl`, `terraform.tfstate*`, and `tfplan` files from both `terraform/bootstrap/` and `terraform/platform/`. These survive `terraform destroy` and would otherwise contain stale references to destroyed resources.
 
 > **Heads up:** V4 and V5 use the same project name (`reliability-platform`), so they share ECR repository names. The defensive sweep in step 4 will remove any `reliability-platform/*` repos found in the region, including ones a parallel V4 deploy created. If V4 is still deployed, run V4 cleanup first.
 
@@ -482,11 +482,11 @@ This is a **full teardown** — local + AWS. The script:
 
 ## 18) Next Version Preview
 
-In V6, you replace ECS with Kubernetes on EKS — a system that self-heals (automatically restarts crashed pods) and auto-scales (adds more pods when traffic rises). The monitoring stack (Prometheus, Grafana, Alertmanager) moves into the cluster as well, with the V5 dashboards and alert rules as the starting point.
+In V6, you replace ECS with Kubernetes on EKS: a system that self-heals (automatically restarts crashed pods) and auto-scales (adds more pods when traffic rises). The monitoring stack (Prometheus, Grafana, Alertmanager) moves into the cluster as well, with the V5 dashboards and alert rules as the starting point.
 
 ---
 
-## 19) Web UI Guide — `apps/web-ui/index.html`
+## 19) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 
@@ -512,11 +512,11 @@ The page checks:
 
 ## 18) Next Version Preview
 
-In V6, you replace ECS with Kubernetes on EKS — a system that self-heals (automatically restarts crashed pods) and auto-scales (adds more pods when traffic rises). The monitoring stack (Prometheus, Grafana, Alertmanager) moves into the cluster as well, with the V5 dashboards and alert rules as the starting point.
+In V6, you replace ECS with Kubernetes on EKS: a system that self-heals (automatically restarts crashed pods) and auto-scales (adds more pods when traffic rises). The monitoring stack (Prometheus, Grafana, Alertmanager) moves into the cluster as well, with the V5 dashboards and alert rules as the starting point.
 
 ---
 
-## 19) Web UI Guide — `apps/web-ui/index.html`
+## 19) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 

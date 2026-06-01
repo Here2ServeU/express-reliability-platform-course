@@ -1,4 +1,4 @@
-# Application Load Balancer — stable public DNS name
+# Application Load Balancer: stable public DNS name
 resource "aws_lb" "main" {
   name               = "${var.project_name}-alb"
   internal           = false
@@ -29,7 +29,7 @@ resource "aws_lb_target_group" "web_ui" {
   }
 }
 
-# HTTP listener — route all traffic to web-ui
+# HTTP listener: route all traffic to web-ui
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
@@ -41,7 +41,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# ECS services — keep tasks running, one per service
+# ECS services: keep tasks running, one per service
 resource "aws_ecs_service" "services" {
   for_each = toset(var.services)
 

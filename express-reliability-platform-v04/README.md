@@ -2,7 +2,7 @@
 
 ## 1) Version Purpose
 
-In Version 3, the three-service platform ran on your laptop with Docker Compose. In Version 4, you deploy the same platform to AWS manually so you understand every moving part — ECR, ECS Fargate, VPC, ALB, S3, and DynamoDB — before Version 5 layers monitoring and Terraform on top.
+In Version 3, the three-service platform ran on your laptop with Docker Compose. In Version 4, you deploy the same platform to AWS manually so you understand every moving part: ECR, ECS Fargate, VPC, ALB, S3, and DynamoDB: before Version 5 layers monitoring and Terraform on top.
 
 By the end of V4, you will:
 
@@ -25,7 +25,7 @@ By the end of V4, you will:
 | Public subnets across up to 3 AZs | Spread tasks across availability zones for redundancy. |
 | Pre-created CloudWatch log groups | `AmazonECSTaskExecutionRolePolicy` doesn't grant `logs:CreateLogGroup`, so `awslogs-create-group=true` would fail at task startup. |
 | `docker build --platform linux/amd64` | Fargate runs `linux/amd64`; without this flag, Apple Silicon Macs produce arm64 images that Fargate can't pull. |
-| Idempotent deploy + cleanup scripts | Re-running either script is safe — existing resources are reused or skipped. |
+| Idempotent deploy + cleanup scripts | Re-running either script is safe: existing resources are reused or skipped. |
 | `--force-new-deployment` on service updates | Bumps services onto the latest task definition revision automatically. |
 | IAM-role propagation wait | New roles take ~10s to be usable; the script waits before registering task definitions. |
 
@@ -137,7 +137,7 @@ chmod +x scripts/
 ./scripts/build_tag_push_ecr.sh
 ```
 
-> On Apple Silicon, builds go through QEMU emulation and take noticeably longer than native arm64 builds — this is expected.
+> On Apple Silicon, builds go through QEMU emulation and take noticeably longer than native arm64 builds; this is expected.
 
 **3. Provision VPC, IAM, log groups, ECS cluster, task definitions, and Fargate services:**
 
@@ -227,7 +227,7 @@ Common endpoints worth trying:
 - `http://<flask-api-ip>:5000/health`
 - `http://<node-api-ip>:3000/health`
 
-> Public IPs are **ephemeral**. Every time ECS replaces a task (deploy, crash, manual stop), the new task gets a new public IP. For stable URLs, you would put an Application Load Balancer in front of the services — that's the kind of thing V4+ adds.
+> Public IPs are **ephemeral**. Every time ECS replaces a task (deploy, crash, manual stop), the new task gets a new public IP. For stable URLs, you would put an Application Load Balancer in front of the services; that's the kind of thing V4+ adds.
 
 ### What to do if a page doesn't load
 
@@ -277,7 +277,7 @@ Then bounce the services with `--force-new-deployment`.
 
 **`ServiceSchedulerInitiated` stop code:**
 
-Not an error — this is the scheduler stopping an old task as part of a normal deployment cycle. Check `runningCount` on the service; if it's `1`, the new task is healthy.
+Not an error; this is the scheduler stopping an old task as part of a normal deployment cycle. Check `runningCount` on the service; if it's `1`, the new task is healthy.
 
 **Service stuck at `running=0, pending=1`:**
 
@@ -361,7 +361,7 @@ Replace `<your-github-owner>` with your GitHub org or username. The `sub` claim 
   "Statement": [{
     "Effect": "Allow",
     "Principal": {
-      "Federated": "arn:aws:iam::730335276920:oidc-provider/token.actions.githubusercontent.com"
+      "Federated": "arn:aws:iam:730335276920:oidc-provider/token.actions.githubusercontent.com"
     },
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
@@ -392,7 +392,7 @@ Version 4 replaces the manual AWS commands with Terraform, so deployment and cle
 
 ---
 
-## 16) Web UI Guide — `apps/web-ui/index.html`
+## 16) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 
