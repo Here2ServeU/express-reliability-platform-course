@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-FinOps — AWS cost report via Cost Explorer.
+FinOps: AWS cost report via Cost Explorer.
 
 Pulls the last N days of unblended cost grouped by service and prints a ranked
 report plus the total. This is the "where is the money going" view a platform
@@ -113,7 +113,7 @@ def main() -> None:
     except ImportError:
         try:
             totals = fetch_with_cli(start, end, args.granularity)
-        except Exception as exc:  # noqa: BLE001 — fall back to sample for teaching
+        except Exception as exc:  # noqa: BLE001: fall back to sample for teaching
             print(f"Could not query Cost Explorer ({exc}). Showing sample data.\n")
             report(SAMPLE)
             return

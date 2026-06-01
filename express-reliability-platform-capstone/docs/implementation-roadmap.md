@@ -1,8 +1,8 @@
-# Implementation Roadmap — Capstone Build Plan
+# Implementation Roadmap: Capstone Build Plan
 
 This roadmap helps teams deliver the capstone in phased increments.
 
-## Phase 1 — Foundation and Identity
+## Phase 1: Foundation and Identity
 
 - Finalize repo governance and branch protections
 - Set up environment strategy (`shared`, `live`)
@@ -14,7 +14,7 @@ Exit criteria:
 - Secure CI/CD authentication works end-to-end
 - Baseline security controls are documented
 
-## Phase 2 — Runtime and Deployment
+## Phase 2: Runtime and Deployment
 
 - Stand up service workloads (Node API, Flask API, Web UI)
 - Establish ECS/EKS deployment pattern
@@ -25,7 +25,7 @@ Exit criteria:
 - All services reachable with health checks passing
 - Rollback path tested
 
-## Phase 3 — Observability and SRE Baseline
+## Phase 3: Observability and SRE Baseline
 
 - Deploy Prometheus and Grafana
 - Define and publish SLO/SLI catalog
@@ -36,7 +36,7 @@ Exit criteria:
 - Dashboards operational
 - Alerting aligned to SLO thresholds
 
-## Phase 4 — Incident and DR Operations
+## Phase 4: Incident and DR Operations
 
 - Build runbook catalog for top risks
 - Execute incident simulations
@@ -47,7 +47,7 @@ Exit criteria:
 - Incident response timing documented
 - DR drill report completed
 
-## Phase 5 — AIOps and Automation
+## Phase 5: AIOps and Automation
 
 - Add risk scoring pipeline
 - Add incident summary generation
@@ -58,7 +58,7 @@ Exit criteria:
 - AI-assisted triage produces actionable summaries
 - Operators validate recommendation quality
 
-## Phase 6 — Capstone Certification Pack
+## Phase 6: Capstone Certification Pack
 
 - Complete controls matrix
 - Complete evidence-pack checklist
@@ -70,6 +70,6 @@ Exit criteria:
 
 ## Suggested Delivery Timeline
 
-- Intensive bootcamp: 2–4 weeks
-- Part-time cohort: 6–10 weeks
-- Client pilot: 8–12 weeks depending on environment complexity
+- Intensive bootcamp: 2:4 weeks
+- Part-time cohort: 6:10 weeks
+- Client pilot: 8:12 weeks depending on environment complexity

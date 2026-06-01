@@ -1,4 +1,4 @@
-# Prod environment — sized for the V5/V6 self-healing demo at realistic
+# Prod environment: sized for the V5/V6 self-healing demo at realistic
 # scale. Three medium nodes, room to grow to six, and a real budget so the
 # alert fires before the bill surprises anyone.
 environment = "prod"

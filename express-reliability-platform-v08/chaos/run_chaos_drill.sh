@@ -18,7 +18,7 @@
 #   ./chaos/run_chaos_drill.sh INC-CHAOS-001 node-api latency
 #   ./chaos/run_chaos_drill.sh INC-CHAOS-002 flask-api error_rate
 #
-# Environment variables (optional — scripts will use --dry-run if unset):
+# Environment variables (optional: scripts will use --dry-run if unset):
 #   SLACK_WEBHOOK_URL  - Slack Incoming Webhook URL
 #   SNOW_INSTANCE      - ServiceNow instance name
 #   SNOW_USER          - ServiceNow username
@@ -105,7 +105,7 @@ if command -v python3 &>/dev/null && [[ -f "$SLACK_SCRIPT" ]]; then
   if [[ -n "${SLACK_WEBHOOK_URL:-}" ]]; then
     python3 "$SLACK_SCRIPT" --evidence-file "$EVIDENCE_FILE"
   else
-    echo "         SLACK_WEBHOOK_URL not set — running dry-run."
+    echo "         SLACK_WEBHOOK_URL not set: running dry-run."
     python3 "$SLACK_SCRIPT" --dry-run --evidence-file "$EVIDENCE_FILE"
   fi
 else
@@ -121,7 +121,7 @@ if command -v python3 &>/dev/null && [[ -f "$SNOW_SCRIPT" ]]; then
   if [[ -n "${SNOW_INSTANCE:-}" ]] && [[ -n "${SNOW_USER:-}" ]] && [[ -n "${SNOW_PASSWORD:-}" ]]; then
     python3 "$SNOW_SCRIPT" --evidence-file "$EVIDENCE_FILE"
   else
-    echo "         SNOW_* env vars not set — running dry-run."
+    echo "         SNOW_* env vars not set: running dry-run."
     python3 "$SNOW_SCRIPT" --dry-run --evidence-file "$EVIDENCE_FILE"
   fi
 else
@@ -137,7 +137,7 @@ if command -v python3 &>/dev/null && [[ -f "$JIRA_SCRIPT" ]]; then
   if [[ -n "${JIRA_BASE_URL:-}" ]] && [[ -n "${JIRA_USER:-}" ]] && [[ -n "${JIRA_API_TOKEN:-}" ]]; then
     python3 "$JIRA_SCRIPT" --evidence-file "$EVIDENCE_FILE"
   else
-    echo "         JIRA_* env vars not set — running dry-run."
+    echo "         JIRA_* env vars not set: running dry-run."
     python3 "$JIRA_SCRIPT" --dry-run --evidence-file "$EVIDENCE_FILE"
   fi
 else

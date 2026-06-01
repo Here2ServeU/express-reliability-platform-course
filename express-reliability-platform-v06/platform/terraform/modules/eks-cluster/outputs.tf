@@ -1,6 +1,6 @@
 output "cluster_name" {
   value       = aws_eks_cluster.main.name
-  description = "Name of the EKS cluster — feed this to `aws eks update-kubeconfig`."
+  description = "Name of the EKS cluster: feed this to `aws eks update-kubeconfig`."
 }
 
 output "cluster_endpoint" {
@@ -10,7 +10,7 @@ output "cluster_endpoint" {
 
 output "cluster_certificate_authority_data" {
   value       = aws_eks_cluster.main.certificate_authority[0].data
-  description = "Base64-encoded CA cert for the cluster — needed by kubectl/Helm clients connecting outside the AWS auth flow."
+  description = "Base64-encoded CA cert for the cluster: needed by kubectl/Helm clients connecting outside the AWS auth flow."
   sensitive   = true
 }
 

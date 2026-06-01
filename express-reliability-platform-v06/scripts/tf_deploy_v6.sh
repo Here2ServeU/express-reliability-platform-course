@@ -8,7 +8,7 @@
 #
 # Per-env behavior:
 #   - tfvars file:   platform/terraform/eks/environments/<env>.tfvars
-#   - state key:     eks/v6/<env>/terraform.tfstate  (env-scoped — dev and
+#   - state key:     eks/v6/<env>/terraform.tfstate  (env-scoped: dev and
 #                    prod never share state or fight over the lock)
 #   - cluster name:  reliability-platform-<env>      (set by root locals)
 ###############################################################################
@@ -35,7 +35,7 @@ echo "=== Target environment: ${ENV} (tfvars: ${TFVARS_FILE}) ==="
 
 echo '=== Step 1: Apply V6 bootstrap (state bucket, lock table, ECR repos) ==='
 # V6 owns its full bootstrap: state backend AND the three ECR repos. V5 stays
-# untouched — we no longer depend on V5's terraform having been applied.
+# untouched; we no longer depend on V5's terraform having been applied.
 # See platform/terraform/bootstrap/{main,ecr}.tf.
 terraform -chdir=platform/terraform/bootstrap init -input=false
 terraform -chdir=platform/terraform/bootstrap apply -auto-approve
@@ -80,7 +80,7 @@ kubectl create namespace "${NAMESPACE}" --dry-run=client -o yaml | kubectl apply
 echo '=== Step 7: Install/upgrade Helm charts with V5 ECR images ==='
 # --set image.repository overrides the YOUR_ACCOUNT_ID placeholder in each
 # chart's values.yaml without modifying the file in place. Tag stays at the
-# values.yaml default ("latest") — override per-call with --set image.tag=<sha>
+# values.yaml default ("latest"): override per-call with --set image.tag=<sha>
 # for traceable deploys.
 for SVC in "${SERVICES[@]}"; do
   helm upgrade --install "${SVC}" "platform/helm/${SVC}" \
@@ -91,7 +91,7 @@ done
 echo '=== Step 7b: Force rollout so :latest picks up the new image ==='
 # Helm only restarts pods when the rendered manifest changes. Because we tag
 # images :latest, the Deployment spec is identical across deploys and Helm
-# skips the rollout — the old pod keeps the cached image. `rollout restart`
+# skips the rollout: the old pod keeps the cached image. `rollout restart`
 # bumps a template annotation, which (with pullPolicy: Always) makes the new
 # pod re-pull. Drop this step if you switch to digest/sha-based tags.
 for SVC in "${SERVICES[@]}"; do
@@ -110,6 +110,6 @@ HOSTNAME=$(kubectl get svc web-ui-web-ui -n "${NAMESPACE}" \
 if [ -n "${HOSTNAME}" ]; then
   echo "  http://${HOSTNAME}"
 else
-  echo '  (ALB still provisioning — wait 60-90s and re-check with:'
+  echo '  (ALB still provisioning: wait 60-90s and re-check with:'
   echo '   kubectl get svc web-ui-web-ui -n platform)'
 fi

@@ -25,9 +25,9 @@ Use this as your standard narrative when presenting the capstone.
 
 ## 4) Client Delivery Blueprint
 
-- Week 1–2: baseline architecture and controls
-- Week 3–4: observability + SLO alignment
-- Week 5–6: incident runbooks and simulations
+- Week 1:2: baseline architecture and controls
+- Week 3:4: observability + SLO alignment
+- Week 5:6: incident runbooks and simulations
 - Week 7+: optimization, automation, and handoff
 
 ## 5) Evidence You Should Always Show

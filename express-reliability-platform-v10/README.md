@@ -1,4 +1,4 @@
-# Express Reliability Platform V10 — AIOps, GitOps & Observability
+# Express Reliability Platform V10: AIOps, GitOps & Observability
 
 ## 1) Builds on V9
 
@@ -17,17 +17,17 @@ Use the main class repository for scripts and canonical structure:
 ## 2) Version Purpose
 
 V10 is the **operating brain** of the platform. It takes everything you built in
-V1–V9 and wires it into a closed incident loop across three domains:
+V1:V9 and wires it into a closed incident loop across three domains:
 
-1. **Intelligence layer (AIOps)** — detect anomalies, score the risk, and summarize the incident.
-2. **GitOps (ArgoCD)** — deploy and self-heal from Git; roll back to the last good revision automatically.
-3. **Observability & Alerting** — Prometheus/Grafana/Alertmanager watch the golden signals and route
+1. **Intelligence layer (AIOps)**: detect anomalies, score the risk, and summarize the incident.
+2. **GitOps (ArgoCD)**: deploy and self-heal from Git; roll back to the last good revision automatically.
+3. **Observability & Alerting**: Prometheus/Grafana/Alertmanager watch the golden signals and route
    alerts to **Slack**, where each alert names the **exact script the engineer runs to resolve the issue**.
 
 The whole point of V10: a single signal travels from **detect → score → alert → resolve → self-heal**
 without anyone hunting for the runbook.
 
-> The capstone (the compilation of V1–V10) now lives in
+> The capstone (the compilation of V1:V10) now lives in
 > [`express-reliability-platform-capstone/`](../express-reliability-platform-capstone/). V10 is the
 > focused technical build the capstone references for its intelligence, GitOps, and observability story.
 
@@ -53,14 +53,14 @@ names its own fix shrinks mean-time-to-recovery and removes tribal knowledge.
 
 ## 4) The Three Domains
 
-### Domain 1 — Intelligence layer (AIOps)  `aiops/`
+### Domain 1: Intelligence layer (AIOps)  `aiops/`
 
 | File | What it does |
 |---|---|
 | `aiops/detect_anomaly.py` | Compares a measured signal to its SLO threshold and returns `ANOMALY`/`NORMAL`. |
-| `aiops/score_and_summarize.py` | Scores risk (0–100), assigns severity, writes incident **evidence JSON**, and names the resolve command. |
+| `aiops/score_and_summarize.py` | Scores risk (0:100), assigns severity, writes incident **evidence JSON**, and names the resolve command. |
 
-### Domain 2 — GitOps (ArgoCD)  `infrastructure/`, `policies/`, `.github/`
+### Domain 2: GitOps (ArgoCD)  `infrastructure/`, `policies/`, `.github/`
 
 | Path | What it does |
 |---|---|
@@ -72,7 +72,7 @@ names its own fix shrinks mean-time-to-recovery and removes tribal knowledge.
 | `policies/opa/*` | OPA policies enforced in CI before sync. |
 | `.github/workflows/ci-cd-pipeline.yaml` | Scan → build → push → **ArgoCD sync** → compliance check. |
 
-### Domain 3 — Observability & Alerting  `monitoring/`, `alerting/`, `remediation/`
+### Domain 3: Observability & Alerting  `monitoring/`, `alerting/`, `remediation/`
 
 | File | What it does |
 |---|---|
@@ -147,7 +147,7 @@ express-reliability-platform-v10/
 
 ## 7) Step-by-Step Guide
 
-### Step A — Run the intelligence loop (no credentials needed)
+### Step A: Run the intelligence loop (no credentials needed)
 
 ```sh
 chmod +x scripts/run_intelligence_loop.sh remediation/resolve_incident.sh
@@ -166,14 +166,14 @@ python3 aiops/score_and_summarize.py --signal latency --service node-api
 python3 alerting/send_slack_alert.py --evidence-file artifacts/evidence/INC-LATENCY.json
 ```
 
-### Step B — Wire alerts to Slack for real
+### Step B: Wire alerts to Slack for real
 
 ```sh
 export SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL
 ./scripts/run_intelligence_loop.sh error_rate flask-api
 ```
 
-### Step C — Bring up observability and route real alerts
+### Step C: Bring up observability and route real alerts
 
 ```sh
 docker compose -f docker-compose.observability.yml up -d
@@ -185,7 +185,7 @@ python3 alerting/alertmanager_webhook.py
 When an alert fires, Alertmanager posts to the bridge, which sends a Slack message that ends with the
 exact `resolve_command` from `monitoring/alert.rules.yml`.
 
-### Step D — Resolve the incident with one script
+### Step D: Resolve the incident with one script
 
 Copy the command from the Slack alert and run it (dry-run first to preview the actions):
 
@@ -194,7 +194,7 @@ DRY_RUN=1 ./remediation/resolve_incident.sh latency node-api   # preview
 ./remediation/resolve_incident.sh latency node-api             # execute
 ```
 
-### Step E — GitOps deploy (ArgoCD)
+### Step E: GitOps deploy (ArgoCD)
 
 See [infrastructure/README.md](infrastructure/README.md) for the full Terraform → ArgoCD walkthrough.
 
@@ -226,15 +226,15 @@ Because ArgoCD runs with `selfHeal: true`, the `error_rate` remediation prefers 
 - **No evidence file**: ensure `artifacts/evidence/` is writable (the scorer creates it automatically).
 - **ArgoCD app OutOfSync**: `argocd app sync <app> --prune`; check controller logs.
 
-## 10) Web UI Guide — `apps/web-ui/index.html`
+## 10) Web UI Guide: `apps/web-ui/index.html`
 
 The V10 UI is the **Intelligence, GitOps & Observability console**. It keeps the same platform look
 students have used since V2 and scores the platform across the three V10 domains: intelligence (AIOps),
 GitOps (ArgoCD), and observability & alerting. Generate the scorecard to get a JSON readiness summary
 with a band of `production ready`, `operationally solid`, `needs hardening`, or `not operational`.
 
-## 11) Next Step — The Capstone
+## 11) Next Step: The Capstone
 
 Once V10 is green, assemble the full story in
-[`express-reliability-platform-capstone/`](../express-reliability-platform-capstone/) — the compilation
-of V1–V10 you present in interviews and to clients.
+[`express-reliability-platform-capstone/`](../express-reliability-platform-capstone/): the compilation
+of V1:V10 you present in interviews and to clients.

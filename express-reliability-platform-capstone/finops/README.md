@@ -1,7 +1,7 @@
-# FinOps — Cost Visibility & Guardrails
+# FinOps: Cost Visibility & Guardrails
 
 Cost is a reliability concern: an unbounded bill is its own incident. This module gives the platform
-three things — **see** cost, **visualize** it, and **guard** it with a budget alarm.
+three things: **see** cost, **visualize** it, and **guard** it with a budget alarm.
 
 | File | What it does |
 |---|---|

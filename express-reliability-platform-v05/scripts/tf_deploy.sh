@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # IMAGE_BUILD_MODE controls how images get into ECR:
-#   bash      — Option 1 (default): this script logs into ECR and runs
+#   bash: Option 1 (default): this script logs into ECR and runs
 #               docker buildx for each service before applying the platform.
-#   terraform — Option 2: skip the bash build/push and let Terraform do it
+#   terraform: Option 2: skip the bash build/push and let Terraform do it
 #               via the kreuzwerker/docker provider (terraform/platform/images.tf).
 #               The platform apply gets `-var build_images=true`.
 IMAGE_BUILD_MODE="${IMAGE_BUILD_MODE:-bash}"
@@ -43,7 +43,7 @@ terraform -chdir=terraform/platform apply -auto-approve \
 if [[ "${IMAGE_BUILD_MODE}" == "bash" ]]; then
   echo '=== Step 5 (Option 1 / bash): Build, tag, and push images via docker buildx ==='
   # ECS Fargate runs linux/amd64 by default. On Apple Silicon (M1/M2/M3) Macs,
-  # `docker build` produces linux/arm64 images, which Fargate cannot pull —
+  # `docker build` produces linux/arm64 images, which Fargate cannot pull
   # you would see "image Manifest does not contain descriptor matching
   # platform 'linux/amd64'". We force the target platform here so the script
   # works on both Intel and Apple Silicon hosts.
@@ -62,7 +62,7 @@ if [[ "${IMAGE_BUILD_MODE}" == "bash" ]]; then
   terraform -chdir=terraform/platform apply -auto-approve
 elif [[ "${IMAGE_BUILD_MODE}" == "terraform" ]]; then
   echo '=== Step 5 (Option 2 / terraform): images will be built and pushed by Terraform ==='
-  echo '  See terraform/platform/images.tf — docker_image + docker_registry_image resources.'
+  echo '  See terraform/platform/images.tf: docker_image + docker_registry_image resources.'
 
   echo '=== Step 6: Apply the full platform with build_images=true ==='
   terraform -chdir=terraform/platform apply -auto-approve \

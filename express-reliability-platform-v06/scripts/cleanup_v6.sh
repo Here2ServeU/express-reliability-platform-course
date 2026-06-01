@@ -8,7 +8,7 @@
 #   - V5's bootstrap S3 bucket or DynamoDB lock table.
 #   - V5's ECR repositories or images (V7+ may still need them).
 #
-# Note: no `set -e` — we want each step to keep going even if a previous one
+# Note: no `set -e`; we want each step to keep going even if a previous one
 # partially failed, so a half-cleaned-up environment can be finished off.
 
 ENV="${ENV:-dev}"
@@ -88,7 +88,7 @@ if [ -n "${VPC_ID}" ] && [ "${VPC_ID}" != "None" ]; then
       --region "${REGION}" 2>/dev/null
   done
 else
-  echo '  no cluster VPC found — already destroyed or never deployed'
+  echo '  no cluster VPC found: already destroyed or never deployed'
 fi
 
 echo "=== Step 3: Re-init EKS stack for ${ENV} against V6 bootstrap backend ==="
@@ -120,15 +120,15 @@ if [ -n "${ACCOUNT_ID}" ] && \
     if aws s3api head-object --bucket "${STATE_BUCKET}" \
          --key "eks/v6/${OTHER}/terraform.tfstate" \
          --region "${REGION}" >/dev/null 2>&1; then
-      echo "  found state for env=${OTHER} — preserving bootstrap (bucket + lock + ECR)."
+      echo "  found state for env=${OTHER}: preserving bootstrap (bucket + lock + ECR)."
       OTHER_ENV_STATE_FOUND=true
     fi
   done
-  ${OTHER_ENV_STATE_FOUND} || echo "  no other-env state — safe to destroy bootstrap."
+  ${OTHER_ENV_STATE_FOUND} || echo "  no other-env state: safe to destroy bootstrap."
 fi
 
 if ${OTHER_ENV_STATE_FOUND}; then
-  echo "=== Skipping steps 5-6 (bootstrap destroy) — other envs still exist ==="
+  echo "=== Skipping steps 5-6 (bootstrap destroy): other envs still exist ==="
   echo "    Re-run cleanup_v6.sh against the remaining envs first if you want"
   echo "    a full V6 teardown."
 fi
@@ -161,15 +161,15 @@ if ! ${OTHER_ENV_STATE_FOUND} && \
   done
   echo "  drained ${TOTAL} object(s) total"
 else
-  echo "  bucket s3://${STATE_BUCKET} not found — skipping drain"
+  echo "  bucket s3://${STATE_BUCKET} not found: skipping drain"
 fi
 
 echo '=== Step 6: Destroy V6 bootstrap (S3 bucket + DynamoDB lock table) ==='
 if ${OTHER_ENV_STATE_FOUND}; then
-  echo '  skipped — bootstrap is still serving another env.'
+  echo '  skipped: bootstrap is still serving another env.'
 else
   # Apply first so any local-only changes (force_destroy, etc.) are recorded
-  # in state before destroy. Idempotent — no-op if state already matches.
+  # in state before destroy. Idempotent: no-op if state already matches.
   terraform -chdir=platform/terraform/bootstrap init -input=false >/dev/null 2>&1 || true
   terraform -chdir=platform/terraform/bootstrap apply -auto-approve >/dev/null 2>&1 || true
   terraform -chdir=platform/terraform/bootstrap destroy -auto-approve
@@ -187,7 +187,7 @@ echo '=== Step 8: Verify cleanup ==='
 echo "--- EKS clusters (should not include reliability-platform-${ENV}) ---"
 aws eks list-clusters --region "${REGION}" --query 'clusters' --output text 2>/dev/null
 if ${OTHER_ENV_STATE_FOUND}; then
-  echo '--- V6 state bucket (kept — other envs still use it) ---'
+  echo '--- V6 state bucket (kept: other envs still use it) ---'
   echo "  ${STATE_BUCKET}"
 else
   echo '--- V6 state bucket (should not exist) ---'

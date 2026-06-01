@@ -1,10 +1,10 @@
-# Express Reliability Platform — Capstone
+# Express Reliability Platform: Capstone
 
 A **standalone, self-contained reliability platform**. It is the final project of the Express
 Reliability Platform program: the consolidated system you deploy, operate, and present in interviews
 and to clients.
 
-Unlike the V1–V10 learning versions (each of which teaches one capability in isolation), the capstone
+Unlike the V1:V10 learning versions (each of which teaches one capability in isolation), the capstone
 **physically contains a complete, working platform** in one repository: the application services, the
 intelligence layer, GitOps delivery, observability and alerting, FinOps, and the CI/CD pipeline that
 ties them together.
@@ -30,13 +30,13 @@ ties them together.
 
 A complete platform that is:
 
-- **Reliable by design** — SLOs, runbooks, validated recovery.
-- **Secure by default** — least-privilege IAM, OIDC CI/CD, policy-as-code (OPA), scanned images.
-- **Observable end-to-end** — golden signals, dashboards, and alerts tied to SLOs.
-- **Intelligent** — AIOps detection, scoring, and summaries that drive every alert.
-- **Self-healing** — GitOps delivery (ArgoCD) that reconciles and rolls back automatically.
-- **Cost-governed** — FinOps reporting and budget guardrails.
-- **Auditable** — every change in Git, every incident documented, evidence packaged.
+- **Reliable by design**: SLOs, runbooks, validated recovery.
+- **Secure by default**: least-privilege IAM, OIDC CI/CD, policy-as-code (OPA), scanned images.
+- **Observable end-to-end**: golden signals, dashboards, and alerts tied to SLOs.
+- **Intelligent**: AIOps detection, scoring, and summaries that drive every alert.
+- **Self-healing**: GitOps delivery (ArgoCD) that reconciles and rolls back automatically.
+- **Cost-governed**: FinOps reporting and budget guardrails.
+- **Auditable**; every change in Git, every incident documented, evidence packaged.
 
 ---
 
@@ -101,7 +101,7 @@ express-reliability-platform-capstone/
 ├── apps/
 │   ├── node-api/        (Dockerfile, index.js, package.json, public/)
 │   ├── flask-api/       (Dockerfile, app.py, requirements.txt, templates/)
-│   └── web-ui/          (Dockerfile, index.html — capstone scorecard console)
+│   └── web-ui/          (Dockerfile, index.html: capstone scorecard console)
 ├── aiops/
 │   ├── detect_anomaly.py
 │   └── score_and_summarize.py
@@ -148,7 +148,7 @@ express-reliability-platform-capstone/
 DRY_RUN=1 ./scripts/deploy_all.sh
 ./scripts/deploy_all.sh
 
-# 1) Run the AIOps intelligence loop (no credentials needed — dry-runs Slack)
+# 1) Run the AIOps intelligence loop (no credentials needed; dry-runs Slack)
 chmod +x scripts/run_intelligence_loop.sh remediation/resolve_incident.sh
 ./scripts/run_intelligence_loop.sh latency node-api
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# FinOps — create an AWS monthly budget with email alerts.
+# FinOps: create an AWS monthly budget with email alerts.
 #
 # Two ways to set a budget guardrail:
 #   1) Terraform (preferred, reviewable, version-controlled): finops/terraform/budget

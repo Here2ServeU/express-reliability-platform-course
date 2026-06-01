@@ -1,6 +1,6 @@
 #!/bin/bash
 ###############################################################################
-# Option 1 — Build, tag, and push images via bash + docker buildx.
+# Option 1: Build, tag, and push images via bash + docker buildx.
 #
 # Standalone version of the image pipeline. Use this when the platform is
 # already deployed and you only changed application code, so you don't need
@@ -35,7 +35,7 @@ aws ecr get-login-password --region "${REGION}" | \
 
 echo '=== Step 3: Build, tag, and push each service image ==='
 # ECS Fargate runs linux/amd64 by default. On Apple Silicon (M1/M2/M3) Macs,
-# `docker build` would produce linux/arm64, which Fargate cannot pull —
+# `docker build` would produce linux/arm64, which Fargate cannot pull
 # you would see "image Manifest does not contain descriptor matching
 # platform 'linux/amd64'". `buildx --platform linux/amd64 --push` builds
 # for the right architecture and ships straight to ECR in one step.
@@ -66,7 +66,7 @@ if [[ "${FORCE_DEPLOY}" == "true" ]]; then
     done
     echo 'Wait 1-3 minutes for ECS to drain old tasks and register the new ones.'
   else
-    echo "  cluster ${CLUSTER} not found or not ACTIVE — skipping forced redeploy."
+    echo "  cluster ${CLUSTER} not found or not ACTIVE: skipping forced redeploy."
     echo "  Run scripts/tf_deploy.sh first to create the platform."
   fi
 else

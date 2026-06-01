@@ -16,16 +16,16 @@ data "aws_caller_identity" "current" {}
 
 # S3 bucket for storing V6 Terraform state files.
 #
-# Naming: ${project_name}-${version_suffix}-tfstate-${account_id} — deliberately
+# Naming: ${project_name}-${version_suffix}-tfstate-${account_id}: deliberately
 # version-suffixed so V5 (`reliability-platform-tfstate-...`), V6
 # (`reliability-platform-v06-tfstate-...`), and any future versions can coexist
-# on one AWS account. Different version, different bucket — no conflicts, no
+# on one AWS account. Different version, different bucket: no conflicts, no
 # shared blast radius.
 resource "aws_s3_bucket" "tf_state" {
   bucket = "${var.project_name}-${var.version_suffix}-tfstate-${data.aws_caller_identity.current.account_id}"
 
   # Versioning is enabled on this bucket (next resource), so a plain
-  # `terraform destroy` would 409 with BucketNotEmpty — versions and delete
+  # `terraform destroy` would 409 with BucketNotEmpty: versions and delete
   # markers survive `aws s3 rm`. force_destroy = true tells the AWS provider
   # to drain every version and delete-marker before calling DeleteBucket,
   # which is what we want for a course-managed state backend.
@@ -44,7 +44,7 @@ resource "aws_s3_bucket" "tf_state" {
   }
 }
 
-# Enable versioning — keeps every version of every state file
+# Enable versioning: keeps every version of every state file
 resource "aws_s3_bucket_versioning" "state" {
   bucket = aws_s3_bucket.tf_state.id
 
@@ -53,7 +53,7 @@ resource "aws_s3_bucket_versioning" "state" {
   }
 }
 
-# Block all public access — state files may contain sensitive data
+# Block all public access: state files may contain sensitive data
 resource "aws_s3_bucket_public_access_block" "block" {
   bucket = aws_s3_bucket.tf_state.id
 
@@ -63,7 +63,7 @@ resource "aws_s3_bucket_public_access_block" "block" {
   restrict_public_buckets = true
 }
 
-# DynamoDB table for state locking — version-suffixed so it doesn't collide
+# DynamoDB table for state locking: version-suffixed so it doesn't collide
 # with V5's `terraform-state-lock` table or any other version's table.
 resource "aws_dynamodb_table" "tf_lock" {
   name         = "terraform-state-lock-${var.version_suffix}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Intelligence layer — risk scoring + incident summary (the AIOps core).
+Intelligence layer: risk scoring + incident summary (the AIOps core).
 
 Turns a detected signal into a machine-readable incident evidence file that the
 rest of the platform consumes:

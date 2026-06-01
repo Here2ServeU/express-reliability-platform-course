@@ -73,7 +73,7 @@ If you need Terraform initialization and apply:
 
 ---
 
-## 7) Web UI Guide — `apps/web-ui/index.html`
+## 7) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 

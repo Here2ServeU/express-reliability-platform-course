@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Alerting — send a rich AIOps alert to Slack via Incoming Webhook.
+Alerting: send a rich AIOps alert to Slack via Incoming Webhook.
 
 The alert names the EXACT command the on-call engineer runs to resolve the
 incident, so resolution is one copy-paste away from the alert itself.
@@ -37,7 +37,7 @@ def build_message(args: argparse.Namespace) -> str:
         icon = SEVERITY_ICON.get(sev, ":bell:")
         resolve = e.get("resolve_command", "see runbook")
         return (
-            f"{icon} *AIOps Alert — {sev.upper()}*\n"
+            f"{icon} *AIOps Alert: {sev.upper()}*\n"
             f"*Incident:* {e.get('incident_id', 'N/A')}\n"
             f"*Service:* {e.get('service', 'N/A')}\n"
             f"*Signal:* {e.get('signal', 'N/A')}\n"

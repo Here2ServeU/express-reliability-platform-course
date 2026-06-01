@@ -1,4 +1,4 @@
-# Express Reliability Platform V7 — AIOps Incident Management
+# Express Reliability Platform V7: AIOps Incident Management
 
 ## 1) Builds on V6
 
@@ -16,36 +16,36 @@ Use the main class repository for scripts and canonical structure:
 
 ## 2) Version Purpose
 
-In Version 7 you organized infrastructure into independent layers and let GitHub Actions deploy them on every `git push`. The platform is now structured and automated — but when something breaks at 2 a.m., a human still has to read every alert and decide what matters.
+In Version 7 you organized infrastructure into independent layers and let GitHub Actions deploy them on every `git push`. The platform is now structured and automated: but when something breaks at 2 a.m., a human still has to read every alert and decide what matters.
 
-Version 8 adds **AIOps incident management**: you take your platform's health signals (latency, error rate, restarts, blast radius), turn them into a **risk score from 0 to 100**, classify the **severity**, write a **machine-readable incident summary**, and — when the score is high enough — fire a **Slack alert automatically**. You practice this loop locally first, then promote it through `dev → staging → prod` with guardrails.
+Version 8 adds **AIOps incident management**: you take your platform's health signals (latency, error rate, restarts, blast radius), turn them into a **risk score from 0 to 100**, classify the **severity**, write a **machine-readable incident summary**, and: when the score is high enough: fire a **Slack alert automatically**. You practice this loop locally first, then promote it through `dev → staging → prod` with guardrails.
 
-**V7 Goal:** Convert raw signals into a scored, summarized, and routed incident — with a JSON evidence file written for every run and Slack notification wired into the scoring script.
+**V7 Goal:** Convert raw signals into a scored, summarized, and routed incident: with a JSON evidence file written for every run and Slack notification wired into the scoring script.
 
 ---
 
 ## 3) Plain Language Context
 
-**The emergency-room triage analogy.** A triage nurse takes every patient's vital signs, assigns a priority number (1 = immediate, 5 = can wait), and hands the doctor a card: *"Priority 2. Elevated heart rate and blood pressure. Recommend ECG."* The doctor doesn't re-check every patient — they trust the triage.
+**The emergency-room triage analogy.** A triage nurse takes every patient's vital signs, assigns a priority number (1 = immediate, 5 = can wait), and hands the doctor a card: *"Priority 2. Elevated heart rate and blood pressure. Recommend ECG."* The doctor doesn't re-check every patient; they trust the triage.
 
-V7 builds the same thing for your platform. Instead of patients you have services. Instead of vital signs you have latency, error rate, restart count, and how many services failed together. The scoring script is the nurse: it reads the numbers, produces a priority (`low` / `medium` / `high`), and hands you a card (`recommended_action`) — and pages the on-call via Slack when the priority is high.
+V7 builds the same thing for your platform. Instead of patients you have services. Instead of vital signs you have latency, error rate, restart count, and how many services failed together. The scoring script is the nurse: it reads the numbers, produces a priority (`low` / `medium` / `high`), and hands you a card (`recommended_action`): and pages the on-call via Slack when the priority is high.
 
-**Why a bank or hospital needs this.** Large regulated organizations receive thousands of monitoring alerts per day. No human team can review each one. AIOps tooling scores every alert, writes evidence for auditors, and surfaces only the ones that need a person — so engineers spend their time fixing real problems instead of reading noise.
+**Why a bank or hospital needs this.** Large regulated organizations receive thousands of monitoring alerts per day. No human team can review each one. AIOps tooling scores every alert, writes evidence for auditors, and surfaces only the ones that need a person: so engineers spend their time fixing real problems instead of reading noise.
 
 **Key terms in plain language:**
 
 | Term | Plain Language Meaning |
 |---|---|
 | **AIOps** | Using automation and simple decision logic to help operations teams detect, prioritize, and fix incidents faster. |
-| **Incident signal** | A measurable sign that something is wrong — high latency, high error rate, pod restarts, multiple services failing. |
+| **Incident signal** | A measurable sign that something is wrong: high latency, high error rate, pod restarts, multiple services failing. |
 | **SLI** | The measured value (for example, p95 latency in milliseconds). |
 | **SLO** | The target you promise for an SLI (for example, p95 latency under 500 ms). |
-| **Risk score** | A number (0–100 here) estimating how serious an incident is. Built from transparent rules, not guesswork. |
-| **Severity band** | `low` (0–39), `medium` (40–69), `high` (70–100) — defined in `artifacts/aiops/risk-rules.yaml`. |
+| **Risk score** | A number (0:100 here) estimating how serious an incident is. Built from transparent rules, not guesswork. |
+| **Severity band** | `low` (0:39), `medium` (40:69), `high` (70:100): defined in `artifacts/aiops/risk-rules.yaml`. |
 | **Incident summary** | A short, machine-readable report: impacted service, severity, risk score, recommended first action, owner, timestamp. |
-| **Evidence file** | The JSON written for every scoring run — your audit trail and your portfolio proof. |
+| **Evidence file** | The JSON written for every scoring run; your audit trail and your portfolio proof. |
 | **Blast radius** | How much of the system a fault affects. Two or more services failing together expands it. |
-| **Guardrail** | A safety rule that limits risk during tests — e.g. `prod` tests require `APPROVED_PROD_TEST=true`. |
+| **Guardrail** | A safety rule that limits risk during tests: e.g. `prod` tests require `APPROVED_PROD_TEST=true`. |
 | **Recovery validation** | Proving the service returned to a healthy state (health endpoint up, SLO/SLI trends back to baseline) after mitigation. |
 
 **Expected result at the end of this version:**
@@ -61,11 +61,11 @@ V7 builds the same thing for your platform. Instead of patients you have service
 ## 4) Training Workflow (Understand → Build → Test → Break → Fix → Explain → Automate → Improve)
 
 1. **Understand:** Read `artifacts/aiops/risk-rules.yaml`, `artifacts/aiops/aiops-incident-management.md`, and the high-demand AIOps engineer blueprint.
-2. **Build:** Bring up the local stack (`docker compose up` — flask-api, web-ui, prometheus, grafana, alertmanager) and make the V7 scripts executable.
+2. **Build:** Bring up the local stack (`docker compose up`: flask-api, web-ui, prometheus, grafana, alertmanager) and make the V7 scripts executable.
 3. **Test:** Run the local AIOps incident test; confirm a JSON evidence file is written and the score/severity print.
 4. **Break:** Stop a service in the local stack on purpose; watch the health endpoint fail.
 5. **Fix:** Restart the service, re-run the test, confirm recovery criteria.
-6. **Explain:** Write the three answers — what failed, why, what fixed it — for every drill.
+6. **Explain:** Write the three answers: what failed, why, what fixed it: for every drill.
 7. **Automate:** Let `aiops_score_and_summarize.sh` own scoring + Slack; let GitHub Actions (`.github/workflows/provision.yml`) own the cloud deploy.
 8. **Improve:** Tune thresholds in `risk-rules.yaml`, improve summary quality, and drive down mean time to detect / recover.
 
@@ -73,16 +73,16 @@ V7 builds the same thing for your platform. Instead of patients you have service
 
 Practiced directly in this version (see `artifacts/aiops/high-demand-aiops-engineer-blueprint.md`):
 
-1. **Observable systems** — collect metrics, logs, events, and health signals.
-2. **Fast triage** — move from signal to incident summary in one command.
-3. **Risk scoring** — prioritize by impact using transparent rules, not gut feel.
-4. **Automation** — generate repeatable, machine-readable incident evidence.
-5. **Safe promotion** — validate in `dev`, then `staging`, then `prod` behind guardrails.
-6. **Evidence culture** — keep JSON outputs for post-incident review, audit, and portfolio.
+1. **Observable systems**: collect metrics, logs, events, and health signals.
+2. **Fast triage**: move from signal to incident summary in one command.
+3. **Risk scoring**: prioritize by impact using transparent rules, not gut feel.
+4. **Automation**: generate repeatable, machine-readable incident evidence.
+5. **Safe promotion**: validate in `dev`, then `staging`, then `prod` behind guardrails.
+6. **Evidence culture**: keep JSON outputs for post-incident review, audit, and portfolio.
 
 ## 6) What You Will Build
 
-- A local testing stack — `docker-compose.yml` runs **flask-api**, **web-ui**, **prometheus**, **grafana**, and **alertmanager** so the AIOps scripts have a real platform to poll, score, and break.
+- A local testing stack: `docker-compose.yml` runs **flask-api**, **web-ui**, **prometheus**, **grafana**, and **alertmanager** so the AIOps scripts have a real platform to poll, score, and break.
 - A documented AIOps incident-management approach (`artifacts/aiops/aiops-incident-management.md`).
 - A risk-rule set with severity bands (`artifacts/aiops/risk-rules.yaml`).
 - A scoring + summary engine that also routes to Slack (`scripts/aiops_score_and_summarize.sh`).
@@ -180,15 +180,15 @@ Severity bands and the recommended first action:
 
 | Risk score | Severity | Recommended first action |
 |---|---|---|
-| 0–39 | `low` | Investigate dashboards and watch trends for ~10 minutes. |
-| 40–69 | `medium` | Open an incident ticket, assign an owner, apply the first runbook mitigation step. |
-| 70–100 | `high` | Declare an incident, start mitigation immediately, trigger on-call escalation (Slack alert fires automatically). |
+| 0:39 | `low` | Investigate dashboards and watch trends for ~10 minutes. |
+| 40:69 | `medium` | Open an incident ticket, assign an owner, apply the first runbook mitigation step. |
+| 70:100 | `high` | Declare an incident, start mitigation immediately, trigger on-call escalation (Slack alert fires automatically). |
 
 Each run writes a JSON object with `incident_id`, `service`, the raw signal values, `risk_score`, `severity`, `recommended_action`, `owner`, and `generated_at_utc`.
 
 ## 10) Step-by-Step Guide (Local and Cloud)
 
-### Step A — Understand
+### Step A: Understand
 
 ```sh
 cat artifacts/aiops/risk-rules.yaml
@@ -202,11 +202,11 @@ Before building, be able to answer:
 2. How a risk score maps to a severity band.
 3. What first action is expected for each severity.
 
-### Step B — Build (Local Setup)
+### Step B: Build (Local Setup)
 
-**B1: Prerequisites** — install and verify Docker + Docker Compose, Terraform, AWS CLI, kubectl, Helm, `curl`, and `python3` (used by the Slack sender to parse evidence files).
+**B1: Prerequisites**: install and verify Docker + Docker Compose, Terraform, AWS CLI, kubectl, Helm, `curl`, and `python3` (used by the Slack sender to parse evidence files).
 
-**B2: Bring up the local testing stack** — `docker-compose.yml` in this repo runs five services:
+**B2: Bring up the local testing stack**: `docker-compose.yml` in this repo runs five services:
 
 | Service | Image / build | Host port | Purpose |
 |---|---|---|---|
@@ -216,7 +216,7 @@ Before building, be able to answer:
 | `grafana` | `grafana/grafana` | `3001` → 3000 | Login `admin` / `admin`. Add the Prometheus datasource (`http://prometheus:9090`), then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json`. |
 | `alertmanager` | `prom/alertmanager` | `9093` | Receives firing alerts from Prometheus and routes them per `monitoring/alertmanager/alertmanager.yml`. |
 
-> Note: `monitoring/prometheus.yml` is carried forward from V5 and also lists a `node-api` scrape target. V7 has no `node-api` service, so that target shows as **down** in Prometheus — that is expected. Remove the job from `monitoring/prometheus.yml` if you want a clean targets page.
+> Note: `monitoring/prometheus.yml` is carried forward from V5 and also lists a `node-api` scrape target. V7 has no `node-api` service, so that target shows as **down** in Prometheus; that is expected. Remove the job from `monitoring/prometheus.yml` if you want a clean targets page.
 
 ```sh
 docker compose up --build -d
@@ -225,9 +225,9 @@ docker compose ps
 curl http://localhost:8080/api/health          # {"service":"flask-api","status":"ok","version":"v7"}
 curl http://localhost:5050/api/health          # same, hitting flask-api directly
 open http://localhost:8080                      # the V7 AIOps console
-open http://localhost:9090/targets              # flask-api should be UP (node-api will be down — see note above)
+open http://localhost:9090/targets              # flask-api should be UP (node-api will be down; see note above)
 open http://localhost:9093                      # Alertmanager
-open http://localhost:3001                      # Grafana (admin / admin) — add the datasource, import the dashboards
+open http://localhost:3001                      # Grafana (admin / admin): add the datasource, import the dashboards
 ```
 
 **B3: Make the V7 scripts executable:**
@@ -239,13 +239,13 @@ chmod +x scripts/aiops_score_and_summarize.sh \
          slack/send_slack_webhook.sh
 ```
 
-### Step C — Test (Local AIOps)
+### Step C: Test (Local AIOps)
 
 ```sh
 ./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health flask-api 650 1.8 1 1 local-oncall
 ```
 
-Argument order: `<api_url> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner>`. Every argument is optional and falls back to a default (the default URL is `http://localhost:8080/api/health` and the default service is `flask-api`) — `./scripts/aiops_local_incident_test.sh` alone works too.
+Argument order: `<api_url> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner>`. Every argument is optional and falls back to a default (the default URL is `http://localhost:8080/api/health` and the default service is `flask-api`): `./scripts/aiops_local_incident_test.sh` alone works too.
 
 What it does:
 
@@ -261,20 +261,20 @@ Score one incident directly (note the trailing **output file** argument):
 ./scripts/aiops_score_and_summarize.sh INC-001 flask-api 650 1.8 1 1 local-oncall artifacts/aiops/evidence/local/INC-001.json
 ```
 
-#### Slack notifications — complete beginner walkthrough
+#### Slack notifications: complete beginner walkthrough
 
-**What is this?** A Slack *Incoming Webhook* is a private URL. Anything you `POST` to that URL shows up as a message in one Slack channel. That's the whole trick — no bot, no login from the script, just a URL. The V7 scripts use it to page the on-call when an incident scores `high`.
+**What is this?** A Slack *Incoming Webhook* is a private URL. Anything you `POST` to that URL shows up as a message in one Slack channel. That's the whole trick: no bot, no login from the script, just a URL. The V7 scripts use it to page the on-call when an incident scores `high`.
 
 ##### Why you might see "nothing in Slack"
 
 There are **two different no-send situations**, and both are normal:
 
-1. **You used `--dry-run`.** The `--dry-run` flag *never* posts to Slack — on purpose. It just prints the message in your terminal so you can check the wording. Example: `./slack/send_slack_webhook.sh --dry-run --message "..."` will *always* be silent in Slack. That is correct behavior.
-2. **`SLACK_WEBHOOK_URL` is not set.** If that environment variable is empty, the scripts fall back to dry-run mode automatically and just print the preview. You haven't done anything wrong — you just haven't given it a webhook URL yet.
+1. **You used `--dry-run`.** The `--dry-run` flag *never* posts to Slack: on purpose. It just prints the message in your terminal so you can check the wording. Example: `./slack/send_slack_webhook.sh --dry-run --message "..."` will *always* be silent in Slack. That is correct behavior.
+2. **`SLACK_WEBHOOK_URL` is not set.** If that environment variable is empty, the scripts fall back to dry-run mode automatically and just print the preview. You haven't done anything wrong; you just haven't given it a webhook URL yet.
 
 So before a real message can appear, two things must be true: **you are not passing `--dry-run`**, and **a real webhook URL is available** (via `SLACK_WEBHOOK_URL` or `--url`).
 
-##### Step 1 — Create a Slack Incoming Webhook (one time, ~2 minutes)
+##### Step 1: Create a Slack Incoming Webhook (one time, ~2 minutes)
 
 1. Open <https://api.slack.com/apps> in a browser (sign in to your Slack workspace if asked).
 2. Click **Create New App** → **From scratch**.
@@ -285,9 +285,9 @@ So before a real message can appear, two things must be true: **you are not pass
 7. You're back on the Incoming Webhooks page. Under **Webhook URL** click **Copy**. It looks like:
    `https://hooks.slack.com/services/YOUR/WEBHOOK/URL`
 
-> Keep that URL private — anyone who has it can post to your channel. Don't paste it into a public repo or a screenshot.
+> Keep that URL private: anyone who has it can post to your channel. Don't paste it into a public repo or a screenshot.
 
-##### Step 2 — Tell the scripts about your webhook URL
+##### Step 2: Tell the scripts about your webhook URL
 
 Open a terminal **in this project folder** and run (paste your real URL):
 
@@ -313,16 +313,16 @@ echo "$SLACK_WEBHOOK_URL"          # confirm again
 
 (If you use bash instead of zsh, use `~/.bashrc` in place of `~/.zshrc`.)
 
-##### Step 3 — Send a real message
+##### Step 3: Send a real message
 
 ```sh
-# 1) Preview only — never touches Slack (safe to run anytime):
+# 1) Preview only: never touches Slack (safe to run anytime):
 ./slack/send_slack_webhook.sh --dry-run --message "AIOps test from V7"
 
-# 2) Send for real — needs SLACK_WEBHOOK_URL set (Step 2):
+# 2) Send for real: needs SLACK_WEBHOOK_URL set (Step 2):
 ./slack/send_slack_webhook.sh --message "AIOps test from V7"
 
-# 3) Send without exporting anything — pass the URL right on the command line:
+# 3) Send without exporting anything: pass the URL right on the command line:
 ./slack/send_slack_webhook.sh --url 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL' --message "AIOps test from V7"
 
 # 4) Build the alert from a real incident evidence file (generate one first so the file exists):
@@ -332,11 +332,11 @@ echo "$SLACK_WEBHOOK_URL"          # confirm again
 
 **What success looks like:** the script prints `Slack alert sent.` and the message appears in your chosen channel within a second or two.
 
-**What failure looks like:** it prints `Slack did not accept the message. Response: ...` (or `invalid_token` / `no_service`) and exits with a non-zero status. That almost always means the URL is wrong, was revoked, or has a typo — go back to Step 1 and copy it again. The script is deliberately loud here so a bad URL never *looks* like it worked.
+**What failure looks like:** it prints `Slack did not accept the message. Response: ...` (or `invalid_token` / `no_service`) and exits with a non-zero status. That almost always means the URL is wrong, was revoked, or has a typo: go back to Step 1 and copy it again. The script is deliberately loud here so a bad URL never *looks* like it worked.
 
-##### Step 4 — Wire it into the incident scoring (automatic alerts)
+##### Step 4: Wire it into the incident scoring (automatic alerts)
 
-Once `SLACK_WEBHOOK_URL` is exported (Step 2), the scoring script sends a Slack alert on **every** run — and the wording reflects the severity (`:rotating_light:` for `high`, `:warning:` for `medium`, `:white_check_mark:` for `low`):
+Once `SLACK_WEBHOOK_URL` is exported (Step 2), the scoring script sends a Slack alert on **every** run: and the wording reflects the severity (`:rotating_light:` for `high`, `:warning:` for `medium`, `:white_check_mark:` for `low`):
 
 ```sh
 ./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health flask-api 650 1.8 1 1 local-oncall
@@ -345,33 +345,33 @@ Once `SLACK_WEBHOOK_URL` is exported (Step 2), the scoring script sends a Slack 
 If `SLACK_WEBHOOK_URL` is *not* set, that same command instead prints:
 
 ```text
-[Slack] SLACK_WEBHOOK_URL not set — skipping notification.
+[Slack] SLACK_WEBHOOK_URL not set; skipping notification.
         Message that would be sent: <severity> alert for <service> (risk_score=<n>)
 ```
 
-— which is your cue to go do Step 2.
+: which is your cue to go do Step 2.
 
 ##### Quick checklist if Slack still shows nothing
 
-- Did you leave off `--dry-run`? (`--dry-run` is *always* silent in Slack — that's its job.)
+- Did you leave off `--dry-run`? (`--dry-run` is *always* silent in Slack; that's its job.)
 - Does `echo "$SLACK_WEBHOOK_URL"` print your real `https://hooks.slack.com/services/...` URL in *this* terminal? If it's blank, re-run the `export` (Step 2) or `source ~/.zshrc`.
-- Did the script print `Slack alert sent.`? If it printed an error instead, the webhook URL is the problem — recreate/recopy it (Step 1).
+- Did the script print `Slack alert sent.`? If it printed an error instead, the webhook URL is the problem: recreate/recopy it (Step 1).
 - Are you looking in the channel you picked in Step 1.6? The webhook only ever posts to that one channel.
 - Is `python3` installed? (`python3 --version`) The sender uses it to build the JSON payload and to parse `--evidence-file`.
 
-### Step D — Break the System (Local Failure Drill)
+### Step D: Break the System (Local Failure Drill)
 
 ```sh
 docker compose stop flask-api
-curl -i http://localhost:8080/api/health     # 502 from nginx — flask-api is gone
+curl -i http://localhost:8080/api/health     # 502 from nginx; flask-api is gone
 open http://localhost:9090/targets            # flask-api now DOWN; the ServiceDown alert arms
 open http://localhost:9090/alerts             # ServiceDown moves Pending -> Firing after 30s
 open http://localhost:9093                     # the firing alert lands in Alertmanager
 ```
 
-This is what an incident actually looks like in operations — a dependency goes away and the health check starts failing. Note how `./scripts/aiops_local_incident_test.sh` now fails fast at the `curl -fsS` health check, exactly as it should.
+This is what an incident actually looks like in operations: a dependency goes away and the health check starts failing. Note how `./scripts/aiops_local_incident_test.sh` now fails fast at the `curl -fsS` health check, exactly as it should.
 
-### Step E — Fix the System
+### Step E: Fix the System
 
 ```sh
 docker compose start flask-api
@@ -379,7 +379,7 @@ curl http://localhost:8080/api/health         # back to {"status":"ok",...}
 ./scripts/aiops_local_incident_test.sh
 ```
 
-### Step F — Explain What Happened
+### Step F: Explain What Happened
 
 Document these three answers after every drill:
 
@@ -387,15 +387,15 @@ Document these three answers after every drill:
 2. Why did it fail?
 3. What fixed it?
 
-### Step G — Automate
+### Step G: Automate
 
-The automation is already in place — your job is to use and extend it:
+The automation is already in place; your job is to use and extend it:
 
-- `scripts/aiops_score_and_summarize.sh` — scoring + JSON evidence + Slack in one place.
-- `scripts/aiops_local_incident_test.sh` / `scripts/aiops_cloud_incident_test.sh` — repeatable test harnesses.
-- `.github/workflows/provision.yml` — on every push to `main`, runs `terraform-shared`, `terraform-live`, then `helm-deploy` (fintech, hospital, ui charts), then `notify`. Requires the repo secret `AWS_ROLE_TO_ASSUME` (an IAM role ARN with a GitHub OIDC trust policy — reuse the one from earlier versions).
+- `scripts/aiops_score_and_summarize.sh`: scoring + JSON evidence + Slack in one place.
+- `scripts/aiops_local_incident_test.sh` / `scripts/aiops_cloud_incident_test.sh`: repeatable test harnesses.
+- `.github/workflows/provision.yml`: on every push to `main`, runs `terraform-shared`, `terraform-live`, then `helm-deploy` (fintech, hospital, ui charts), then `notify`. Requires the repo secret `AWS_ROLE_TO_ASSUME` (an IAM role ARN with a GitHub OIDC trust policy: reuse the one from earlier versions).
 
-### Step H — Improve
+### Step H: Improve
 
 After each drill:
 
@@ -403,7 +403,7 @@ After each drill:
 2. Improve the quality of `recommended_action` text for each severity.
 3. Track and reduce mean time to detect and mean time to recover across drills.
 
-### Step I — Cloud Deployment and AIOps Testing
+### Step I: Cloud Deployment and AIOps Testing
 
 **I1: Configure AWS access**
 
@@ -412,7 +412,7 @@ aws configure
 aws sts get-caller-identity
 ```
 
-**I2: (Optional) Bootstrap remote state** — only if you do not already have a state backend from a prior version:
+**I2: (Optional) Bootstrap remote state**: only if you do not already have a state backend from a prior version:
 
 ```sh
 terraform -chdir=infrastructure/bootstrap init
@@ -428,7 +428,7 @@ terraform -chdir=environments/shared plan  -var-file=shared.tfvars
 terraform -chdir=environments/shared apply -var-file=shared.tfvars
 ```
 
-**I4: Fill in live network values** — edit `environments/live/live.tfvars` and replace the placeholders `vpc_id = "vpc-xxxxxxxx"` and the two `subnet-…` entries with real IDs.
+**I4: Fill in live network values**: edit `environments/live/live.tfvars` and replace the placeholders `vpc_id = "vpc-xxxxxxxx"` and the two `subnet-…` entries with real IDs.
 
 **I5: Deploy the live layer (EKS + ALB)**
 
@@ -462,7 +462,7 @@ Argument order: `<environment> <service> <latency_ms> <error_rate_pct> <restart_
 ./scripts/aiops_cloud_incident_test.sh staging node-api 650 1.5 1 1 cloud-oncall
 ```
 
-**I9: Run a `prod` test only with approval** — the guardrail blocks it otherwise:
+**I9: Run a `prod` test only with approval**: the guardrail blocks it otherwise:
 
 ```sh
 APPROVED_PROD_TEST=true ./scripts/aiops_cloud_incident_test.sh prod node-api 600 1.2 1 1 cloud-oncall
@@ -470,7 +470,7 @@ APPROVED_PROD_TEST=true ./scripts/aiops_cloud_incident_test.sh prod node-api 600
 
 Cloud evidence lands in `artifacts/aiops/evidence/cloud/<env>-<timestamp>.json`.
 
-### Step J — Cleanup (Local)
+### Step J: Cleanup (Local)
 
 ```sh
 docker compose down            # stop flask-api, web-ui, prometheus, grafana, alertmanager
@@ -494,17 +494,17 @@ docker compose down -v         # also drop the grafana-data volume, if you want 
 
 ## 12) Troubleshooting
 
-- **Health endpoint fails locally** — make sure the local stack is up (`docker compose up --build -d` in this repo, then `docker compose ps`). `http://localhost:8080/api/health` is served by `web-ui` (nginx) and proxied to `flask-api`; if it returns `502`, `flask-api` is down — `docker compose up -d flask-api` or check `docker compose logs flask-api`.
-- **Port already in use** — `8080`, `5050`, `9090`, `3001`, or `9093` is taken by something else. Stop the other process or edit the port mappings in `docker-compose.yml`.
-- **Grafana shows no data / no dashboard** — Grafana is not auto-provisioned in V7. Log in (`admin` / `admin`), add a Prometheus datasource pointing at `http://prometheus:9090`, then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json` via **Dashboards → New → Import**.
-- **`node-api` target down in Prometheus** — expected: `monitoring/prometheus.yml` is carried over from V5 and lists a `node-api` job, but V7 ships no `node-api` service. Ignore it or delete that job from `monitoring/prometheus.yml`.
-- **No evidence file created** — confirm the scripts are executable (`chmod +x scripts/*.sh slack/*.sh`) and that `aiops_score_and_summarize.sh` received all 8 arguments (the last one is the output file path).
-- **Too many high-risk incidents** — tune thresholds / point values in `artifacts/aiops/risk-rules.yaml` and `aiops_score_and_summarize.sh`.
-- **Slack message not sending** — verify `SLACK_WEBHOOK_URL` is exported in the current shell; run `slack/send_slack_webhook.sh --dry-run` first to confirm message format; ensure `python3` is installed (the sender uses it to parse evidence and build the JSON payload).
-- **`Invalid environment` from the cloud test** — the first argument must be exactly `dev`, `staging`, or `prod`.
-- **`Prod tests require APPROVED_PROD_TEST=true`** — set that variable only after a formal approval.
-- **Terraform `live` plan/apply fails** — confirm real `vpc_id` and `subnet_ids` are set in `environments/live/live.tfvars` (the defaults are placeholders).
-- **GitHub Actions can't reach AWS** — the `AWS_ROLE_TO_ASSUME` repo secret is missing or its IAM role's OIDC trust policy doesn't allow this repo/branch.
+- **Health endpoint fails locally**: make sure the local stack is up (`docker compose up --build -d` in this repo, then `docker compose ps`). `http://localhost:8080/api/health` is served by `web-ui` (nginx) and proxied to `flask-api`; if it returns `502`, `flask-api` is down: `docker compose up -d flask-api` or check `docker compose logs flask-api`.
+- **Port already in use**: `8080`, `5050`, `9090`, `3001`, or `9093` is taken by something else. Stop the other process or edit the port mappings in `docker-compose.yml`.
+- **Grafana shows no data / no dashboard**: Grafana is not auto-provisioned in V7. Log in (`admin` / `admin`), add a Prometheus datasource pointing at `http://prometheus:9090`, then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json` via **Dashboards → New → Import**.
+- **`node-api` target down in Prometheus**: expected: `monitoring/prometheus.yml` is carried over from V5 and lists a `node-api` job, but V7 ships no `node-api` service. Ignore it or delete that job from `monitoring/prometheus.yml`.
+- **No evidence file created**: confirm the scripts are executable (`chmod +x scripts/*.sh slack/*.sh`) and that `aiops_score_and_summarize.sh` received all 8 arguments (the last one is the output file path).
+- **Too many high-risk incidents**: tune thresholds / point values in `artifacts/aiops/risk-rules.yaml` and `aiops_score_and_summarize.sh`.
+- **Slack message not sending**: verify `SLACK_WEBHOOK_URL` is exported in the current shell; run `slack/send_slack_webhook.sh --dry-run` first to confirm message format; ensure `python3` is installed (the sender uses it to parse evidence and build the JSON payload).
+- **`Invalid environment` from the cloud test**: the first argument must be exactly `dev`, `staging`, or `prod`.
+- **`Prod tests require APPROVED_PROD_TEST=true`**: set that variable only after a formal approval.
+- **Terraform `live` plan/apply fails**: confirm real `vpc_id` and `subnet_ids` are set in `environments/live/live.tfvars` (the defaults are placeholders).
+- **GitHub Actions can't reach AWS**: the `AWS_ROLE_TO_ASSUME` repo secret is missing or its IAM role's OIDC trust policy doesn't allow this repo/branch.
 
 ## 13) Cloud Cleanup
 
@@ -519,11 +519,11 @@ terraform -chdir=environments/shared destroy -var-file=shared.tfvars
 
 ## 14) Next Version Preview
 
-In V8 you build on V7 and connect the incident pipeline to real workflow tools — Slack, ServiceNow, Jira — and into chaos-engineering and auto-response loops, so a scored incident doesn't just get a message, it gets a ticket, an owner, and an automated first response.
+In V8 you build on V7 and connect the incident pipeline to real workflow tools: Slack, ServiceNow, Jira: and into chaos-engineering and auto-response loops, so a scored incident doesn't just get a message, it gets a ticket, an owner, and an automated first response.
 
 ---
 
-## 15) Web UI Guide — `apps/web-ui/index.html`
+## 15) Web UI Guide: `apps/web-ui/index.html`
 
 ### Platform Continuity
 
@@ -542,7 +542,7 @@ The page checks:
 
 ### What It Is Used For
 
-Use the V7 UI to explain AIOps in plain language — how an operations team moves from raw signals to prioritized action instead of guessing which alert matters most. Useful for:
+Use the V7 UI to explain AIOps in plain language: how an operations team moves from raw signals to prioritized action instead of guessing which alert matters most. Useful for:
 
 - Demonstrating risk scoring from multiple incident inputs.
 - Practicing severity classification.
@@ -562,11 +562,11 @@ The UI generates an AIOps incident scorecard.
 | `recommended_first_action` | What the operator should do first. |
 | `next` | Points students toward V8 workflow automation. |
 
-Suggested risk interpretation (UI 1–10 scale):
+Suggested risk interpretation (UI 1:10 scale):
 
-- `1–3` — Low: monitor and document.
-- `4–6` — Medium: investigate and attach evidence.
-- `7–8` — High: open an incident and notify the team.
-- `9–10` — Critical: escalate immediately and follow the runbook.
+- `1:3`: Low: monitor and document.
+- `4:6`: Medium: investigate and attach evidence.
+- `7:8`: High: open an incident and notify the team.
+- `9:10`: Critical: escalate immediately and follow the runbook.
 
-> Note: the UI uses a 1–10 readability scale; the `aiops_score_and_summarize.sh` script uses a 0–100 scale with bands `low` 0–39 / `medium` 40–69 / `high` 70–100. Same idea, different resolution.
+> Note: the UI uses a 1:10 readability scale; the `aiops_score_and_summarize.sh` script uses a 0:100 scale with bands `low` 0:39 / `medium` 40:69 / `high` 70:100. Same idea, different resolution.

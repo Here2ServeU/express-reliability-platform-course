@@ -1,6 +1,6 @@
 output "budget_name" {
   value       = aws_budgets_budget.monthly.name
-  description = "Name of the created budget — visible in the AWS Billing console."
+  description = "Name of the created budget: visible in the AWS Billing console."
 }
 
 output "budget_id" {
