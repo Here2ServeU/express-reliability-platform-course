@@ -1,0 +1,22 @@
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8srequirednamespacelabels
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sRequiredNamespaceLabels
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8srequirednamespacelabels
+
+        required := {"owner", "environment", "data-classification"}
+
+        violation[{"msg": msg}] {
+          input.review.kind.kind == "Namespace"
+          missing := required - {label | input.review.object.metadata.labels[label]}
+          count(missing) > 0
+          msg := sprintf("namespace is missing required labels: %v", [missing])
+        }

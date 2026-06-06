@@ -761,4 +761,4 @@ For a real local Kubernetes (with kind or Docker Desktop's built-in cluster), se
 
 ## What's next: V7
 
-V7 builds on this Kubernetes foundation and operationalizes reliability: runbooks, on-call rotations, incident playbooks, disaster-recovery drills. The monitoring stack you wrote in V5 (Prometheus, Grafana, Alertmanager) moves into the cluster as `kube-prometheus-stack`, scraping pods directly via Kubernetes service discovery.
+V7 builds on this Kubernetes foundation and adds AIOps incident management: it turns your platform's health signals (latency, error rate, restarts, blast radius) into a 0–100 risk score with severity bands, writes machine-readable incident evidence for every run, and fires a Slack alert when the score is high. It runs on shared/live Terraform layers deployed through an OIDC GitHub Actions pipeline.

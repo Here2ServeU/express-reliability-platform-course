@@ -16,9 +16,9 @@ Use the main class repository for scripts and canonical structure:
 
 ## 2) Version Purpose
 
-In Version 7 you organized infrastructure into independent layers and let GitHub Actions deploy them on every `git push`. The platform is now structured and automated: but when something breaks at 2 a.m., a human still has to read every alert and decide what matters.
+By V6 your infrastructure was modular, repeatable, and cost-aware, deployed on shared/live Terraform layers through a GitHub Actions OIDC pipeline. The platform is now structured and automated: but when something breaks at 2 a.m., a human still has to read every alert and decide what matters.
 
-Version 8 adds **AIOps incident management**: you take your platform's health signals (latency, error rate, restarts, blast radius), turn them into a **risk score from 0 to 100**, classify the **severity**, write a **machine-readable incident summary**, and: when the score is high enough: fire a **Slack alert automatically**. You practice this loop locally first, then promote it through `dev → staging → prod` with guardrails.
+Version 7 adds **AIOps incident management**: you take your platform's health signals (latency, error rate, restarts, blast radius), turn them into a **risk score from 0 to 100**, classify the **severity**, write a **machine-readable incident summary**, and: when the score is high enough: fire a **Slack alert automatically**. You practice this loop locally first, then promote it through `dev → staging → prod` with guardrails.
 
 **V7 Goal:** Convert raw signals into a scored, summarized, and routed incident: with a JSON evidence file written for every run and Slack notification wired into the scoring script.
 
@@ -519,7 +519,7 @@ terraform -chdir=environments/shared destroy -var-file=shared.tfvars
 
 ## 14) Next Version Preview
 
-In V8 you build on V7 and connect the incident pipeline to real workflow tools: Slack, ServiceNow, Jira: and into chaos-engineering and auto-response loops, so a scored incident doesn't just get a message, it gets a ticket, an owner, and an automated first response.
+In V8 you build on V7 and add the GitOps governance layer: Trivy image scanning, OPA Gatekeeper admission policies, Checkov infrastructure scanning, and risk scoring in the deployment workflow, so unsafe changes are blocked before they ever reach the cluster. (The full incident pipeline: ServiceNow and Jira tickets, chaos drills, and postmortems: follows in V9.)
 
 ---
 
@@ -547,7 +547,7 @@ Use the V7 UI to explain AIOps in plain language: how an operations team moves f
 - Demonstrating risk scoring from multiple incident inputs.
 - Practicing severity classification.
 - Explaining how AIOps reduces alert fatigue.
-- Preparing for V8's Slack / ServiceNow / Jira / chaos-workflow integration.
+- Preparing for V8's GitOps governance layer (Trivy, OPA Gatekeeper, Checkov, risk scoring).
 
 ### How to Read the Results
 

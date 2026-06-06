@@ -1,0 +1,29 @@
+name: Deploy to ECS
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build, tag, and push images
+        run: |
+          for service in node-api flask-api web-ui; do
+            docker build -t $service ./apps/$service
+            docker tag $service:latest ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/$service:latest
+            docker push ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/$service:latest
+          done
+      - name: Update ECS service
+        run: |
+          # aws ecs update-service --cluster <cluster-name> --service <service-name> --force-new-deployment
+          echo "Update ECS service step here."

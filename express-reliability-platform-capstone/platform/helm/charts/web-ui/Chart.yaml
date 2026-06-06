@@ -1,0 +1,14 @@
+apiVersion: v2
+name: web-ui
+description: Web UI for Express Reliability Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - frontend
+  - web
+  - ui
+  - reliability
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

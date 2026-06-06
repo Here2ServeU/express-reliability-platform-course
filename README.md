@@ -15,9 +15,9 @@ This program teaches you to build exactly that kind of system: step by step, sta
 Think of your platform like a hospital building:
 
 - The **foundation** (V1:V3) is the concrete and steel: local app, container image, then a multi-service stack; it must be solid before anything else is added.
-- The **cloud and observability layer** (V4:V6) puts the platform on AWS, instruments it with metrics and alerts, then organizes infrastructure into reusable, cost-aware modules with Helm.
-- The **operational intelligence layer** (V7:V8) detects, scores, summarizes, and routes incidents: into Slack, ServiceNow, and Jira: and exercises the pipeline with chaos drills.
-- The **automation layer** (V9:V10) is the self-operating equipment: V9 adds predictive remediation, and V10 closes the loop with AIOps, GitOps (ArgoCD), and observability/alerting that routes incidents to Slack with the exact script an engineer runs to resolve them.
+- The **cloud and observability layer** (V4:V6) puts the platform on AWS, adds dashboards, moves to Kubernetes, and organizes infrastructure into reusable, cost-aware modules with Helm.
+- The **delivery and governance layer** (V7:V8) separates shared/live infrastructure, automates deployment with GitHub Actions, and adds GitOps governance with Trivy, OPA Gatekeeper, Checkov, and AIOps risk scoring.
+- The **incident and automation layer** (V9:V10) sends alerts to Slack, creates ServiceNow and Jira tickets, runs chaos drills, and closes the loop with self-healing recovery scripts.
 - The **capstone** is a standalone, self-contained platform; it bundles the application services, CI/CD (GitHub Actions), GitOps (ArgoCD), AIOps, observability and alerting, and FinOps into one deployable project you present in interviews and to clients.
 
 ---
@@ -87,16 +87,16 @@ Each version builds directly on the previous one. **Never skip a version.**
 | Version | What You Learn | Real-World Value |
 |---|---|---|
 | **V1** | Run your first program on your laptop | Every engineer does this before touching a shared server |
-| **V2** | Containerize the single service with Docker | Same artifact runs identically on every machine |
-| **V3** | Orchestrate Node API, Flask API, and Web UI with Docker Compose | One command brings up the full local platform |
-| **V4** | Deploy to AWS: ECR, ECS, VPC, ALB, S3, DynamoDB | Rebuild the entire cloud stack from code in minutes |
-| **V5** | Monitoring with Prometheus, Grafana, Alertmanager: plus an intro to Terraform | See response time, error rate, saturation, and provision the cloud with code |
-| **V6** | Apps, platform, Helm charts, and operational scripts | Disciplined, repeatable infrastructure any engineer can recreate |
-| **V7** | AIOps incident scoring, summaries, and Slack routing | Score and triage incidents automatically |
-| **V8** | ServiceNow + Jira ticket automation and chaos drills | File tickets in 60 seconds, not 10 minutes: and exercise the full pipeline |
-| **V9** | Healthcare telemetry and predictive remediation | Detect, alert, ticket, and begin recovery before a human pages |
-| **V10** | AIOps + GitOps (ArgoCD) + Observability/Alerting with resolve-by-script | Detect, deploy, alert, and resolve incidents end to end: the operating brain |
-| **Capstone** | Standalone platform: apps + CI/CD + GitOps + AIOps + Observability/Alerting + FinOps | A finished, self-contained system ready for enterprise delivery or an interview |
+| **V2** | Containerize the app, then split it into three services (Flask, Node, Web UI) | Portable images; structure the platform before V3 orchestrates and deploys it |
+| **V3** | Orchestrate the three services with Docker Compose, then deploy to AWS manually | Practice ECR, ECS/Fargate, ALB, VPC, and CLI deployment |
+| **V4** | Add Prometheus, Grafana, alerts, and Terraform for ECS | See live dashboards and rebuild the cloud stack from code |
+| **V5** | Move to Kubernetes on EKS with probes and autoscaling | Validate self-healing by deleting pods and watching replacements |
+| **V6** | Rebuild EKS with reusable modules, dev/prod tfvars, tags, and budgets | Create disciplined, repeatable, cost-aware infrastructure |
+| **V7** | Add AIOps incident management: risk-score, classify, summarize, and route incidents to Slack | Convert raw signals into scored, audited incidents on shared/live Terraform layers deployed via OIDC |
+| **V8** | Add GitOps governance, Trivy, OPA Gatekeeper, Checkov, and risk scoring | Block unsafe deploys before they reach the cluster |
+| **V9** | Connect the incident pipeline: Slack, ServiceNow, Jira, chaos, postmortems | Notify, ticket, drill, and document incidents automatically |
+| **V10** | Add automated recovery scripts and a chaos suite | Recover common failures and record MTTR evidence |
+| **Capstone** | Standalone platform integrating apps, platform, governance, incident, chaos, automation, monitoring, and docs | A finished system ready for enterprise delivery or an interview |
 
 ---
 
@@ -169,14 +169,16 @@ Phase 2: Cloud + Observability (V4:V6)
   Deploy to AWS, instrument with Prometheus/Grafana, organize infrastructure with Helm.
 
 Phase 3: Operational Intelligence (V7:V8)
-  Score incidents with AIOps, route to Slack, auto-file ServiceNow/Jira tickets, run chaos drills.
+  Score incidents with AIOps and route them to Slack (V7), then gate deploys with GitOps
+  governance: Trivy, OPA Gatekeeper, Checkov, and risk scoring (V8).
 
-Phase 4: Predictive Remediation (V9)
-  Healthcare telemetry feeds predictive remediation that recovers before a human pages.
+Phase 4: Incident Response (V9)
+  Connect the full incident pipeline: Slack alerts, ServiceNow and Jira tickets, chaos drills,
+  and automated postmortems.
 
-Phase 5: The Operating Brain (V10)
-  AIOps detection + scoring, GitOps delivery with ArgoCD, and observability/alerting that
-  routes incidents to Slack with the exact script the engineer runs to resolve them.
+Phase 5: Automation & Recovery (V10)
+  Add self-healing recovery scripts, a recovery policy loop, and a chaos suite that records
+  MTTR evidence.
 
 Capstone: Standalone Platform
   A self-contained project bundling the apps, CI/CD (GitHub Actions), GitOps (ArgoCD), AIOps,
@@ -293,4 +295,3 @@ If a file is missing in your personal copy, get it from the matching version fol
 ## License
 
 This repository is licensed under [LICENSE](LICENSE).
-
