@@ -1,119 +1,69 @@
+# Express Reliability Platform V9: The Complete Incident Pipeline
 
-# Express Reliability Platform V9
+## Version Purpose
 
-## 1) Version Purpose
+Version 9 aligns with the Word guide's incident pipeline. It builds on V8 governance and adds Slack
+alerts, ServiceNow incidents, Jira issues, chaos drills, and an automated postmortem script.
 
-Version 10 focuses on a compact hospital operations simulation that connects robotics, telemetry, AIOps, and remediation workflows.
+## Goal
 
-## 2) Project Structure
+Configure Alertmanager to send Slack messages when alerts fire. Create ServiceNow and Jira tickets
+automatically through REST APIs. Run four chaos engineering drills and post a structured postmortem.
+
+## Project Structure
 
 ```text
 express-reliability-platform-v09/
-├── aiops/
-│   ├── check_slo_sli.py
-│   └── predict_and_remediate.py
-├── robotics/
-│   └── robot_simulation.py
-├── telemetry/
-│   └── hospital_telemetry.py
-├── remediation/
-│   └── fix_robot_issue.py
-├── scripts/
-│   ├── simulate_latency.py
-│   ├── simulate_error.py
-│   └── terraform_init_apply.sh
-├── artifacts/
-│   └── evidence/
-├── environments/
-├── modules/
-├── infrastructure/
-├── .gitignore
-└── README.md
+├── apps/                         # same application services carried from V8
+├── environments/                 # shared and live Terraform layers
+├── governance/                   # V8 Gatekeeper policies
+├── infrastructure/               # bootstrap state resources
+├── modules/                      # reusable Terraform modules
+├── incident/
+│   ├── slack_alert.sh
+│   ├── servicenow_ticket.sh
+│   ├── jira_issue.sh
+│   ├── postmortem.sh
+│   ├── send_slack_message.py
+│   ├── create_servicenow_ticket.py
+│   └── create_jira_issue.py
+├── chaos/
+│   └── run_chaos_drill.sh
+├── artifacts/evidence/
+└── scripts/
+    ├── cleanup_v9.sh
+    ├── simulate_latency.py
+    ├── simulate_error.py
+    └── terraform_init_apply.sh
 ```
 
-## 3) What This Version Demonstrates
+## Run Steps
 
-- Robot task simulation in a hospital environment.
-- Basic telemetry generation for latency, battery, and error conditions.
-- SLO and SLI checks for service health review.
-- Simple remediation guidance for common robot incidents.
-
-## 4) Run Steps
-
-Run these commands from the V9 folder:
+Dry-run the Slack, ServiceNow, and Jira scripts without credentials:
 
 ```sh
-python3 robotics/robot_simulation.py
-python3 telemetry/hospital_telemetry.py
-python3 scripts/simulate_latency.py
-python3 scripts/simulate_error.py
-python3 aiops/check_slo_sli.py
-python3 aiops/predict_and_remediate.py
-python3 remediation/fix_robot_issue.py
+./incident/slack_alert.sh INFO "Pipeline test" "Slack dry-run message"
+./incident/servicenow_ticket.sh "Pipeline test incident" "2"
+./incident/jira_issue.sh "Pipeline test issue" "Dry-run Jira issue"
 ```
 
-If you need Terraform initialization and apply:
+Run a chaos drill:
 
 ```sh
-./scripts/terraform_init_apply.sh infrastructure
+./chaos/run_chaos_drill.sh INC-CHAOS-001 node-api latency
 ```
 
-## 5) Validation Checklist
+Generate a postmortem:
 
-- [ ] Robotics simulation runs without import or path errors.
-- [ ] Telemetry script prints hospital system metrics.
-- [ ] Latency and error simulation scripts execute.
-- [ ] AIOps scripts accept input and return expected guidance.
-- [ ] Remediation script provides a recovery path for a robot issue.
+```sh
+INCIDENT_ID=INC-CHAOS-001 SERVICE=node-api IMPACT="Latency spike" ROOT_CAUSE="Chaos drill" RECOVERY_TIME="45s" ./incident/postmortem.sh
+```
 
-## 6) Notes
+## Validation Checklist
 
-- Store screenshots, logs, and demo output under `artifacts/evidence/`.
-- Keep infrastructure-specific code under `infrastructure/`, reusable units under `modules/`, and environment-specific state under `environments/`.
-
----
-
-## 7) Web UI Guide: `apps/web-ui/index.html`
-
-### Platform Continuity
-
-The V9 UI keeps the same V2 regulated readiness console and evolves it with healthcare telemetry, robotics/IoMT status, and predictive remediation checks. Students should experience this as the same platform growing, not as a separate app.
-
-### What the V9 UI Does
-
-The V9 `index.html` is the healthcare reliability intelligence console. It extends the platform into hospital operations by evaluating telemetry, robot or IoMT status, and remediation maturity.
-
-The page checks:
-
-- Reliability through hospital telemetry, SLO checks, and clinical workflow health.
-- Cost efficiency through efficient response automation.
-- Security and compliance through healthcare audit boundaries.
-- Intelligence maturity through predictive remediation and safe recommended actions.
-
-### What It Is Used For
-
-Use the V9 UI to show how the platform can support advanced healthcare scenarios. Students can demonstrate how telemetry from hospital systems or robotic workflows can become operational evidence and remediation guidance.
-
-This UI is useful for:
-
-- Explaining cyber-physical reliability in hospital environments.
-- Connecting telemetry signals to safe operational decisions.
-- Practicing incident response for clinical workflow risk.
-- Preparing the final story for the capstone platform.
-
-### How to Read the Results
-
-The UI generates a healthcare telemetry readiness scorecard.
-
-| Field | Meaning |
-|---|---|
-| `workflow` | The hospital or robot workflow being assessed. |
-| `readiness_score` | Overall healthcare platform readiness. |
-| `readiness_band` | Plain-language score interpretation. |
-| `recommended_action` | Suggested first action based on telemetry or robot state. |
-| `domains.reliability` | Drops when telemetry is critical or robot status is unhealthy. |
-| `domains.cost_efficiency` | Improves when remediation is guided or predictive. |
-| `domains.security_compliance` | Reflects healthcare audit readiness. |
-| `domains.intelligence_aiops_mlops` | Shows maturity of predictive remediation. |
-
-If robot status is `Fault detected` or telemetry is `Critical`, the recommended action should be treated as an incident-response prompt, not a final clinical decision.
+- [ ] Alertmanager configuration routes alerts to Slack.
+- [ ] A test alert reaches Slack.
+- [ ] ServiceNow ticket creation works or dry-run payload is valid.
+- [ ] Jira issue creation works or dry-run payload is valid.
+- [ ] Four chaos drills run and record results.
+- [ ] The postmortem script prints and posts a structured summary.

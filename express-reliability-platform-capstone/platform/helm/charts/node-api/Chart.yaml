@@ -1,0 +1,9 @@
+apiVersion: v2
+name: node-api
+description: Express Node API service for reliability platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
