@@ -47,7 +47,8 @@
     .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
     pre { min-height: 140px; overflow: auto; margin: 16px 0 0; border: 1px solid #d8e4ef; border-radius: 8px; background: #0f172a; color: #e2e8f0; padding: 14px; white-space: pre-wrap; }
     .versions { display: grid; gap: 10px; }
-    .version { display: grid; grid-template-columns: 68px 1fr; gap: 12px; padding: 12px; box-shadow: none; }
+    .version { display: grid; grid-template-columns: 68px 1fr; gap: 12px; width: 100%; min-height: auto; text-align: left; padding: 12px; box-shadow: none; color: var(--ink); cursor: pointer; font-weight: 400; }
+    .version:hover { border-color: rgba(36, 87, 166, 0.38); background: #f8fbfd; }
     .version strong { color: var(--blue); }
     .version.current { border-color: rgba(8, 127, 140, 0.5); background: rgba(8, 127, 140, 0.06); }
     .platforms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
@@ -72,7 +73,7 @@
         <strong>T2S | Transformed 2 Succeed</strong>
         <span>Express Reliability Platform for fintech and healthcare</span>
       </div>
-      <span class="badge">Version 8: AIOps</span>
+      <span class="badge">Version 5: Kubernetes Reliability</span>
     </div>
   </header>
 
@@ -85,61 +86,62 @@
 
     <div class="workspace">
       <section aria-labelledby="assessment-title">
-        <h2 id="assessment-title">V7 Readiness Assessment</h2>
-        <p class="muted">V7 keeps the same platform console and adds AIOps triage: incident signal intake, risk scoring, severity bands, and recommended first action.</p>
+        <h2 id="assessment-title">V5 Readiness Assessment</h2>
+        <p class="muted">V5 keeps the same readiness console and adds Kubernetes runtime controls: probes, replicas, scaling, and self-healing.</p>
 
         <div class="score-grid" aria-live="polite">
-          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">88</strong><small>Signal-based severity</small></div>
-          <div class="metric"><span>Cost</span><strong id="costScore">82</strong><small>Reduced alert toil</small></div>
-          <div class="metric"><span>Security</span><strong id="securityScore">86</strong><small>Evidence files</small></div>
-          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">88</strong><small>AIOps summary</small></div>
+          <div class="metric"><span>Reliability</span><strong id="reliabilityScore">84</strong><small id="reliabilityNote">Probes and replicas</small></div>
+          <div class="metric"><span>Cost</span><strong id="costScore">74</strong><small id="costNote">Autoscaling guardrails</small></div>
+          <div class="metric"><span>Security</span><strong id="securityScore">78</strong><small id="securityNote">Runtime isolation</small></div>
+          <div class="metric"><span>Intelligence</span><strong id="intelligenceScore">68</strong><small id="intelligenceNote">Runtime signals</small></div>
         </div>
 
         <form class="assessment" onsubmit="runAssessment(event)">
           <label>
-            Service
-            <input id="platformInput" value="node-api" autocomplete="off" />
+            Platform or application
+            <input id="platformInput" value="hospital-admissions-api" autocomplete="off" />
           </label>
           <label>
-            p95 latency
-            <select id="latency"><option value="normal">Normal</option><option value="elevated">Elevated</option><option value="critical">Critical</option></select>
+            Evidence coverage
+            <select id="evidence"><option value="full">Complete version evidence</option><option value="partial">Partial evidence</option><option value="none">No evidence yet</option></select>
           </label>
           <label>
-            Error rate
-            <select id="errors"><option value="low">Under 1%</option><option value="medium">1% to 5%</option><option value="high">Over 5%</option></select>
+            Automation posture
+            <select id="automation"><option value="mature">Automated guardrails</option><option value="partial">Partial automation</option><option value="manual">Manual checks</option></select>
           </label>
           <label>
-            Blast radius
-            <select id="blast"><option value="single">Single service</option><option value="multi">Multiple services</option><option value="customer">Customer-facing outage</option></select>
+            Governance posture
+            <select id="governance"><option value="strong">Least privilege and review</option><option value="partial">Partial governance</option><option value="weak">Open access, low review</option></select>
           </label>
           <div class="actions">
-            <button type="submit">Run V7 Readiness Check</button>
+            <button id="assessmentButton" type="submit">Run V5 Readiness Check</button>
           </div>
         </form>
 
-        <pre id="output">Ready to evaluate AIOps incident risk.</pre>
+        <pre id="output">Ready to evaluate Kubernetes runtime readiness.</pre>
       </section>
 
       <aside aria-labelledby="path-title">
-        <h2 id="path-title">V2 to Capstone Growth Path</h2>
+        <h2 id="path-title">V1 to Capstone Growth Path</h2>
         <div class="versions">
-          <div class="version"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></div>
-          <div class="version"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></div>
-          <div class="version"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></div>
-          <div class="version"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></div>
-          <div class="version"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></div>
-          <div class="version"><strong>V6</strong><span>Runbooks, incident response, release gates, operational evidence.</span></div>
-          <div class="version current"><strong>V7</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></div>
-          <div class="version"><strong>V8</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></div>
-          <div class="version"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></div>
-          <div class="version"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></div>
+          <button class="version" type="button" data-version="v1"><strong>V1</strong><span>Local UI, simple service checks, first reliability vocabulary.</span></button>
+          <button class="version" type="button" data-version="v2"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></button>
+          <button class="version" type="button" data-version="v3"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></button>
+          <button class="version" type="button" data-version="v4"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></button>
+          <button class="version" type="button" data-version="v5"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></button>
+          <button class="version" type="button" data-version="v6"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></button>
+          <button class="version current" type="button" data-version="v7"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></button>
+          <button class="version" type="button" data-version="v8"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></button>
+          <button class="version" type="button" data-version="v9"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></button>
+          <button class="version" type="button" data-version="v10"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></button>
+          <button class="version" type="button" data-version="capstone"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></button>
         </div>
       </aside>
     </div>
 
     <section class="capstone" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
-      <p class="muted">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V7, the platform adds <strong>AIOps incident intelligence</strong>.</p>
+      <p class="muted" id="marketCopy">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V5, the platform adds <strong>Kubernetes runtime reliability</strong>.</p>
       <div class="platforms">
         <div class="platform"><strong>Datadog</strong><span>Unified metrics, logs, traces, cloud monitoring, security signals.</span></div>
         <div class="platform"><strong>Dynatrace</strong><span>AI-assisted observability, topology awareness, root-cause workflows.</span></div>
@@ -160,10 +162,10 @@
         <span class="pill">FinOps guardrails</span>
         <span class="pill">AIOps triage</span>
         <span class="pill">MLOps readiness</span>
-        <span class="pill">Risk score</span>
-        <span class="pill">Severity band</span>
-        <span class="pill">Incident summary</span>
-        <span class="pill">Slack-ready alert</span>
+        <span class="pill">Readiness probes</span>
+        <span class="pill">Liveness probes</span>
+        <span class="pill">Replica strategy</span>
+        <span class="pill">Self-healing validation</span>
       </div>
 
       <div class="creator-panel">
@@ -179,6 +181,120 @@
 
   <script>
     const output = document.getElementById("output");
+    let activeVersion = "v7";
+
+    const versionProfiles = {
+      v1: {
+        label: "V1",
+        badge: "Version 1: Local Reliability Foundations",
+        focus: "Local reliability foundations",
+        description: "V1 introduces the first platform UI, simple service checks, and reliability vocabulary for high-trust systems.",
+        scores: [68, 58, 60, 46],
+        notes: ["Local checks", "Starter guardrails", "Basic boundaries", "First signals"],
+        adds: ["Local UI", "Simple service checks", "Reliability vocabulary"],
+        next: "Move to V2 for Dockerized UI, Node API, Flask scoring API, and a simple readiness check."
+      },
+      v2: {
+        label: "V2",
+        badge: "Version 2: Dockerized Readiness",
+        focus: "Dockerized readiness foundations",
+        description: "V2 introduces the readiness console with a Dockerized UI, Node API, Flask scoring API, and a simple readiness check.",
+        scores: [72, 64, 66, 52],
+        notes: ["Container health", "Local cost awareness", "Basic API boundaries", "Simple scoring"],
+        adds: ["Dockerized UI", "Node API", "Flask scoring API", "Simple readiness check"],
+        next: "Move to V3 for cloud promotion, identity foundations, and environment-aware deployment."
+      },
+      v3: {
+        label: "V3",
+        badge: "Version 3: Cloud Promotion and Identity",
+        focus: "Cloud promotion and identity foundations",
+        description: "V3 promotes the platform toward cloud deployment with identity foundations and environment-aware deployment patterns.",
+        scores: [76, 68, 72, 56],
+        notes: ["Cloud deployment", "Environment controls", "Identity basics", "Deployment signals"],
+        adds: ["Cloud promotion", "Identity foundations", "Environment-aware deployment"],
+        next: "Move to V4 for Prometheus, Grafana, health visibility, and simulation checkpoints."
+      },
+      v4: {
+        label: "V4",
+        badge: "Version 4: Observability and Health Visibility",
+        focus: "Observability and health visibility",
+        description: "V4 adds Prometheus, Grafana, health visibility, and simulation checkpoints for operational learning.",
+        scores: [80, 70, 74, 62],
+        notes: ["Health dashboards", "Telemetry guardrails", "Monitoring posture", "Simulation signals"],
+        adds: ["Prometheus metrics", "Grafana dashboards", "Health visibility", "Simulation checkpoints"],
+        next: "Move to V5 for Kubernetes readiness, probes, scaling, and self-healing patterns."
+      },
+      v5: {
+        label: "V5",
+        badge: "Version 5: Kubernetes Reliability",
+        focus: "Kubernetes runtime reliability",
+        description: "V5 keeps the same readiness console and adds Kubernetes runtime controls: probes, replicas, scaling, and self-healing.",
+        scores: [84, 74, 78, 68],
+        notes: ["Probes and replicas", "Autoscaling guardrails", "Runtime isolation", "Runtime signals"],
+        adds: ["Readiness probes", "Liveness probes", "Replica strategy", "Self-healing validation"],
+        next: "Move to V6 for Terraform modules, repeatable infrastructure, and cost governance."
+      },
+      v6: {
+        label: "V6",
+        badge: "Version 6: Terraform and FinOps Foundations",
+        focus: "Repeatable infrastructure and FinOps",
+        description: "V6 adds Terraform modules, repeatable infrastructure, and cost-aware environments for controlled delivery.",
+        scores: [86, 80, 80, 70],
+        notes: ["Reusable modules", "Cost-aware envs", "Policy inputs", "Infra evidence"],
+        adds: ["Terraform modules", "Repeatable infrastructure", "Cost-aware environments"],
+        next: "Move to V7 for runbooks, incident response, release gates, and operational evidence."
+      },
+      v7: {
+        label: "V7",
+        badge: "Version 7: Runbooks and Operational Evidence",
+        focus: "Operational evidence and release gates",
+        description: "V7 adds runbooks, incident response, release gates, and operational evidence for regulated teams.",
+        scores: [88, 82, 84, 72],
+        notes: ["Runbook checks", "Release evidence", "Audit controls", "Response signals"],
+        adds: ["Runbooks", "Incident response", "Release gates", "Operational evidence"],
+        next: "Move to V8 for AIOps risk scoring, anomaly signals, and Slack-ready summaries."
+      },
+      v8: {
+        label: "V8",
+        badge: "Version 8: AIOps Risk Scoring",
+        focus: "AIOps risk scoring and anomaly signals",
+        description: "V8 adds AIOps risk scoring, anomaly signals, and Slack-ready summaries for faster triage.",
+        scores: [89, 83, 85, 82],
+        notes: ["Risk scoring", "Signal priority", "Secure summaries", "AIOps triage"],
+        adds: ["AIOps risk scoring", "Anomaly signals", "Slack-ready summaries"],
+        next: "Move to V9 for ITSM integration, chaos drills, Jira, and ServiceNow incident records."
+      },
+      v9: {
+        label: "V9",
+        badge: "Version 9: ITSM and Chaos Evidence",
+        focus: "ITSM integration and chaos evidence",
+        description: "V9 connects readiness work to ITSM integration, chaos drills, Jira, and ServiceNow incident records.",
+        scores: [90, 84, 87, 84],
+        notes: ["Chaos drills", "Incident records", "Ticket evidence", "Correlation signals"],
+        adds: ["ITSM integration", "Chaos drills", "Jira records", "ServiceNow incident records"],
+        next: "Move to V10 for healthcare telemetry, robotics simulation, and predictive remediation."
+      },
+      v10: {
+        label: "V10",
+        badge: "Version 10: Healthcare Telemetry and Predictive Remediation",
+        focus: "Healthcare telemetry and predictive remediation",
+        description: "V10 adds healthcare telemetry, robotics simulation, and predictive remediation for advanced regulated operations.",
+        scores: [92, 86, 89, 88],
+        notes: ["Telemetry readiness", "Prediction controls", "Compliance signals", "MLOps readiness"],
+        adds: ["Healthcare telemetry", "Robotics simulation", "Predictive remediation"],
+        next: "Move to the Capstone for the full regulated platform console with student creator customization."
+      },
+      capstone: {
+        label: "Capstone",
+        badge: "Capstone: Regulated Platform Readiness Console",
+        focus: "Full regulated platform console",
+        description: "The Capstone combines reliability, FinOps, security, compliance, AIOps, and MLOps into a creator-customized regulated platform console.",
+        scores: [94, 88, 91, 90],
+        notes: ["Full readiness", "FinOps evidence", "Audit posture", "AI operations"],
+        adds: ["Creator customization", "Full regulated platform console", "Cross-domain evidence"],
+        next: "Use the Capstone evidence to explain the platform as a student-built regulated operations portfolio."
+      }
+    };
 
     function clamp(score) {
       return Math.max(0, Math.min(100, Math.round(score)));
@@ -193,22 +309,18 @@
 
     function runAssessment(event) {
       event.preventDefault();
+      const profile = versionProfiles[activeVersion];
       const platform = document.getElementById("platformInput").value.trim() || "regulated-platform";
       const extra = {};
 
-      const latency = document.getElementById("latency").value;
-      const errors = document.getElementById("errors").value;
-      const blast = document.getElementById("blast").value;
-      let risk = 2;
-      risk += latency === "critical" ? 3 : latency === "elevated" ? 1 : 0;
-      risk += errors === "high" ? 3 : errors === "medium" ? 1 : 0;
-      risk += blast === "customer" ? 3 : blast === "multi" ? 2 : 0;
-      const reliability = clamp(96 - risk * 6);
-      const cost = clamp(88 - risk * 3);
-      const security = clamp(90 - (risk >= 7 ? 8 : 0));
-      const intelligence = clamp(92 + (risk >= 7 ? 4 : 0));
-      extra.incident_risk_score = Math.min(10, risk);
-      extra.severity = risk >= 9 ? "critical" : risk >= 7 ? "high" : risk >= 4 ? "medium" : "low";
+      const evidence = document.getElementById("evidence").value;
+      const automation = document.getElementById("automation").value;
+      const governance = document.getElementById("governance").value;
+      const [baseReliability, baseCost, baseSecurity, baseIntelligence] = profile.scores;
+      const reliability = clamp(baseReliability + 6 - (evidence === "none" ? 24 : evidence === "partial" ? 10 : 0) - (automation === "manual" ? 16 : automation === "partial" ? 6 : 0));
+      const cost = clamp(baseCost + 4 - (automation === "manual" ? 10 : automation === "partial" ? 4 : 0));
+      const security = clamp(baseSecurity + 6 - (governance === "weak" ? 26 : governance === "partial" ? 10 : 0));
+      const intelligence = clamp(baseIntelligence + (evidence === "full" ? 6 : 0) + (automation === "mature" ? 4 : 0));
       const total = clamp((reliability + cost + security + intelligence) / 4);
 
       document.getElementById("reliabilityScore").textContent = reliability;
@@ -218,26 +330,53 @@
 
       output.textContent = JSON.stringify({
         platform,
-        version: "v7",
+        version: activeVersion,
         readiness_score: total,
         readiness_grade: grade(total),
-        focus: "AIOps incident intelligence",
+        focus: profile.focus,
         domains: {
           reliability,
           cost_efficiency: cost,
           security_compliance: security,
           intelligence_aiops_mlops: intelligence
         },
-        version_adds: [
-          "Risk score",
-          "Severity band",
-          "Incident summary",
-          "Slack-ready alert"
-],
-        next: "Move to V8 for Slack, ServiceNow, Jira, and chaos drill integration.",
+        version_adds: profile.adds,
+        next: profile.next,
         ...extra
       }, null, 2);
     }
+
+    function selectVersion(version) {
+      const profile = versionProfiles[version];
+      activeVersion = version;
+      document.title = `T2S Express Reliability Platform | ${profile.label}`;
+      document.querySelector(".badge").textContent = profile.badge;
+      document.getElementById("assessment-title").textContent = `${profile.label} Readiness Assessment`;
+      document.querySelector("#assessment-title + .muted").textContent = profile.description;
+      document.getElementById("assessmentButton").textContent = `Run ${profile.label} Readiness Check`;
+      document.getElementById("output").textContent = `Ready to evaluate ${profile.focus}.`;
+      document.getElementById("marketCopy").innerHTML = `The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In ${profile.label}, the platform adds <strong>${profile.focus}</strong>.`;
+
+      const [reliability, cost, security, intelligence] = profile.scores;
+      document.getElementById("reliabilityScore").textContent = reliability;
+      document.getElementById("costScore").textContent = cost;
+      document.getElementById("securityScore").textContent = security;
+      document.getElementById("intelligenceScore").textContent = intelligence;
+
+      const [reliabilityNote, costNote, securityNote, intelligenceNote] = profile.notes;
+      document.getElementById("reliabilityNote").textContent = reliabilityNote;
+      document.getElementById("costNote").textContent = costNote;
+      document.getElementById("securityNote").textContent = securityNote;
+      document.getElementById("intelligenceNote").textContent = intelligenceNote;
+
+      document.querySelectorAll(".version").forEach((item) => {
+        item.classList.toggle("current", item.dataset.version === version);
+      });
+    }
+
+    document.querySelectorAll(".version").forEach((item) => {
+      item.addEventListener("click", () => selectVersion(item.dataset.version));
+    });
 
     function saveCreator() {
       const name = document.getElementById("creatorName").value.trim();
@@ -257,6 +396,8 @@
       document.getElementById("creatorCredit").textContent =
         `Capstone preview: created by ${savedCreator}, T2S regulated platform engineer.`;
     }
+
+    selectVersion(activeVersion);
   </script>
 </body>
 </html>
