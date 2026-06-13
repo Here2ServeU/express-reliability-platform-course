@@ -1,19 +1,23 @@
-#!/usr/bin/env bash
-# Stop the V2 container and remove its image.
-set -euo pipefail
+#!/bin/bash
+# cleanup_v2.sh: stop all V2 containers and clean Docker
 
-IMAGE_NAME="${IMAGE_NAME:-express-reliability-v02}"
-IMAGE_TAG="${IMAGE_TAG:-local}"
-CONTAINER_NAME="${CONTAINER_NAME:-erp-v02}"
+echo 'Stopping V2 platform...'
+docker compose down
 
-if docker ps -aq --filter "name=^${CONTAINER_NAME}$" | grep -q .; then
-  echo "Removing container '${CONTAINER_NAME}'..."
-  docker rm -f "${CONTAINER_NAME}" >/dev/null
+echo 'Removing V2 images...'
+docker rmi express-reliability-platform-v02-flask-api 2>/dev/null || true
+docker rmi express-reliability-platform-v02-node-api 2>/dev/null || true
+docker rmi express-reliability-platform-v02-web-ui 2>/dev/null || true
+
+echo 'Pruning Docker build cache...'
+docker builder prune -f
+
+echo 'Verifying cleanup...'
+RUNNING=$(docker ps --filter 'name=flask-api' --filter 'name=node-api' -q)
+if [ -z "$RUNNING" ]; then
+  echo 'CONFIRMED: No platform containers running.'
+else
+  echo "WARNING: Still running: $RUNNING"
 fi
 
-if docker images -q "${IMAGE_NAME}:${IMAGE_TAG}" | grep -q .; then
-  echo "Removing image '${IMAGE_NAME}:${IMAGE_TAG}'..."
-  docker rmi "${IMAGE_NAME}:${IMAGE_TAG}" >/dev/null
-fi
-
-echo "V2 cleanup complete."
+echo 'Cleanup complete.'

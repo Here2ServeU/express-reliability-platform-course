@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>T2S Express Reliability Platform | V5</title>
+  <title>T2S Express Reliability Platform | V4</title>
   <style>
     :root {
       --bg: #f7f9fc;
@@ -127,8 +127,8 @@
           <button class="version" type="button" data-version="v1"><strong>V1</strong><span>Local UI, simple service checks, first reliability vocabulary.</span></button>
           <button class="version" type="button" data-version="v2"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></button>
           <button class="version" type="button" data-version="v3"><strong>V3</strong><span>Cloud promotion, identity foundations, environment-aware deployment.</span></button>
-          <button class="version" type="button" data-version="v4"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></button>
-          <button class="version current" type="button" data-version="v5"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></button>
+          <button class="version current" type="button" data-version="v4"><strong>V4</strong><span>Prometheus, Grafana, health visibility, simulation checkpoints.</span></button>
+          <button class="version" type="button" data-version="v5"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></button>
           <button class="version" type="button" data-version="v6"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></button>
           <button class="version" type="button" data-version="v7"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></button>
           <button class="version" type="button" data-version="v8"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></button>
@@ -181,7 +181,7 @@
 
   <script>
     const output = document.getElementById("output");
-    let activeVersion = "v5";
+    let activeVersion = "v4";
 
     const versionProfiles = {
       v1: {

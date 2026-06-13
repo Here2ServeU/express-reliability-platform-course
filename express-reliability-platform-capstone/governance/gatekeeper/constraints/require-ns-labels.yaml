@@ -1,9 +1,10 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sRequiredNamespaceLabels
+kind: RequireNsLabels
 metadata:
-  name: require-security-namespace-labels
+  name: require-ns-labels
 spec:
   match:
     kinds:
-      - apiGroups: [""]
+      - apiGroups: ["*"]
         kinds: ["Namespace"]
+  enforcementAction: deny

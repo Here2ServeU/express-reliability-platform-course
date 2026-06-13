@@ -4,7 +4,7 @@ services:
     build: ./apps/flask-api
     container_name: flask-api
     ports:
-      - "5050:5000"
+      - "5050:5000"   # 5050 avoids macOS AirPlay conflict
     restart: unless-stopped
 
   node-api:
@@ -27,41 +27,28 @@ services:
       - node-api
     restart: unless-stopped
 
+  # NEW: Prometheus — the collector
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+    ports:
+      - "9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/alert.rules.yml:/etc/prometheus/alert.rules.yml
-    ports:
-      - "9090:9090"
-    depends_on:
-      - node-api
-      - flask-api
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
     restart: unless-stopped
 
+  # NEW: Grafana — the dashboard screen
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: 'false'
-    volumes:
-      - grafana-data:/var/lib/grafana
     ports:
       - "3001:3000"
-    depends_on:
-      - prometheus
-    restart: unless-stopped
-
-  alertmanager:
-    image: prom/alertmanager:latest
-    container_name: alertmanager
     volumes:
-      - ./monitoring/alertmanager:/etc/alertmanager
-    ports:
-      - "9093:9093"
+      - grafana-storage:/var/lib/grafana
     restart: unless-stopped
 
 volumes:
-  grafana-data:
+  grafana-storage:

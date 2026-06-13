@@ -4,4 +4,5 @@ metadata:
   name: platform-config
   namespace: reliability
 data:
-  FLASK_BASE_URL: http://flask-api:5000
+  FLASK_BASE_URL: "http://flask-api:5000"
+  NODE_ENV: "production"

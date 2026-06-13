@@ -1,28 +1,28 @@
 #!/bin/bash
 set -e
-REGION="us-east-1"
+REGION=us-east-1
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/reliability-platform"
+ECR_BASE=${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/reliability-platform
 
-echo '--- Authenticating Docker to ECR ---'
-aws ecr get-login-password --region $REGION | \
-  docker login --username AWS --password-stdin \
-  ${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
+echo "Building and pushing images to ECR..."
 
-echo '--- Building, tagging, and pushing all images (linux/amd64 for Fargate) ---'
-# Fargate runs linux/amd64 by default. Without --platform, docker on Apple
-# Silicon builds arm64-only images and ECS fails with "image Manifest does
-# not contain descriptor matching platform 'linux/amd64'".
 for SVC in flask-api node-api web-ui; do
-  echo "Building $SVC..."
+  echo "Building: ${SVC}"
+
+  # IMPORTANT: --platform linux/amd64 is required.
+  # Amazon's computers run on linux/amd64.
+  # If you have a Mac with Apple Silicon (M1/M2/M3),
+  # your Mac builds arm64 images by default.
+  # Without this flag, Amazon will refuse to run your image.
   docker build --platform linux/amd64 -t ${SVC}:latest ./apps/${SVC}
 
-  echo "Tagging $SVC..."
+  # Put the Amazon address on the package as a label
   docker tag ${SVC}:latest ${ECR_BASE}/${SVC}:latest
 
-  echo "Pushing $SVC..."
+  # Ship the package to Amazon
   docker push ${ECR_BASE}/${SVC}:latest
 
-  echo "Done: $SVC"
+  echo "Shipped: ${ECR_BASE}/${SVC}:latest"
 done
-echo "All three images in ECR."
+
+echo "All three images are now in ECR. Ready to deploy."

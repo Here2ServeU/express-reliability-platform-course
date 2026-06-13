@@ -1,25 +1,26 @@
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
-  name: k8srequiredresourcelimits
+  name: requireresourcelimits
 spec:
   crd:
     spec:
       names:
-        kind: K8sRequiredResourceLimits
+        kind: RequireResourceLimits
   targets:
     - target: admission.k8s.gatekeeper.sh
       rego: |
-        package k8srequiredresourcelimits
+        package requireresourcelimits
 
+        # Check each container in the pod spec
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
-          not container.resources.limits.memory
-          msg := sprintf("container %q must define a memory limit", [container.name])
+          not container.resources.limits.cpu
+          msg := sprintf("Container '%v' is missing cpu limit. Add resources.limits.cpu.", [container.name])
         }
 
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
-          not container.resources.limits.cpu
-          msg := sprintf("container %q must define a cpu limit", [container.name])
+          not container.resources.limits.memory
+          msg := sprintf("Container '%v' is missing memory limit. Add resources.limits.memory.", [container.name])
         }

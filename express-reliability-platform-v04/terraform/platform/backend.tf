@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
     bucket         = "reliability-platform-tfstate-730335276920"
-    key            = "platform/v5/terraform.tfstate"
+    key            = "platform/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-state-lock"
+    dynamodb_table = "reliability-platform-tfstate-lock"
   }
 
   required_providers {

@@ -1,17 +1,29 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+NAMESPACE=${NAMESPACE:-"platform"}
+SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-"YOUR_SLACK_WEBHOOK_URL"}
+THRESHOLD=${THRESHOLD:-80}
 
-NAMESPACE="${NAMESPACE:-platform}"
-DEPLOYMENT="${DEPLOYMENT:-node-api}"
-MAX_REPLICAS="${MAX_REPLICAS:-6}"
+echo "=== Memory Pressure Watcher ==="
 
-current=$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" -o jsonpath='{.spec.replicas}')
-next=$((current + 1))
+kubectl top pods -n "$NAMESPACE" --no-headers | while read POD CPU MEM; do
+  MEM_VALUE=$(echo "$MEM" | sed "s/Mi//")
+  LIMIT=$(kubectl get pod "$POD" -n "$NAMESPACE" \
+    -o jsonpath="{.spec.containers[0].resources.limits.memory}" \
+    | sed "s/Mi//")
 
-if [ "$next" -gt "$MAX_REPLICAS" ]; then
-  echo "$DEPLOYMENT is already at max replicas ($MAX_REPLICAS)."
-  exit 0
-fi
-
-kubectl scale deployment "$DEPLOYMENT" -n "$NAMESPACE" --replicas "$next"
-./incident/slack_alert.sh WARNING "Auto-recovery scaled $DEPLOYMENT" "Replicas increased from $current to $next."
+  if [ -n "$LIMIT" ] && [ "$MEM_VALUE" -gt 0 ] && [ "$LIMIT" -gt 0 ]; then
+    PERCENT=$((MEM_VALUE * 100 / LIMIT))
+    if [ "$PERCENT" -ge "$THRESHOLD" ]; then
+      DEPLOYMENT=$(kubectl get pod "$POD" -n "$NAMESPACE" \
+        -o jsonpath="{.metadata.labels.app}")
+      CURRENT=$(kubectl get deployment "$DEPLOYMENT" -n "$NAMESPACE" \
+        -o jsonpath="{.spec.replicas}")
+      NEW=$((CURRENT + 1))
+      kubectl scale deployment/"$DEPLOYMENT" \
+        -n "$NAMESPACE" --replicas="$NEW"
+      bash incident/slack_alert.sh HIGH "Auto-Recovery" \
+        "$POD at ${PERCENT}% memory. Scaled $DEPLOYMENT to $NEW replicas."
+      echo "Scaled $DEPLOYMENT from $CURRENT to $NEW."
+    fi
+  fi
+done
