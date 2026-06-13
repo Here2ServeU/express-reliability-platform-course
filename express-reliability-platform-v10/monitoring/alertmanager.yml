@@ -1,0 +1,34 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: slack-reliability
+  group_by: ['alertname', 'severity']
+  group_wait: 30s        # Wait 30s to batch alerts from the same group
+  group_interval: 5m     # Wait 5m before sending another alert from the same group
+  repeat_interval: 4h    # Re-send if still firing after 4 hours
+  routes:
+    - match:
+        severity: critical
+      receiver: slack-reliability
+      group_wait: 10s     # Critical alerts get shorter wait time
+    - match:
+        severity: warning
+      receiver: slack-reliability
+
+receivers:
+  - name: slack-reliability
+    slack_configs:
+      - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+        channel: '#reliability'
+        username: 'ReliabilityBot'
+        icon_emoji: ':rotating_light:'
+        send_resolved: true
+        title: '{{ template "slack.default.title" . }}'
+        text: |
+          *Alert:* {{ .CommonLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity | toUpper }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+          *Firing since:* {{ .CommonAnnotations.startsAt }}
+          *Status:* {{ .Status | toUpper }}

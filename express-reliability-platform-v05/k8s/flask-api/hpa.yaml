@@ -1,7 +1,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: flask-api
+  name: flask-api-hpa
   namespace: reliability
 spec:
   scaleTargetRef:

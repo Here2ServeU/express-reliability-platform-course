@@ -4,8 +4,9 @@ metadata:
   name: platform-ingress
   namespace: reliability
   annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"   # Public ALB
+    alb.ingress.kubernetes.io/target-type: "ip"           # Route to Pod IPs
 spec:
   rules:
     - http:
@@ -13,7 +14,12 @@ spec:
           - path: /
             pathType: Prefix
             backend:
-              service:
-                name: web-ui
-                port:
-                  number: 80
+              service: { name: web-ui, port: { number: 8080 } }
+          - path: /api/health
+            pathType: Prefix
+            backend:
+              service: { name: node-api, port: { number: 3000 } }
+          - path: /api/score
+            pathType: Prefix
+            backend:
+              service: { name: flask-api, port: { number: 5000 } }

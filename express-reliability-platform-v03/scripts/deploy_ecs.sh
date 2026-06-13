@@ -3,10 +3,10 @@
 # to register or update so the others still get deployed. Errors are reported inline.
 
 REGION="us-east-1"
-CLUSTER="reliability-platform-v04"
-VPC_NAME="reliability-platform-v04-vpc"
+CLUSTER="reliability-platform-v03"
+VPC_NAME="reliability-platform-v03-vpc"
 VPC_CIDR="10.42.0.0/16"
-SG_NAME="reliability-sg-v04"
+SG_NAME="reliability-sg-v03"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ECR_BASE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/reliability-platform"
 
@@ -26,7 +26,7 @@ if [ "$VPC_ID" = "None" ] || [ -z "$VPC_ID" ]; then
     --region $REGION \
     --query 'Vpc.VpcId' --output text)
   aws ec2 create-tags --resources $VPC_ID \
-    --tags Key=Name,Value=$VPC_NAME Key=Project,Value=reliability-platform-v04 \
+    --tags Key=Name,Value=$VPC_NAME Key=Project,Value=reliability-platform-v03 \
     --region $REGION
   # DNS settings so tasks can resolve ECR + AWS service endpoints.
   aws ec2 modify-vpc-attribute --vpc-id $VPC_ID --enable-dns-support \
@@ -48,7 +48,7 @@ if [ "$IGW_ID" = "None" ] || [ -z "$IGW_ID" ]; then
   IGW_ID=$(aws ec2 create-internet-gateway --region $REGION \
     --query 'InternetGateway.InternetGatewayId' --output text)
   aws ec2 create-tags --resources $IGW_ID \
-    --tags Key=Name,Value=${VPC_NAME}-igw Key=Project,Value=reliability-platform-v04 \
+    --tags Key=Name,Value=${VPC_NAME}-igw Key=Project,Value=reliability-platform-v03 \
     --region $REGION
   aws ec2 attach-internet-gateway \
     --internet-gateway-id $IGW_ID --vpc-id $VPC_ID --region $REGION
@@ -79,7 +79,7 @@ for AZ in $AZS; do
       --availability-zone $AZ --region $REGION \
       --query 'Subnet.SubnetId' --output text)
     aws ec2 create-tags --resources $SUBNET_ID \
-      --tags Key=Name,Value=$SUBNET_NAME Key=Project,Value=reliability-platform-v04 \
+      --tags Key=Name,Value=$SUBNET_NAME Key=Project,Value=reliability-platform-v03 \
       --region $REGION
     # Auto-assign public IPs at the subnet level (belt-and-braces with assignPublicIp=ENABLED).
     aws ec2 modify-subnet-attribute --subnet-id $SUBNET_ID \
@@ -109,7 +109,7 @@ if [ "$RT_ID" = "None" ] || [ -z "$RT_ID" ]; then
   RT_ID=$(aws ec2 create-route-table --vpc-id $VPC_ID --region $REGION \
     --query 'RouteTable.RouteTableId' --output text)
   aws ec2 create-tags --resources $RT_ID \
-    --tags Key=Name,Value=${VPC_NAME}-rt Key=Project,Value=reliability-platform-v04 \
+    --tags Key=Name,Value=${VPC_NAME}-rt Key=Project,Value=reliability-platform-v03 \
     --region $REGION
   aws ec2 create-route --route-table-id $RT_ID \
     --destination-cidr-block 0.0.0.0/0 \
@@ -146,7 +146,7 @@ if [ "$SG_ID" = "None" ] || [ -z "$SG_ID" ]; then
     --vpc-id $VPC_ID --region $REGION \
     --query 'GroupId' --output text)
   aws ec2 create-tags --resources $SG_ID \
-    --tags Key=Name,Value=$SG_NAME Key=Project,Value=reliability-platform-v04 \
+    --tags Key=Name,Value=$SG_NAME Key=Project,Value=reliability-platform-v03 \
     --region $REGION
 fi
 echo "Security Group: $SG_ID"
@@ -162,18 +162,18 @@ echo '=== Step 7: Create IAM Task Execution Role ==='
 TRUST='{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"ecs-tasks.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
 
 aws iam create-role \
-  --role-name ecsExecRole-v04 \
+  --role-name ecsExecRole-v03 \
   --assume-role-policy-document "$TRUST" 2>/dev/null || true
 
 aws iam attach-role-policy \
-  --role-name ecsExecRole-v04 \
+  --role-name ecsExecRole-v03 \
   --policy-arn arn:aws:iam:aws:policy/service-role/AmazonECSTaskExecutionRolePolicy 2>/dev/null || true
 
-EXEC_ROLE="arn:aws:iam:${ACCOUNT_ID}:role/ecsExecRole-v04"
+EXEC_ROLE="arn:aws:iam:${ACCOUNT_ID}:role/ecsExecRole-v03"
 
 echo '=== Step 8: Wait for IAM role to propagate ==='
 for i in 1 2 3 4 5 6; do
-  if aws iam get-role --role-name ecsExecRole-v04 \
+  if aws iam get-role --role-name ecsExecRole-v03 \
        --query 'Role.Arn' --output text >/dev/null 2>&1; then
     sleep 10
     break
@@ -187,10 +187,10 @@ echo '=== Step 9: Pre-create CloudWatch log groups ==='
 # NOT CreateLogGroup, so awslogs-create-group=true would fail the task at
 # startup. Create the groups up front instead.
 for SVC in flask-api node-api web-ui; do
-  aws logs create-log-group --log-group-name "/ecs/v04/$SVC" \
+  aws logs create-log-group --log-group-name "/ecs/v03/$SVC" \
     --region $REGION 2>/dev/null \
-    && echo "  Created log group: /ecs/v04/$SVC" \
-    || echo "  Log group /ecs/v04/$SVC already exists."
+    && echo "  Created log group: /ecs/v03/$SVC" \
+    || echo "  Log group /ecs/v03/$SVC already exists."
 done
 
 echo '=== Step 10: Register task definitions and create/update services ==='
@@ -202,12 +202,12 @@ for SVC in flask-api node-api web-ui; do
   CONTAINER_DEF="[{\"name\":\"${SVC}\",\"image\":\"${ECR_BASE}/${SVC}:latest\",\
 \"portMappings\":[{\"containerPort\":${PORT}}],\"essential\":true,\
 \"logConfiguration\":{\"logDriver\":\"awslogs\",\
-\"options\":{\"awslogs-group\":\"/ecs/v04/${SVC}\",\
+\"options\":{\"awslogs-group\":\"/ecs/v03/${SVC}\",\
 \"awslogs-region\":\"${REGION}\",\"awslogs-stream-prefix\":\"ecs\"}}}]"
 
   echo "  [$SVC] Registering task definition..."
   if ! aws ecs register-task-definition \
-       --family ${SVC}-v04 \
+       --family ${SVC}-v03 \
        --network-mode awsvpc \
        --requires-compatibilities FARGATE \
        --cpu 256 --memory 512 \
@@ -228,7 +228,7 @@ for SVC in flask-api node-api web-ui; do
     aws ecs create-service \
       --cluster $CLUSTER \
       --service-name $SVC \
-      --task-definition ${SVC}-v04 \
+      --task-definition ${SVC}-v03 \
       --desired-count 1 \
       --launch-type FARGATE \
       --network-configuration \
@@ -241,7 +241,7 @@ for SVC in flask-api node-api web-ui; do
     aws ecs update-service \
       --cluster $CLUSTER \
       --service $SVC \
-      --task-definition ${SVC}-v04 \
+      --task-definition ${SVC}-v03 \
       --desired-count 1 \
       --force-new-deployment \
       --region $REGION > /dev/null \

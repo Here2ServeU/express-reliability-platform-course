@@ -1,64 +1,51 @@
 const express = require('express');
-const axios   = require('axios');
-const client  = require('prom-client');
+const axios = require('axios');
+const client = require('prom-client'); // NEW
 
-const app  = express();
-const PORT = 3000;
+const app = express();
+const PORT = process.env.PORT || 3000;
 const FLASK_URL = process.env.FLASK_BASE_URL || 'http://localhost:5000';
 
+// NEW: collect default Node.js metrics (memory, CPU, event loop)
 const register = new client.Registry();
-
 client.collectDefaultMetrics({ register });
 
-const httpRequests = new client.Counter({
-  name:       'http_requests_total',
-  help:       'Total number of HTTP requests received',
+// NEW: a counter for requests to this service
+const httpRequestsTotal = new client.Counter({
+  name: 'node_api_requests_total',
+  help: 'Total number of requests to node-api',
   labelNames: ['method', 'route', 'status'],
-  registers:  [register]
+  registers: [register],
 });
 
-const httpDuration = new client.Histogram({
-  name:       'http_request_duration_seconds',
-  help:       'HTTP request duration in seconds',
-  labelNames: ['method', 'route', 'status'],
-  buckets:    [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
-  registers:  [register]
-});
-
-app.use((req, res, next) => {
-  const endTimer = httpDuration.startTimer();
-  res.on('finish', () => {
-    const labels = { method: req.method, route: req.path, status: res.statusCode };
-    httpRequests.inc(labels);
-    endTimer(labels);
-  });
-  next();
-});
-
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'node-api', version: 'v2' });
-});
-
-app.get('/score', async (req, res) => {
-  try {
-    const input    = req.query.input || 'default';
-    const response = await axios.get(`${FLASK_URL}/score`, { params: { input } });
-    res.json({
-      version: 'v2',
-      source:  'node-api',
-      flask:    response.data
-    });
-  } catch (err) {
-    res.status(500).json({ error: 'Flask unavailable', detail: err.message });
-  }
-});
-
+// NEW: the /metrics door
 app.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
 });
 
+// All V3 routes stay exactly the same:
+app.get('/', (req, res) => {
+  httpRequestsTotal.labels('GET', '/', '200').inc();
+  res.json({ service: 'node-api', version: 'v4', status: 'running' });
+});
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'healthy', timestamp: new Date().toISOString() });
+});
+
+app.get('/score', async (req, res) => {
+  const input = req.query.input || 'default input';
+  try {
+    const response = await axios.get(`${FLASK_URL}/score`, { params: { input } });
+    httpRequestsTotal.labels('GET', '/score', '200').inc();
+    res.json({ version: 'v4', source: 'node-api', flask: response.data });
+  } catch (err) {
+    httpRequestsTotal.labels('GET', '/score', '500').inc();
+    res.status(500).json({ error: 'flask-api unavailable', detail: err.message });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`Node API listening on port ${PORT}`);
-  console.log(`Flask URL configured as: ${FLASK_URL}`);
+  console.log(`node-api running on port ${PORT}`);
 });

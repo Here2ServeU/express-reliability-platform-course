@@ -1,12 +1,22 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-AWS_REGION="${AWS_REGION:-us-east-1}"
-AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}"
-TAG="${IMAGE_TAG:-v8}"
+ECR_BASE=$(terraform -chdir=terraform/bootstrap output -raw ecr_base)
 
-for service in flask-api node-api web-ui; do
-  image="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$service:$TAG"
-  docker buildx build --platform linux/amd64 -t "$image" "apps/$service" --push
-  echo "Pushed $image"
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin \
+  $(echo $ECR_BASE | cut -d/ -f1)
+
+# Use the V6 Dockerfiles for flask-api and node-api
+V6_SRC=${V6_APPS_SRC:-../express-reliability-platform-v06/platform}
+
+for SVC in flask-api node-api; do
+  docker buildx build --platform linux/amd64 \
+    -t ${ECR_BASE}/${SVC}:latest --push ${V6_SRC}/../apps/${SVC}
 done
+
+# web-ui from V7's apps folder
+docker buildx build --platform linux/amd64 \
+  -t ${ECR_BASE}/web-ui:latest --push ./apps/web-ui
+
+echo "All three images pushed to ECR."

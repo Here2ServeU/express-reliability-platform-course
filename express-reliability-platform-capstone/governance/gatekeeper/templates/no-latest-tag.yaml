@@ -1,19 +1,25 @@
 apiVersion: templates.gatekeeper.sh/v1
 kind: ConstraintTemplate
 metadata:
-  name: k8snolatesttag
+  name: nolatesttag
 spec:
   crd:
     spec:
       names:
-        kind: K8sNoLatestTag
+        kind: NoLatestTag
   targets:
     - target: admission.k8s.gatekeeper.sh
       rego: |
-        package k8snolatesttag
+        package nolatesttag
 
         violation[{"msg": msg}] {
           container := input.review.object.spec.containers[_]
           endswith(container.image, ":latest")
-          msg := sprintf("container %q uses a latest tag; pin an immutable version", [container.name])
+          msg := sprintf("Container '%v' uses image tag :latest. Use a specific version tag.", [container.name])
+        }
+
+        violation[{"msg": msg}] {
+          container := input.review.object.spec.containers[_]
+          not contains(container.image, ":")
+          msg := sprintf("Container '%v' has no image tag at all. Add an explicit version tag.", [container.name])
         }

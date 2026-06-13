@@ -1,0 +1,95 @@
+name: Deploy Platform
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:   # Also allows manual trigger from the GitHub UI
+
+concurrency:
+  group: deploy-platform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER: reliability-platform-cluster
+  NAMESPACE: platform
+
+jobs:
+  deploy-shared:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for OIDC — allows requesting a JWT token
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply shared layer
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET=reliability-platform-v07-tfstate-${ACCOUNT}
+          terraform -chdir=terraform/shared init -reconfigure \
+            -backend-config="bucket=${BUCKET}" \
+            -backend-config="key=shared/v7/terraform.tfstate"
+          terraform -chdir=terraform/shared apply -auto-approve
+
+  deploy-live:
+    runs-on: ubuntu-latest
+    needs: deploy-shared   # Job 2 waits for Job 1 to succeed
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply live layer
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET=reliability-platform-v07-tfstate-${ACCOUNT}
+          terraform -chdir=terraform/live init -reconfigure \
+            -backend-config="bucket=${BUCKET}" \
+            -backend-config="key=live/v7/terraform.tfstate"
+          terraform -chdir=terraform/live apply -auto-approve \
+            -var "state_bucket=${BUCKET}"
+
+  deploy-apps:
+    runs-on: ubuntu-latest
+    needs: deploy-live   # Job 3 waits for Job 2 to succeed
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name ${CLUSTER} --region ${AWS_REGION}
+      - name: Push images and deploy Helm charts
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          ECR=${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/reliability-platform
+          aws ecr get-login-password --region ${AWS_REGION} | \
+            docker login --username AWS --password-stdin \
+            ${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
+          for SVC in flask-api node-api web-ui; do
+            docker buildx build --platform linux/amd64 \
+              -t ${ECR}/${SVC}:latest --push ./apps/${SVC} 2>/dev/null || true
+            helm upgrade --install "$SVC" "platform/helm/$SVC" \
+              --namespace ${NAMESPACE} --create-namespace \
+              --set image.repository="${ECR}/$SVC"
+          done
+      - name: Wait for rollouts
+        run: |
+          kubectl rollout status deployment/flask-api-flask-api -n ${NAMESPACE}
+          kubectl rollout status deployment/node-api-node-api -n ${NAMESPACE}
+          kubectl rollout status deployment/web-ui-web-ui -n ${NAMESPACE}

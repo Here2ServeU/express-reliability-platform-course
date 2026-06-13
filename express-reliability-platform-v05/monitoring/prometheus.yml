@@ -1,27 +1,11 @@
 global:
-  scrape_interval:     15s
-  evaluation_interval: 15s
-
-rule_files:
-  - 'alert.rules.yml'
-
-alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ['alertmanager:9093']
+  scrape_interval: 15s   # Visit every service every 15 seconds
 
 scrape_configs:
-
   - job_name: 'node-api'
     static_configs:
-      - targets: ['node-api:3000']
-    metrics_path: '/metrics'
+      - targets: ['node-api:3000']   # Container name and container port
 
   - job_name: 'flask-api'
     static_configs:
-      - targets: ['flask-api:5000']
-    metrics_path: '/metrics'
-
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
+      - targets: ['flask-api:5000']   # Container port — NOT host port 5050

@@ -1,29 +1,32 @@
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
+import os
 
 app = Flask(__name__)
 
+@app.route('/')
+def root():
+    return jsonify({
+        'service': 'flask-api',
+        'version': 'v2',
+        'status': 'running'
+    })
 
 @app.route('/health')
 def health():
-    return jsonify({'status': 'ok', 'service': 'flask-api', 'version': 'v2'})
-
+    return jsonify({'status': 'healthy', 'service': 'flask-api'})
 
 @app.route('/score')
 def score():
-    user_input = request.args.get('input', 'default')
-    word_count = len(user_input.split())
-    char_count = len(user_input)
-    risk_score = char_count * 7
+    input_text = request.args.get('input', 'no input provided')
+    words = len(input_text.split())
+    risk_score = min(100, words * 7)
     return jsonify({
-        'input':      user_input,
-        'word_count': word_count,
-        'char_count': char_count,
+        'input': input_text,
+        'word_count': words,
         'risk_score': risk_score,
-        'logic':      'score = characters x 7',
-        'service':    'flask-api',
-        'version':    'v2'
+        'verdict': 'HIGH' if risk_score > 70 else 'MEDIUM' if risk_score > 40 else 'LOW'
     })
 
-
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

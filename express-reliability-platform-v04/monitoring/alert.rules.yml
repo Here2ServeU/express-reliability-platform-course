@@ -1,32 +1,25 @@
 groups:
-  - name: platform-alerts
+  - name: reliability-platform
     rules:
 
-      - alert: ServiceDown
-        expr:  up == 0
-        for:   30s
+      # Alert when more than 5% of requests are failing
+      - alert: HighErrorRate
+        expr: rate(flask_api_requests_total{status=~"5.."}[5m])
+          / rate(flask_api_requests_total[5m]) > 0.05
+        for: 2m
         labels:
           severity: critical
         annotations:
-          summary:     '{{ $labels.job }} is DOWN'
-          description: 'Service {{ $labels.job }} has been unreachable for 30 consecutive seconds.'
+          summary: "Flask API error rate above 5%"
+          description: "More than 5% of requests are returning errors."
 
-      - alert: HighErrorRate
-        expr:  rate(http_requests_total{status=~'5..'}[5m]) > 0.05
-        for:   1m
+      # Alert when p95 response time exceeds 500ms
+      - alert: SlowResponseTime
+        expr: histogram_quantile(0.95,
+          rate(flask_api_request_latency_seconds_bucket[5m])) > 0.5
+        for: 2m
         labels:
           severity: warning
         annotations:
-          summary:     'High 5xx error rate on {{ $labels.job }}'
-          description: 'More than 5% of requests are returning server errors.'
-
-      - alert: HighLatency
-        expr: |
-          histogram_quantile(0.95,
-            rate(http_request_duration_seconds_bucket[5m])
-          ) > 0.5
-        for:   2m
-        labels:
-          severity: warning
-        annotations:
-          summary: 'p95 latency above 500ms on {{ $labels.job }}'
+          summary: "Flask API p95 latency above 500ms"
+          description: "95th percentile response time is over 500 milliseconds."

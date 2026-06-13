@@ -3,6 +3,5 @@ kind: Namespace
 metadata:
   name: platform
   labels:
-    owner: sre
-    environment: prod
-    data-classification: internal
+    owner: platform-team
+    environment: production

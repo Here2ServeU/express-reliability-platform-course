@@ -1,11 +1,11 @@
 apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: K8sRequiredResourceLimits
+kind: RequireResourceLimits
 metadata:
-  name: platform-require-resource-limits
+  name: require-resource-limits
 spec:
   match:
     kinds:
-      - apiGroups: [""]
+      - apiGroups: ["*"]
         kinds: ["Pod"]
-    namespaces:
-      - platform
+    namespaces: ["platform"]
+  enforcementAction: deny

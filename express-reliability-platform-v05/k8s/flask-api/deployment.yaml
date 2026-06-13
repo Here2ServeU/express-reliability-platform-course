@@ -15,25 +15,24 @@ spec:
     spec:
       containers:
         - name: flask-api
-          image: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/flask-api:v5
+          image: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/reliability-platform/flask-api:latest
           ports:
             - containerPort: 5000
-          readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
-            initialDelaySeconds: 15
-            periodSeconds: 20
           resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
+            requests: { cpu: '100m', memory: '128Mi' }
+            limits: { cpu: '500m', memory: '512Mi' }
+          # Liveness probe: 3 failures = container is killed and restarted
+          livenessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          # Readiness probe: Pod gets NO traffic until this passes
+          readinessProbe:
+            httpGet: { path: /health, port: 5000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          envFrom:
+            - configMapRef:
+                name: platform-config
