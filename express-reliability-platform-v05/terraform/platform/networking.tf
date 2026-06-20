@@ -27,9 +27,45 @@ resource "aws_subnet" "private" {
 }
 
 # NAT Gateways — worker nodes can reach ECR to pull images
-resource "aws_eip" "nat" { count = 2; domain = "vpc" }
+resource "aws_eip" "nat" {
+  count  = 2
+  domain = "vpc"
+}
 resource "aws_nat_gateway" "main" {
   count         = 2
   subnet_id     = aws_subnet.public[count.index].id
   allocation_id = aws_eip.nat[count.index].id
+}
+
+# Public route table: send internet-bound traffic to the internet gateway.
+# Both public subnets share it (that's where the ALB and NAT gateways sit).
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+# Private route tables: one per AZ, each egressing through that AZ's NAT gateway.
+# Without this route the worker nodes have no egress and fail to join the cluster.
+resource "aws_route_table" "private" {
+  count  = 2
+  vpc_id = aws_vpc.main.id
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.main[count.index].id
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  count          = 2
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[count.index].id
 }

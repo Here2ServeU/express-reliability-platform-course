@@ -26,11 +26,24 @@ resource "aws_eks_node_group" "main" {
   depends_on = [aws_iam_role_policy_attachment.eks_worker]
 }
 
+# metrics-server: supplies the CPU/memory metrics the HorizontalPodAutoscalers read.
+# EKS does not install it by default, so without this the HPAs report <unknown> and never scale.
+resource "helm_release" "metrics_server" {
+  name       = "metrics-server"
+  repository = "https://kubernetes-sigs.github.io/metrics-server/"
+  chart      = "metrics-server"
+  version    = "3.12.1"
+  namespace  = "kube-system"
+  depends_on = [aws_eks_node_group.main]
+}
+
 # Built-in add-ons: networking, DNS, storage, proxy
 resource "aws_eks_addon" "addons" {
   for_each                    = toset(["vpc-cni", "coredns", "kube-proxy", "aws-ebs-csi-driver"])
   cluster_name                = aws_eks_cluster.main.name
   addon_name                  = each.key
   resolve_conflicts_on_update = "OVERWRITE"
-  depends_on                  = [aws_eks_node_group.main]
+  # Only the EBS CSI driver needs IAM permissions (via IRSA); the rest get null.
+  service_account_role_arn = each.key == "aws-ebs-csi-driver" ? aws_iam_role.ebs_csi.arn : null
+  depends_on               = [aws_eks_node_group.main]
 }

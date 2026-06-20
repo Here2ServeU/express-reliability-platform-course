@@ -10,10 +10,12 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
-# The S3 bucket that stores Terraform's memory file
+# The S3 bucket that stores Terraform's memory file.
+# force_destroy = true lets `terraform destroy` delete the bucket even though
+# versioning keeps old state versions — otherwise teardown fails with BucketNotEmpty.
 resource "aws_s3_bucket" "tfstate" {
   bucket        = "reliability-platform-tfstate-${data.aws_caller_identity.current.account_id}"
-  force_destroy = false
+  force_destroy = true
 }
 
 # Enable versioning so you can recover old memory files if needed
@@ -34,4 +36,4 @@ resource "aws_dynamodb_table" "tflock" {
 }
 
 output "state_bucket" { value = aws_s3_bucket.tfstate.bucket }
-output "account_id"   { value = data.aws_caller_identity.current.account_id }
+output "account_id" { value = data.aws_caller_identity.current.account_id }
