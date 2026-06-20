@@ -5,7 +5,7 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = var.region
 }
 
 data "aws_caller_identity" "current" {}
@@ -14,7 +14,7 @@ data "aws_caller_identity" "current" {}
 # force_destroy = true lets `terraform destroy` delete the bucket even though
 # versioning keeps old state versions — otherwise teardown fails with BucketNotEmpty.
 resource "aws_s3_bucket" "tfstate" {
-  bucket        = "reliability-platform-tfstate-${data.aws_caller_identity.current.account_id}"
+  bucket        = "${var.state_bucket_prefix}-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 }
 
@@ -26,7 +26,7 @@ resource "aws_s3_bucket_versioning" "tfstate" {
 
 # The lock table — prevents two terraform apply commands at the same time
 resource "aws_dynamodb_table" "tflock" {
-  name         = "reliability-platform-tfstate-lock"
+  name         = var.lock_table_name
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
   attribute {
@@ -36,4 +36,5 @@ resource "aws_dynamodb_table" "tflock" {
 }
 
 output "state_bucket" { value = aws_s3_bucket.tfstate.bucket }
+output "lock_table" { value = aws_dynamodb_table.tflock.name }
 output "account_id" { value = data.aws_caller_identity.current.account_id }

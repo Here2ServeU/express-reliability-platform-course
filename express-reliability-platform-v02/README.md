@@ -27,6 +27,18 @@ express-reliability-platform-v02/
 └── README.md
 ```
 
+## Prerequisites
+
+Before running this version, confirm:
+
+- [ ] **Node.js 18+** installed (`node -v`).
+- [ ] **Docker Desktop is running** — verify: `docker ps`.
+- [ ] **Docker Compose v2** available (`docker compose version`).
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
 ## Run Steps
 
 ```sh

@@ -35,6 +35,18 @@ express-reliability-platform-v04/
 └── README.md
 ```
 
+## Prerequisites
+
+Before running this version, confirm:
+
+- [ ] **Node.js 18+**, **Docker Desktop running** (`docker ps`), and **Docker Compose v2** available.
+- [ ] **AWS CLI v2 configured** with credentials — verify: `aws sts get-caller-identity`.
+- [ ] **Terraform ≥ 1.5** installed (`terraform version`).
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
 ## Run Steps
 
 Start the local observability stack:
