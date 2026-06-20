@@ -8,8 +8,9 @@ terraform {
     tls        = { source = "hashicorp/tls", version = "~> 4.0" }
   }
   backend "s3" {
-    # Reuse the bootstrap bucket from V4
-    bucket         = "reliability-platform-tfstate-730335276920"
+    # The account-specific bucket name is NOT hardcoded here. Terraform backend
+    # blocks cannot read variables, so the bucket is supplied at init time from
+    # backend.hcl:  terraform init -backend-config=backend.hcl
     key            = "v5/platform/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "reliability-platform-tfstate-lock"

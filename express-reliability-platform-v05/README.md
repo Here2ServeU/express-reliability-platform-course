@@ -63,7 +63,12 @@ express-reliability-platform-v05/
 │   └── grafana-dashboard.json
 ├── terraform/
 │   ├── bootstrap/          # S3 + DynamoDB remote state backend
+│   │   ├── main.tf
+│   │   └── variables.tf    # region, bucket prefix, lock table name
 │   └── platform/           # VPC, EKS, ECR, IAM, ALB ingress controller
+│       ├── main.tf         # backend = partial config (no account number)
+│       ├── backend.hcl     # per-account state bucket name (init -backend-config)
+│       └── variables.tf
 ├── scripts/
 │   ├── push_images.sh      # build (linux/amd64) and push images to ECR
 │   ├── deploy_k8s.sh       # substitute account ID + apply all k8s manifests
@@ -76,7 +81,24 @@ express-reliability-platform-v05/
 
 - AWS CLI configured with credentials (`aws sts get-caller-identity` works)
 - Terraform, kubectl, and Docker (with `buildx`) installed
+- **Docker Desktop is running** — verify: `docker ps`
 - Region used throughout: `us-east-1`
+- **Make the helper scripts executable** (one time): `chmod +x scripts/*.sh`
+
+## Configuration
+
+There is **no AWS account number hardcoded in any `main.tf`**. Account- and
+environment-specific values live in dedicated variables / backend files:
+
+| What | Where | Notes |
+| --- | --- | --- |
+| Region, state bucket prefix, lock table name | [terraform/bootstrap/variables.tf](terraform/bootstrap/variables.tf) | All defaulted — override with `-var` or a `*.tfvars` file if needed. The account ID is auto-derived from your credentials, so the bucket name needs no editing. |
+| Per-account state bucket name | [terraform/platform/backend.hcl](terraform/platform/backend.hcl) | The platform backend uses *partial configuration*. Terraform backend blocks cannot read `variables.tf`, so the account-specific bucket is set here and loaded at init with `-backend-config=backend.hcl`. Edit only the account-number suffix. |
+| EKS cluster size, node type, k8s version | [terraform/platform/variables.tf](terraform/platform/variables.tf) | Defaults are sensible for the course. |
+
+To target a different AWS account, change the account-number suffix in
+`backend.hcl` to match the bucket created by `terraform/bootstrap`
+(its `state_bucket` output) — nothing in `main.tf` changes.
 
 ## Run Steps
 
@@ -89,8 +111,12 @@ terraform -chdir=terraform/bootstrap apply
 
 ### 2. Provision the EKS platform
 
+The state bucket name (which includes your AWS account ID) is supplied to the backend
+via `backend.hcl`, so you never edit it in `main.tf`. Set the account suffix in
+[terraform/platform/backend.hcl](terraform/platform/backend.hcl) once, then:
+
 ```sh
-terraform -chdir=terraform/platform init
+terraform -chdir=terraform/platform init -backend-config=backend.hcl
 terraform -chdir=terraform/platform apply
 ```
 
@@ -118,6 +144,13 @@ replaces it with your real AWS account ID, then applies every manifest in order:
 > If you prefer to apply manually, first substitute the account ID in the deployment
 > images (`k8s/*/deployment.yaml`), otherwise the pods will fail with `ImagePullBackOff`.
 
+**Region note:** the deploy script uses `REGION=us-east-1`, and the image references
+point at `*.dkr.ecr.us-east-1.amazonaws.com`. This **must match the region where you
+deployed the platform and pushed the images**. If you deployed to a different region,
+update `REGION` in [scripts/deploy_k8s.sh](scripts/deploy_k8s.sh) (and
+[scripts/push_images.sh](scripts/push_images.sh)) and the `us-east-1` segment in the
+`k8s/*/deployment.yaml` image URLs to the same region, or the pods cannot pull from ECR.
+
 ## Test Self-Healing
 
 ```sh
@@ -143,7 +176,9 @@ replica count within ~30 seconds.
 ## Cleanup
 
 Tear down the Kubernetes resources (releasing the ALB) and destroy the Terraform-managed
-AWS resources. The bootstrap S3 bucket and DynamoDB lock table are kept for Version 6.
+AWS resources. This also empties and destroys the bootstrap S3 state bucket and DynamoDB
+lock table, leaving nothing running. To stand the platform back up later, re-run the
+bootstrap step first (`terraform -chdir=terraform/bootstrap apply`).
 
 ```sh
 ./scripts/cleanup_v5.sh

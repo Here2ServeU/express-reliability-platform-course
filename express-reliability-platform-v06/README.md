@@ -216,6 +216,10 @@ Before running anything, confirm you have:
   helm version
   ```
 - [ ] **V5 application sources accessible.** V6 ships its own `web-ui/` (Dockerfile + V6 `index.html`); the build script reads Dockerfiles for `flask-api`/`node-api` from V5. The deploy script defaults to `../express-reliability-platform-v05/apps`. If your V5 sources live elsewhere, set `V5_APPS_SRC=<path>`.
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
 
 > **Don't have V5?** Clone the course repo (`Here2ServeU/express-reliability-platform-course`) and you'll get both V5 and V6 as sibling directories. You don't need to deploy V5: V6 only needs the Dockerfiles, not a running V5 stack.
 

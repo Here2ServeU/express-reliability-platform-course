@@ -186,6 +186,16 @@ Severity bands and the recommended first action:
 
 Each run writes a JSON object with `incident_id`, `service`, the raw signal values, `risk_score`, `severity`, `recommended_action`, `owner`, and `generated_at_utc`.
 
+## Prerequisites
+
+- [ ] Required tools installed: Terraform ≥ 1.5, kubectl, helm, AWS CLI v2, Docker, Node.js 18+, Python 3.
+- [ ] Docker Desktop is running — verify: `docker ps`
+- [ ] Make the helper scripts executable (one time):
+
+```sh
+chmod +x scripts/*.sh
+```
+
 ## 10) Step-by-Step Guide (Local and Cloud)
 
 ### Step A: Understand

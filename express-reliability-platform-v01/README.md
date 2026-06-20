@@ -69,6 +69,16 @@ express-reliability-platform-v01/
 └── README.md
 ```
 
+## Prerequisites
+
+Before running this version, confirm:
+
+- [ ] **Node.js 18+ and npm** installed — verify: `node -v && npm -v`.
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
 ## 7) Run Steps
 
 1. Install tools: Node.js LTS, Git, and VS Code.

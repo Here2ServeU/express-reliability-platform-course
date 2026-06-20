@@ -11,6 +11,18 @@ Clone the capstone repository, deploy the complete platform from scratch with on
 suite while auto-recovery is active, write the portfolio README, confirm all eight validation checks,
 and push the finished project to GitHub.
 
+## Prerequisites
+
+Before deploying the capstone, confirm:
+
+- [ ] **Terraform ≥ 1.5, kubectl ≥ 1.29, helm ≥ 3.14, AWS CLI v2, and Node.js 18+** installed.
+- [ ] **Docker Desktop is running** — verify: `docker ps`.
+- [ ] **AWS CLI v2 configured** with credentials for EKS, IAM, EC2, ECR, S3, and DynamoDB — verify: `aws sts get-caller-identity`.
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
 ## Project Structure
 
 ```text

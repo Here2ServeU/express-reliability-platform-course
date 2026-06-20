@@ -34,6 +34,18 @@ express-reliability-platform-v10/
     └── README.md
 ```
 
+## Prerequisites
+
+Before running this version, confirm:
+
+- [ ] **Terraform ≥ 1.5, kubectl ≥ 1.29, helm ≥ 3.14, and AWS CLI v2** installed.
+- [ ] **Docker Desktop is running** — verify: `docker ps`.
+- [ ] **AWS CLI v2 configured** with credentials for EKS, IAM, EC2, and ECR — verify: `aws sts get-caller-identity`.
+- [ ] **Make the helper scripts executable** (one time) — this version includes chaos and deploy scripts:
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
 ## Run Steps
 
 Run individual recovery scripts:

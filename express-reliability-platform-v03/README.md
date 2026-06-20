@@ -28,6 +28,19 @@ express-reliability-platform-v03/
 └── README.md
 ```
 
+## Prerequisites
+
+Before running this version, confirm:
+
+- [ ] **Node.js 18+** installed.
+- [ ] **Docker Desktop is running** — verify: `docker ps`.
+- [ ] **Docker Compose v2** available.
+- [ ] **AWS CLI v2 configured** with credentials that can use ECR and ECS — verify: `aws sts get-caller-identity`.
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
 ## Run Steps
 
 Validate locally first:
