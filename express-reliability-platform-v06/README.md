@@ -398,7 +398,18 @@ Expect a line like `http-get http://:3000/health delay=30s period=10s #failure=3
 
 ### 7. Rolling update works
 
+A rolling update needs two things the earlier steps don't set up: `ECR_BASE`
+exported in this shell, and an image actually tagged `v3` in ECR (the deploy
+script only pushes `:latest`). Do both first, then upgrade:
+
 ```sh
+# 1. Resolve the ECR base URI (same value tf_deploy_v6.sh prints in Step 2).
+export ECR_BASE=$(terraform -chdir=platform/terraform/bootstrap output -raw ecr_base_uri)
+
+# 2. Build and push a v3-tagged image so :v3 exists to roll to.
+IMAGE_TAG=v3 ./scripts/build_push_images_v6.sh
+
+# 3. Roll the deployment to the new tag.
 helm upgrade node-api platform/helm/node-api --namespace platform \
   --set image.repository="${ECR_BASE}/node-api" \
   --set image.tag=v3
@@ -406,13 +417,28 @@ kubectl rollout status deployment/node-api-node-api -n platform
 ```
 Expect: `successfully rolled out`.
 
+> If `rollout status` hangs at `1 out of 2 new replicas have been updated`, the
+> new pod can't start. Check `kubectl get pods -n platform -l app=node-api-node-api`:
+>
+> - `InvalidImageName` / image shows `/node-api:v3` → `ECR_BASE` was empty (skip step 1).
+> - `ImagePullBackOff` → the `:v3` tag was never pushed (skip step 2).
+> Recover with `helm rollback node-api -n platform`, fix the cause, retry.
+
 ### 8. Rollback works
 
+Because V6 manages this deployment with Helm, **roll back with Helm, not
+`kubectl rollout undo`.** Helm and `kubectl rollout` keep *separate* revision
+counters; using `kubectl rollout undo` changes the Deployment behind Helm's
+back, the two histories drift apart, and your next `helm upgrade` overwrites
+whatever kubectl just did.
+
 ```sh
-kubectl rollout undo deployment/node-api-node-api -n platform
-kubectl rollout history deployment/node-api-node-api -n platform
+helm history node-api -n platform                 # find the last good REVISION
+helm rollback node-api -n platform                # omit revision = previous one
+kubectl rollout status deployment/node-api-node-api -n platform
 ```
-Expect: pods return to `Running 1/1`, history shows the rollback as a new revision.
+Expect: pods return to `Running 1/1`, and `helm history` shows the rollback as a
+new revision (e.g. `Rollback to 1`).
 
 ---
 
@@ -429,8 +455,13 @@ kubectl rollout status deployment/node-api-node-api -n platform
 
 ### Roll back if a release misbehaves
 
+Roll back through Helm so its release history stays the source of truth (don't
+use `kubectl rollout undo` on Helm-managed deployments):
+
 ```sh
-kubectl rollout undo deployment/node-api-node-api -n platform
+helm rollback node-api -n platform          # to the previous revision
+helm rollback node-api 3 -n platform        # or to a specific REVISION
+kubectl rollout status deployment/node-api-node-api -n platform
 ```
 
 ### Scale a deployment manually

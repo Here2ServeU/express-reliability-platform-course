@@ -24,6 +24,14 @@ spec:
           ports:
             - containerPort: 5000
 
+          # Replaces V5's `platform-config` ConfigMap (envFrom). Rendered from
+          # .Values.env so the chart stays values-driven like the rest of V6.
+          env:
+          {{- range $key, $val := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+          {{- end }}
+
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.liveness.path }}

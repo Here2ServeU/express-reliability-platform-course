@@ -9,6 +9,12 @@ service:
   type: ClusterIP
   port: 5000
 
+# Ported from V5's platform-config ConfigMap. flask-api only reads PORT, so it
+# gets just NODE_ENV here (V5 shared one ConfigMap across both APIs; V6 gives
+# each service only the keys it uses). Add more keys to inject more env vars.
+env:
+  NODE_ENV: "production"
+
 resources:
   requests:
     cpu: 100m
