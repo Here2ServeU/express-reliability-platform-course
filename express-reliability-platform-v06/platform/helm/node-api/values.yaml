@@ -9,6 +9,13 @@ service:
   type: ClusterIP
   port: 3000
 
+# Ported from V5's platform-config ConfigMap. FLASK_BASE_URL targets the
+# Helm-generated flask-api Service name (<release>-flask-api); the deploy script
+# installs flask-api with release name "flask-api" → "flask-api-flask-api".
+env:
+  FLASK_BASE_URL: "http://flask-api-flask-api:5000"
+  NODE_ENV: "production"
+
 resources:
   requests:
     cpu: 100m

@@ -24,6 +24,17 @@ spec:
           ports:
             - containerPort: 3000
 
+          # Replaces V5's `platform-config` ConfigMap (k8s/configmap.yaml +
+          # envFrom). FLASK_BASE_URL must point at flask-api's in-cluster
+          # Service, which Helm names <release>-flask-api = "flask-api-flask-api".
+          # Without it node-api falls back to http://localhost:5000 and /score
+          # 500s with "flask-api unavailable".
+          env:
+          {{- range $key, $val := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $val | quote }}
+          {{- end }}
+
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.liveness.path }}

@@ -51,7 +51,7 @@ echo "  ECR base:     ${ECR_BASE}"
 
 echo '=== Step 2b: Build and push images (sources from V5 apps/ by default) ==='
 # Done before the EKS apply so when Helm install runs in step 7 the images are
-# already pullable. Override APPS_SRC if your Dockerfiles live elsewhere.
+# already pullable. Override V5_APPS_SRC if the V5 Dockerfiles live elsewhere.
 "${0%/*}/build_push_images_v6.sh"
 
 echo "=== Step 3: Initialize EKS stack against V6 bootstrap backend (${ENV}) ==="
