@@ -1,0 +1,9 @@
+{
+  "name": "node-api",
+  "version": "2.0.0",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "axios": "^1.6.8"
+  }
+}
