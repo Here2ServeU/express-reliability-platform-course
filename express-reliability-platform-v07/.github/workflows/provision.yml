@@ -1,0 +1,129 @@
+name: Provision Platform
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'dev, staging, or prod'
+        required: true
+        default: 'dev'
+
+concurrency:
+  group: provision-platform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  NAMESPACE: platform
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write   # Required for OIDC — allows requesting a JWT token
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply bootstrap (state bucket, lock table, ECR repos)
+        run: |
+          terraform -chdir=platform/terraform/bootstrap init -input=false
+          terraform -chdir=platform/terraform/bootstrap apply -auto-approve
+
+  terraform-eks:
+    runs-on: ubuntu-latest
+    needs: bootstrap
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply EKS stack (env-scoped state key)
+        run: |
+          STATE_BUCKET=$(terraform -chdir=platform/terraform/bootstrap output -raw state_bucket)
+          LOCK_TABLE=$(terraform -chdir=platform/terraform/bootstrap output -raw lock_table)
+          terraform -chdir=platform/terraform/eks init -reconfigure -input=false \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${LOCK_TABLE}" \
+            -backend-config="key=eks/v7/${ENVIRONMENT}/terraform.tfstate"
+          terraform -chdir=platform/terraform/eks apply -auto-approve \
+            -var-file="environments/${ENVIRONMENT}.tfvars"
+
+  helm-deploy:
+    runs-on: ubuntu-latest
+    needs: terraform-eks
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        run: |
+          CLUSTER=reliability-platform-${ENVIRONMENT}
+          aws eks update-kubeconfig --name "${CLUSTER}" --region ${AWS_REGION}
+      - name: Push images and deploy app Helm charts
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          ECR=${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/reliability-platform
+          aws ecr get-login-password --region ${AWS_REGION} | \
+            docker login --username AWS --password-stdin \
+            ${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
+          for SVC in flask-api node-api web-ui; do
+            docker buildx build --platform linux/amd64 \
+              -t ${ECR}/${SVC}:latest --push ./apps/${SVC} 2>/dev/null || true
+            helm upgrade --install "$SVC" "platform/helm/$SVC" \
+              --namespace ${NAMESPACE} --create-namespace \
+              --set image.repository="${ECR}/$SVC"
+          done
+      - name: Wait for rollouts
+        run: |
+          kubectl rollout status deployment/flask-api-flask-api -n ${NAMESPACE}
+          kubectl rollout status deployment/node-api-node-api -n ${NAMESPACE}
+          kubectl rollout status deployment/web-ui-web-ui -n ${NAMESPACE}
+      - name: Deploy monitoring stack
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update prometheus-community
+          helm upgrade --install global-monitoring prometheus-community/kube-prometheus-stack \
+            --namespace monitoring --create-namespace \
+            -f platform/helm/global-monitoring/values.yaml
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: helm-deploy
+    if: always()
+    steps:
+      - name: Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL}" ]; then
+            echo "SLACK_WEBHOOK_URL not set; skipping notification."
+            exit 0
+          fi
+          if [ "${{ needs.helm-deploy.result }}" = "success" ]; then
+            STATUS=":white_check_mark: provision succeeded"
+          else
+            STATUS=":rotating_light: provision failed"
+          fi
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${STATUS} for ${{ github.repository }}@${{ github.sha }} (${ENVIRONMENT})\"}" \
+            "${SLACK_WEBHOOK_URL}"
