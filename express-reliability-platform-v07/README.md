@@ -1,582 +1,488 @@
-# Express Reliability Platform V7: AIOps Incident Management
+# Express Reliability Platform V7: Monitoring, Incident Response, and an AIOps Introduction
 
-## 1) Builds on V6
+> **What you will build (in one paragraph).** The exact same EKS-on-AWS stack V6 builds — reusable Terraform modules, per-environment tfvars, cost-aware tagging and budgets, three Helm-deployed services — deployed the exact same way, with `scripts/tf_deploy_v7.sh`. On top of that unchanged foundation, V7 adds three new layers: a **monitoring stack** (Prometheus, Grafana, Alertmanager) you can run locally in Docker or install into the cluster with Helm; a short **SRE incident-response introduction** (severity levels, roles, a postmortem template); and a **one-script introduction to AIOps-style risk scoring** that turns four incident signals into a 0–100 score. Nothing about V6's deploy path changed — only what sits on top of it. About 30 minutes per env on a fresh AWS account, same run-rate as V6 (~$2.10/day `dev`, ~$5.40/day `prod`) plus a few cents/day if you also run the cloud monitoring stack.
 
-Before you start V7, copy your personal V6 repository to your local machine and rename it to V7:
+## Table of contents
+
+- [Quick Start (the 4-command path)](#quick-start-the-4-command-path)
+- [What's new in V7 (and what stayed exactly the same)](#whats-new-in-v7-and-what-stayed-exactly-the-same)
+- [Modules overview](#modules-overview)
+- [Per-environment deploy](#per-environment-deploy)
+- [Cost guardrails](#cost-guardrails)
+- [Prerequisites](#prerequisites)
+- [Deploy](#deploy)
+  - [Path A: Scripted (recommended)](#path-a-scripted-recommended)
+  - [Path B: Manual walkthrough](#path-b-manual-walkthrough)
+- [Local monitoring stack](#local-monitoring-stack)
+- [Validate the platform](#validate-the-platform)
+- [Incident-response practice](#incident-response-practice)
+- [Operate (rolling updates, rollback, scaling)](#operate-rolling-updates-rollback-scaling)
+- [Cleanup](#cleanup)
+- [Reference](#reference)
+  - [Project structure](#project-structure)
+  - [Configuration reference](#configuration-reference)
+  - [Architecture diagrams](#architecture-diagrams)
+  - [Web UI guide](#web-ui-guide)
+  - [Troubleshooting](#troubleshooting)
+- [What's next: V8](#whats-next-v8)
+
+---
+
+## Quick Start (the 4-command path)
+
+> Use this if you've already done V6 and just want a working V7 cluster plus monitoring. If anything goes wrong, jump to [Troubleshooting](#troubleshooting).
 
 ```sh
-git clone https://github.com/YOUR_USERNAME/express-reliability-platform-v06.git
-mv express-reliability-platform-v06 express-reliability-platform-v07
 cd express-reliability-platform-v07
+
+# 1. One command provisions a sized environment + the app + monitoring. Default is dev.
+ENV=dev  ./scripts/tf_deploy_v7.sh   # 1× t3.medium, $50/mo budget
+# ENV=prod ./scripts/tf_deploy_v7.sh  # 3× t3.medium, $300/mo budget
+
+# 2. Get the public URL (~25 minutes after step 1 starts; ALB takes 60-90s)
+kubectl get svc web-ui-web-ui -n platform \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+
+# 3. Try the risk-scoring intro against a simulated bad incident
+./scripts/risk_score.sh 650 1.8 1 2
+
+# 4. When done: destroy this env (the other env's state stays put)
+ENV=dev ./scripts/cleanup_v7.sh
 ```
 
-Use the main class repository for scripts and canonical structure:
+Prefer to stay local? Skip straight to the [local monitoring stack](#local-monitoring-stack) — `docker compose up --build -d` brings up `flask-api`, `web-ui`, `prometheus`, `grafana`, and `alertmanager` with no AWS account required.
 
-- https://github.com/Here2ServeU/express-reliability-platform-course
-
-## 2) Version Purpose
-
-By V6 your infrastructure was modular, repeatable, and cost-aware, deployed on shared/live Terraform layers through a GitHub Actions OIDC pipeline. The platform is now structured and automated: but when something breaks at 2 a.m., a human still has to read every alert and decide what matters.
-
-Version 7 adds **AIOps incident management**: you take your platform's health signals (latency, error rate, restarts, blast radius), turn them into a **risk score from 0 to 100**, classify the **severity**, write a **machine-readable incident summary**, and: when the score is high enough: fire a **Slack alert automatically**. You practice this loop locally first, then promote it through `dev → staging → prod` with guardrails.
-
-**V7 Goal:** Convert raw signals into a scored, summarized, and routed incident: with a JSON evidence file written for every run and Slack notification wired into the scoring script.
+**You'll know it worked when** `curl -I http://<the-hostname>` returns `HTTP/1.1 200 OK`, `kubectl get pods -n platform` shows 6 pods all `Running 1/1`, and `kubectl get pods -n monitoring` shows the Prometheus/Grafana/Alertmanager pods `Running`.
 
 ---
 
-## 3) Plain Language Context
+## What's new in V7 (and what stayed exactly the same)
 
-**The emergency-room triage analogy.** A triage nurse takes every patient's vital signs, assigns a priority number (1 = immediate, 5 = can wait), and hands the doctor a card: *"Priority 2. Elevated heart rate and blood pressure. Recommend ECG."* The doctor doesn't re-check every patient; they trust the triage.
+V6 gave you modular, repeatable, cost-aware infrastructure — but standing up a cluster is only half the reliability story. Once it's running, someone has to *notice* when it's unhealthy, *decide* how bad that is, and *know what to do next*. V7 is the first version to close that loop, deliberately kept small: this is an introduction, not the full incident-management system later versions build.
 
-V7 builds the same thing for your platform. Instead of patients you have services. Instead of vital signs you have latency, error rate, restart count, and how many services failed together. The scoring script is the nurse: it reads the numbers, produces a priority (`low` / `medium` / `high`), and hands you a card (`recommended_action`): and pages the on-call via Slack when the priority is high.
+**Unchanged from V6, byte-for-byte in structure:** `platform/terraform/{bootstrap,eks,modules/{vpc,eks-iam,eks-cluster,budget}}`, `platform/helm/{flask-api,node-api,web-ui}`, and the `tf_deploy_v7.sh` / `build_push_images_v7.sh` / `cleanup_v7.sh` script trio. If you've deployed V6, you already know how to deploy V7 — only the version suffix (`v07`) and a couple of CIDR blocks differ. See [Modules overview](#modules-overview) and [Per-environment deploy](#per-environment-deploy) below; they're V6's sections with the numbers updated.
 
-**Why a bank or hospital needs this.** Large regulated organizations receive thousands of monitoring alerts per day. No human team can review each one. AIOps tooling scores every alert, writes evidence for auditors, and surfaces only the ones that need a person: so engineers spend their time fixing real problems instead of reading noise.
+**New layers added on top:**
 
-**Key terms in plain language:**
-
-| Term | Plain Language Meaning |
-|---|---|
-| **AIOps** | Using automation and simple decision logic to help operations teams detect, prioritize, and fix incidents faster. |
-| **Incident signal** | A measurable sign that something is wrong: high latency, high error rate, pod restarts, multiple services failing. |
-| **SLI** | The measured value (for example, p95 latency in milliseconds). |
-| **SLO** | The target you promise for an SLI (for example, p95 latency under 500 ms). |
-| **Risk score** | A number (0:100 here) estimating how serious an incident is. Built from transparent rules, not guesswork. |
-| **Severity band** | `low` (0:39), `medium` (40:69), `high` (70:100): defined in `artifacts/aiops/risk-rules.yaml`. |
-| **Incident summary** | A short, machine-readable report: impacted service, severity, risk score, recommended first action, owner, timestamp. |
-| **Evidence file** | The JSON written for every scoring run; your audit trail and your portfolio proof. |
-| **Blast radius** | How much of the system a fault affects. Two or more services failing together expands it. |
-| **Guardrail** | A safety rule that limits risk during tests: e.g. `prod` tests require `APPROVED_PROD_TEST=true`. |
-| **Recovery validation** | Proving the service returned to a healthy state (health endpoint up, SLO/SLI trends back to baseline) after mitigation. |
-
-**Expected result at the end of this version:**
-
-- `./scripts/aiops_score_and_summarize.sh <incident_id> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner> <output_file>` writes a JSON evidence file and prints `risk_score=… severity=…`.
-- `./scripts/aiops_local_incident_test.sh` checks the local stack's health endpoint, scores an incident, and writes evidence to `artifacts/aiops/evidence/local/*.json`.
-- `./scripts/aiops_cloud_incident_test.sh dev …` does the same for a cloud environment and writes to `artifacts/aiops/evidence/cloud/*.json`.
-- When `SLACK_WEBHOOK_URL` is exported, every scoring run sends a Slack alert; when it is not, the script prints a dry-run preview instead.
-- The cloud test refuses to run against `prod` unless `APPROVED_PROD_TEST=true`.
-
----
-
-## 4) Training Workflow (Understand → Build → Test → Break → Fix → Explain → Automate → Improve)
-
-1. **Understand:** Read `artifacts/aiops/risk-rules.yaml`, `artifacts/aiops/aiops-incident-management.md`, and the high-demand AIOps engineer blueprint.
-2. **Build:** Bring up the local stack (`docker compose up`: flask-api, web-ui, prometheus, grafana, alertmanager) and make the V7 scripts executable.
-3. **Test:** Run the local AIOps incident test; confirm a JSON evidence file is written and the score/severity print.
-4. **Break:** Stop a service in the local stack on purpose; watch the health endpoint fail.
-5. **Fix:** Restart the service, re-run the test, confirm recovery criteria.
-6. **Explain:** Write the three answers: what failed, why, what fixed it: for every drill.
-7. **Automate:** Let `aiops_score_and_summarize.sh` own scoring + Slack; let GitHub Actions (`.github/workflows/provision.yml`) own the cloud deploy.
-8. **Improve:** Tune thresholds in `risk-rules.yaml`, improve summary quality, and drive down mean time to detect / recover.
-
-## 5) Skills That Match High AIOps Engineer Demand
-
-Practiced directly in this version (see `artifacts/aiops/high-demand-aiops-engineer-blueprint.md`):
-
-1. **Observable systems**: collect metrics, logs, events, and health signals.
-2. **Fast triage**: move from signal to incident summary in one command.
-3. **Risk scoring**: prioritize by impact using transparent rules, not gut feel.
-4. **Automation**: generate repeatable, machine-readable incident evidence.
-5. **Safe promotion**: validate in `dev`, then `staging`, then `prod` behind guardrails.
-6. **Evidence culture**: keep JSON outputs for post-incident review, audit, and portfolio.
-
-## 6) What You Will Build
-
-- A local testing stack: `docker-compose.yml` runs **flask-api**, **web-ui**, **prometheus**, **grafana**, and **alertmanager** so the AIOps scripts have a real platform to poll, score, and break.
-- A documented AIOps incident-management approach (`artifacts/aiops/aiops-incident-management.md`).
-- A risk-rule set with severity bands (`artifacts/aiops/risk-rules.yaml`).
-- A scoring + summary engine that also routes to Slack (`scripts/aiops_score_and_summarize.sh`).
-- A local incident-test workflow with health check and evidence output (`scripts/aiops_local_incident_test.sh`).
-- A cloud incident-test workflow with environment guardrails (`scripts/aiops_cloud_incident_test.sh`).
-- A standalone Slack webhook sender that can format messages from an evidence file (`slack/send_slack_webhook.sh`).
-- The carried-forward Terraform layers (`environments/shared`, `environments/live`, `modules/*`, `infrastructure/bootstrap`) and Helm charts (`environments/live/helm/*`), deployable by hand or by the `provision.yml` pipeline.
-- The continued V2-lineage web console, now showing AIOps risk scoring (`apps/web-ui/index.html`).
-
-## 7) Architecture Diagram (Mermaid)
-
-```mermaid
-flowchart LR
-    Signals[Metrics + Logs + Events<br/>latency, error rate, restarts] --> Detect[Anomaly Detection]
-    Detect --> Score["Risk Scoring<br/>aiops_score_and_summarize.sh"]
-    Score --> Summary["Incident Summary (JSON)<br/>artifacts/aiops/evidence/*"]
-    Summary --> Action[Recommended First Action]
-    Action -->|severity high| Slack["Slack Alert<br/>send_slack_webhook.sh"]
-    Action --> Ops[Operator + Runbook]
-    Ops --> Validate[Recovery Validation<br/>health up, SLO/SLI baseline]
-```
-
-## 8) Project Structure
-
-```text
-express-reliability-platform-v07/
-├── docker-compose.yml                        ← local testing stack: flask-api, web-ui, prometheus, grafana, alertmanager
-├── apps/
-│   ├── flask-api/                            ← Flask service: /, /metrics, /api/health
-│   │   ├── app.py  requirements.txt  Dockerfile
-│   └── web-ui/
-│       ├── index.html                        ← V7 AIOps incident-intelligence console (V2 lineage)
-│       ├── nginx.conf                        ← serves index.html, proxies /api/ -> flask-api
-│       └── Dockerfile
-├── monitoring/                               ← carried forward from V5
-│   ├── prometheus.yml                        ← scrape config; routes alerts to alertmanager:9093
-│   ├── alert.rules.yml                       ← ServiceDown / HighErrorRate / HighLatency alerts
-│   ├── alertmanager/
-│   │   └── alertmanager.yml                  ← alert routing + webhook receiver
-│   ├── grafana-dashboard.json                ← platform overview dashboard (import into Grafana)
-│   └── grafana-dashboard-golden-signals.json ← golden-signals dashboard (latency / traffic / errors / saturation)
-├── artifacts/
-│   └── aiops/
-│       ├── aiops-incident-management.md      ← the AIOps loop, signals, summary template
-│       ├── high-demand-aiops-engineer-blueprint.md
-│       ├── risk-rules.yaml                   ← scoring rules + severity bands
-│       └── evidence/                         ← generated at runtime
-│           ├── local/*.json
-│           └── cloud/*.json
-├── environments/
-│   ├── shared/                               ← shared S3 bucket layer (carried forward)
-│   │   ├── main.tf  outputs.tf  variables.tf  shared.tfvars
-│   └── live/                                 ← EKS + ALB layer
-│       ├── main.tf  outputs.tf  variables.tf  live.tfvars
-│       └── helm/
-│           ├── fintech-chart/                ← Chart.yaml + values.yaml
-│           ├── hospital-chart/
-│           ├── ui-chart/
-│           ├── ui-portal/
-│           └── global-monitoring/            ← Prometheus + Grafana values
-├── infrastructure/
-│   └── bootstrap/                            ← remote-state bucket + DynamoDB lock + IAM role
-│       ├── main.tf  outputs.tf  variables.tf  README.md
-├── modules/
-│   ├── alb/                                  ← main.tf + variables.tf
-│   ├── eks/
-│   ├── iam/
-│   └── vpc/
-├── scripts/
-│   ├── aiops_score_and_summarize.sh          ← scores risk, writes JSON, sends Slack if SLACK_WEBHOOK_URL set
-│   ├── aiops_local_incident_test.sh          ← health check → score → evidence (local)
-│   ├── aiops_cloud_incident_test.sh          ← guardrailed score → evidence (dev/staging/prod)
-│   └── terraform_init_apply.sh               ← init + apply a given Terraform dir
-├── slack/
-│   └── send_slack_webhook.sh                 ← standalone Slack sender; can build a message from an evidence file
-├── .github/
-│   └── workflows/
-│       └── provision.yml                     ← terraform-shared / terraform-live / helm-deploy / notify
-├── .gitignore
-└── README.md
-```
-
-## 9) Scoring Logic (What the Numbers Mean)
-
-`scripts/aiops_score_and_summarize.sh` mirrors `artifacts/aiops/risk-rules.yaml`:
-
-| Condition | Points added |
-|---|---|
-| `error_rate_pct > 1.0` | +30 |
-| `latency_ms > 500` | +30 |
-| `restart_count > 0` | +20 |
-| `multi_service_failures > 1` | +20 |
-
-Severity bands and the recommended first action:
-
-| Risk score | Severity | Recommended first action |
+| Layer | What it is | Where it lives |
 |---|---|---|
-| 0:39 | `low` | Investigate dashboards and watch trends for ~10 minutes. |
-| 40:69 | `medium` | Open an incident ticket, assign an owner, apply the first runbook mitigation step. |
-| 70:100 | `high` | Declare an incident, start mitigation immediately, trigger on-call escalation (Slack alert fires automatically). |
+| **Monitoring** | Prometheus (metrics + alert rules), Grafana (two dashboards), Alertmanager (routing). Runs locally via Docker Compose or in-cluster via the `kube-prometheus-stack` Helm chart. | [`monitoring/`](monitoring/), [`docker-compose.yml`](docker-compose.yml), [`platform/helm/global-monitoring/`](platform/helm/global-monitoring/) |
+| **SRE incident response (intro)** | Severity levels, on-call roles, the detect→triage→mitigate→resolve→postmortem loop, and a blameless postmortem template. | [`sre/incidents/`](sre/incidents/) |
+| **AIOps risk scoring (intro)** | One script, four `if` blocks, no JSON evidence file, no Slack integration, no rules file to keep in sync — just enough to introduce the concept of turning signals into a score. | [`scripts/risk_score.sh`](scripts/risk_score.sh) |
 
-Each run writes a JSON object with `incident_id`, `service`, the raw signal values, `risk_score`, `severity`, `recommended_action`, `owner`, and `generated_at_utc`.
+**Why introductions, not full systems.** A full AIOps pipeline (JSON evidence per incident, automatic Slack paging, `dev → staging → prod` promotion guardrails) and a full incident-management system (ticket creation, chaos drills, ITSM integration) are real, valuable things — later versions of this course build them. Bolting all of that onto V7 before you've even watched a dashboard fire an alert would be building automation for a process you haven't practiced by hand yet. V7's job is to get metrics flowing and put the *concepts* in front of you: severity, triage, a risk score you can compute by hand. V8+ automates what you now understand.
+
+### Glossary (V7 additions only — see V6's README for the module/tfvars/tagging vocabulary, unchanged here)
+
+| Term | Plain-language meaning |
+|---|---|
+| **Golden signals** | The four things that describe whether a service is healthy: latency, traffic, errors, saturation. `monitoring/grafana-dashboard-golden-signals.json` has one panel per signal. |
+| **Alert rule** | A Prometheus expression that, when true for a sustained period (`for:`), fires an alert. `monitoring/alert.rules.yml` has three: `ServiceDown`, `HighErrorRate`, `HighLatency`. |
+| **Alertmanager** | The Prometheus component that receives firing alerts and routes them somewhere (Slack, email, a webhook) based on labels like `severity`. |
+| **Risk score** | A 0–100 number built from four transparent thresholds (latency, error rate, restarts, blast radius). `scripts/risk_score.sh` computes it from arguments you pass in by hand. |
+| **Severity band** | `low` (0–39), `medium` (40–69), `high` (70–100) — the same bands `risk_score.sh` prints and `sre/incidents/README.md` explains how to act on. |
+| **Postmortem** | A written, blameless account of an incident: what happened, the timeline, the root cause, what fixed it, and follow-up actions. Template: [`sre/incidents/postmortem-template.md`](sre/incidents/postmortem-template.md). |
+
+---
+
+## Modules overview
+
+Identical to V6 — same four modules, same contracts, just deployed under V7's own bootstrap/state.
+
+| Module | Purpose | Key inputs | Key outputs |
+|---|---|---|---|
+| [`modules/vpc`](platform/terraform/modules/vpc) | VPC, IGW, public subnets across N AZs, route table | `cidr_block`, `cluster_name`, `name_prefix` | `vpc_id`, `public_subnet_ids` |
+| [`modules/eks-iam`](platform/terraform/modules/eks-iam) | Cluster + node IAM roles with the four AWS-managed policies attached | `name_prefix` | `cluster_role_arn`, `node_role_arn` |
+| [`modules/eks-cluster`](platform/terraform/modules/eks-cluster) | EKS control plane + managed node group | `cluster_name`, `kubernetes_version`, `subnet_ids`, role ARNs, sizing | `cluster_name`, `cluster_endpoint` |
+| [`modules/budget`](platform/terraform/modules/budget) | Per-env `aws_budgets_budget` with 80%/100% email alerts | `monthly_limit_usd`, `alert_email`, `cost_filter_tags` | `budget_name`, `budget_id` |
+
+The root [`eks/main.tf`](platform/terraform/eks/main.tf) is the same thin composition as V6: provider `default_tags`, an untagged provider alias for the budget module (see V6's README for why), and four `module` calls. Nothing here changed except `version_suffix` flowing through to `v07`.
+
+---
+
+## Per-environment deploy
+
+Same two ready-to-apply environments as V6 — `dev` and `prod` — with V7's own CIDR blocks so it can coexist with a still-running V6 stack on the same account.
+
+| Setting | `dev.tfvars` | `prod.tfvars` |
+|---|---|---|
+| `vpc_cidr` | `10.45.0.0/16` | `10.46.0.0/16` (peerable with dev) |
+| `node_instance_types` | `["t3.medium"]` | `["t3.medium"]` |
+| `node_desired_size` / `min` / `max` | `1` / `1` / `2` | `3` / `2` / `6` |
+| `monthly_budget_usd` | `50` | `300` |
+| State key | `eks/v7/dev/terraform.tfstate` | `eks/v7/prod/terraform.tfstate` |
+| Cluster name | `reliability-platform-dev` | `reliability-platform-prod` |
+
+```sh
+ENV=dev  ./scripts/tf_deploy_v7.sh
+ENV=prod ./scripts/tf_deploy_v7.sh
+ENV=dev  ./scripts/cleanup_v7.sh   # tears down only dev; prod is untouched
+```
+
+**State separation, IAM naming, adding a `staging` env** — identical mechanics to V6: `-backend-config="key=eks/v7/${ENV}/terraform.tfstate"`, IAM roles named `reliability-platform-v07-<env>-eks-*-role`, and a new env is just a new tfvars file plus a non-overlapping CIDR. See V6's README section of the same name if you want the full explanation; nothing about the mechanism changed.
+
+---
+
+## Cost guardrails
+
+Unchanged from V6: the same `default_tags` provider block (`Project`, `App`, `Environment`, `Owner`, `CostCenter`, `Version`, `ManagedBy`), the same `aws.untagged` provider alias so the budget module doesn't need `budgets:TagResource`, and the same 80%/100% email-alert budget per environment. V7's `Version` tag reads `v07` instead of `v06`; everything else — including the Cost Allocation Tag activation step and the daily run-rate math — is identical. See V6's README "Cost guardrails" section for the full walkthrough.
+
+New in V7: if you deploy the in-cluster monitoring stack (`platform/helm/global-monitoring`), Prometheus/Grafana/Alertmanager add a small amount of compute to the node group — budget an extra node or bump `node_instance_types` if pods land `Pending` after installing it.
+
+---
 
 ## Prerequisites
 
-- [ ] Required tools installed: Terraform ≥ 1.5, kubectl, helm, AWS CLI v2, Docker, Node.js 18+, Python 3.
-- [ ] Docker Desktop is running — verify: `docker ps`
-- [ ] Make the helper scripts executable (one time):
+- [ ] **AWS CLI v2** configured (`aws configure`) with credentials that can create EKS, IAM, EC2, ECR, S3, and DynamoDB.
+- [ ] **Docker with `buildx`** running locally — verify with `docker ps`. V7 builds and pushes its own images, and the local monitoring stack runs in Docker Compose.
+- [ ] **Terraform ≥ 1.5**.
+- [ ] **kubectl ≥ 1.29 and helm ≥ 3.14**:
+  ```sh
+  # macOS
+  brew install kubectl helm
+
+  # Linux
+  curl -LO "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+  chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+  curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  ```
+- [ ] **No V6 sources needed.** Unlike V6 (which reads `flask-api`/`node-api` Dockerfiles from V5), V7 ships all three services in its own `apps/` — `build_push_images_v7.sh` builds entirely from this repo.
+- [ ] **Make the helper scripts executable** (one time):
+  ```sh
+  chmod +x scripts/*.sh
+  ```
+
+---
+
+## Deploy
+
+V7 owns its full stack: a state backend (S3 + DynamoDB), three ECR repos, an EKS cluster, three Helm app releases, and (new) the monitoring Helm release. V6 does not need to be deployed or even present.
+
+### Path A: Scripted (recommended)
 
 ```sh
-chmod +x scripts/*.sh
+ENV=dev  ./scripts/tf_deploy_v7.sh   # or ENV=prod
 ```
 
-## 10) Step-by-Step Guide (Local and Cloud)
+**What it runs, in order:**
 
-### Step A: Understand
+| # | Step | Time |
+|---|---|---|
+| 1 | Bootstrap apply: state bucket + lock table + 3 ECR repos (shared across envs) | ~1 min |
+| 2 | Build + push 3 `linux/amd64` images to ECR | ~3-5 min |
+| 3 | EKS apply with `-var-file=environments/${ENV}.tfvars` and per-env state key | **10-15 min** |
+| 4 | Configure kubectl and create the `platform` namespace | <1 min |
+| 5 | Helm install all three app charts | ~30s + pod startup |
+| 6 | `kubectl rollout restart` so `:latest` images are picked up | ~5s |
+| 7 | Wait for all app rollouts to finish | pod startup |
+| 8 | **New:** install monitoring (`kube-prometheus-stack`) into the `monitoring` namespace | ~1-2 min |
+| 9 | Print the public URL | ALB takes 60-90s |
+
+The script is idempotent within an env, and safe to switch `ENV` between runs — same as V6. Set `SKIP_MONITORING=true` to skip step 8 on a re-run where you only want to redeploy the apps.
+
+**You'll know it worked when** the script prints a hostname under "Public URL", `curl -I http://<that-hostname>` returns `HTTP/1.1 200 OK`, and `kubectl get pods -n monitoring` shows Prometheus/Grafana/Alertmanager pods `Running`.
+
+### Path B: Manual walkthrough
+
+Phases 1–6 are identical to V6's manual walkthrough (bootstrap, build/push, EKS apply, kubectl config, Helm install, public URL) — see V6's README for the full phase-by-phase breakdown with expected output at each step. The one addition:
+
+#### New Phase 7: Install monitoring · ~1-2 min
 
 ```sh
-cat artifacts/aiops/risk-rules.yaml
-cat artifacts/aiops/aiops-incident-management.md
-cat artifacts/aiops/high-demand-aiops-engineer-blueprint.md
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update prometheus-community
+helm upgrade --install global-monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  -f platform/helm/global-monitoring/values.yaml
 ```
 
-Before building, be able to answer:
+This installs Prometheus (scraping `flask-api`/`node-api` pods in the `platform` namespace), Grafana, and Alertmanager, using the same alert rules and routing as the local Docker Compose stack — just cluster-wide instead of per-container. `platform/helm/global-monitoring/values.yaml` is values for the community chart, not a standalone chart of its own.
 
-1. Which signals indicate an incident, and what point value each carries.
-2. How a risk score maps to a severity band.
-3. What first action is expected for each severity.
+```sh
+kubectl get pods -n monitoring
+kubectl port-forward -n monitoring svc/global-monitoring-grafana 3000:80
+open http://localhost:3000   # admin / admin
+```
 
-### Step B: Build (Local Setup)
+---
 
-**B1: Prerequisites**: install and verify Docker + Docker Compose, Terraform, AWS CLI, kubectl, Helm, `curl`, and `python3` (used by the Slack sender to parse evidence files).
+## Local monitoring stack
 
-**B2: Bring up the local testing stack**: `docker-compose.yml` in this repo runs five services:
-
-| Service | Image / build | Host port | Purpose |
-|---|---|---|---|
-| `flask-api` | `apps/flask-api` | `5050` → 5000 | App under test; serves `/`, `/metrics`, `/api/health`. |
-| `web-ui` | `apps/web-ui` | `8080` → 80 | V7 AIOps console; nginx also proxies `/api/` → `flask-api`, so `http://localhost:8080/api/health` works. |
-| `prometheus` | `prom/prometheus` | `9090` | Scrapes the app targets in `monitoring/prometheus.yml`; loads `monitoring/alert.rules.yml`; sends firing alerts to `alertmanager`. |
-| `grafana` | `grafana/grafana` | `3001` → 3000 | Login `admin` / `admin`. Add the Prometheus datasource (`http://prometheus:9090`), then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json`. |
-| `alertmanager` | `prom/alertmanager` | `9093` | Receives firing alerts from Prometheus and routes them per `monitoring/alertmanager/alertmanager.yml`. |
-
-> Note: `monitoring/prometheus.yml` is carried forward from V5 and also lists a `node-api` scrape target. V7 has no `node-api` service, so that target shows as **down** in Prometheus; that is expected. Remove the job from `monitoring/prometheus.yml` if you want a clean targets page.
+No AWS account needed — this is entirely Docker Compose, and it's the fastest way to see the golden signals and alert rules in action before paying for EKS.
 
 ```sh
 docker compose up --build -d
 docker compose ps
-
-curl http://localhost:8080/api/health          # {"service":"flask-api","status":"ok","version":"v7"}
-curl http://localhost:5050/api/health          # same, hitting flask-api directly
-open http://localhost:8080                      # the V7 AIOps console
-open http://localhost:9090/targets              # flask-api should be UP (node-api will be down; see note above)
-open http://localhost:9093                      # Alertmanager
-open http://localhost:3001                      # Grafana (admin / admin): add the datasource, import the dashboards
 ```
 
-**B3: Make the V7 scripts executable:**
+| Service | Image / build | Host port | Purpose |
+|---|---|---|---|
+| `flask-api` | `apps/flask-api` | `5050` → 5000 | App under test; serves `/`, `/metrics`, `/api/health`, `/health`, `/score`. |
+| `web-ui` | `apps/web-ui` | `8080` → 80 | The console; nginx proxies `/api/` → `flask-api` locally (it proxies to `node-api` when deployed via Helm — see [Configuration reference](#configuration-reference)). |
+| `prometheus` | `prom/prometheus` | `9090` | Scrapes `monitoring/prometheus.yml` targets; loads `monitoring/alert.rules.yml`; forwards firing alerts to `alertmanager`. |
+| `grafana` | `grafana/grafana` | `3001` → 3000 | Login `admin`/`admin`. Add the Prometheus datasource (`http://prometheus:9090`), then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json`. |
+| `alertmanager` | `prom/alertmanager` | `9093` | Receives firing alerts, routes per `monitoring/alertmanager/alertmanager.yml`. |
 
 ```sh
-chmod +x scripts/aiops_score_and_summarize.sh \
-         scripts/aiops_local_incident_test.sh \
-         scripts/aiops_cloud_incident_test.sh \
-         slack/send_slack_webhook.sh
+curl http://localhost:8080/api/health   # {"service":"flask-api","status":"ok","version":"v7"}
+curl http://localhost:5050/api/health   # same, hitting flask-api directly
+open http://localhost:8080              # the console
+open http://localhost:9090/targets      # flask-api should be UP (node-api will be down — no node-api container in this local stack, which is expected)
+open http://localhost:9093              # Alertmanager
+open http://localhost:3001              # Grafana
 ```
 
-### Step C: Test (Local AIOps)
+**Try the risk-scoring intro against the running stack:**
 
 ```sh
-./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health flask-api 650 1.8 1 1 local-oncall
+./scripts/risk_score.sh              # healthy baseline → 0 / low
+./scripts/risk_score.sh 650 1.8 1 2  # simulated bad incident → 100 / high
 ```
 
-Argument order: `<api_url> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner>`. Every argument is optional and falls back to a default (the default URL is `http://localhost:8080/api/health` and the default service is `flask-api`): `./scripts/aiops_local_incident_test.sh` alone works too.
-
-What it does:
-
-1. Verifies the health endpoint is reachable (`curl -fsS`).
-2. Echoes the incident signal values it will score.
-3. Calls `aiops_score_and_summarize.sh` with an auto-generated `incident_id` (`local-<UTC timestamp>`).
-4. Writes the evidence file to `artifacts/aiops/evidence/local/<incident_id>.json`.
-5. Prints recovery criteria to confirm (health endpoint up, SLO/SLI back to baseline).
-
-Score one incident directly (note the trailing **output file** argument):
-
-```sh
-./scripts/aiops_score_and_summarize.sh INC-001 flask-api 650 1.8 1 1 local-oncall artifacts/aiops/evidence/local/INC-001.json
-```
-
-#### Slack notifications: complete beginner walkthrough
-
-**What is this?** A Slack *Incoming Webhook* is a private URL. Anything you `POST` to that URL shows up as a message in one Slack channel. That's the whole trick: no bot, no login from the script, just a URL. The V7 scripts use it to page the on-call when an incident scores `high`.
-
-##### Why you might see "nothing in Slack"
-
-There are **two different no-send situations**, and both are normal:
-
-1. **You used `--dry-run`.** The `--dry-run` flag *never* posts to Slack: on purpose. It just prints the message in your terminal so you can check the wording. Example: `./slack/send_slack_webhook.sh --dry-run --message "..."` will *always* be silent in Slack. That is correct behavior.
-2. **`SLACK_WEBHOOK_URL` is not set.** If that environment variable is empty, the scripts fall back to dry-run mode automatically and just print the preview. You haven't done anything wrong; you just haven't given it a webhook URL yet.
-
-So before a real message can appear, two things must be true: **you are not passing `--dry-run`**, and **a real webhook URL is available** (via `SLACK_WEBHOOK_URL` or `--url`).
-
-##### Step 1: Create a Slack Incoming Webhook (one time, ~2 minutes)
-
-1. Open <https://api.slack.com/apps> in a browser (sign in to your Slack workspace if asked).
-2. Click **Create New App** → **From scratch**.
-3. Give it a name like `erp-aiops-alerts`, pick the workspace you want alerts in, click **Create App**.
-4. In the left sidebar click **Incoming Webhooks**, then flip the toggle at the top to **On**.
-5. Scroll down, click **Add New Webhook to Workspace**.
-6. Pick the channel the alerts should land in (e.g. `#incidents` or just message yourself), click **Allow**.
-7. You're back on the Incoming Webhooks page. Under **Webhook URL** click **Copy**. It looks like:
-   `https://hooks.slack.com/services/YOUR/WEBHOOK/URL`
-
-> Keep that URL private: anyone who has it can post to your channel. Don't paste it into a public repo or a screenshot.
-
-##### Step 2: Tell the scripts about your webhook URL
-
-Open a terminal **in this project folder** and run (paste your real URL):
-
-```sh
-export SLACK_WEBHOOK_URL='https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-```
-
-Check it actually took:
-
-```sh
-echo "$SLACK_WEBHOOK_URL"          # should print your URL, not a blank line
-```
-
-> This `export` only lasts for the current terminal window. Open a new tab and you'd have to do it again.
-
-**Make it permanent (recommended):** add the same line to your shell startup file so every new terminal has it.
-
-```sh
-echo 'export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/YOUR/WEBHOOK/URL"' >> ~/.zshrc
-source ~/.zshrc                    # apply it to the current terminal too
-echo "$SLACK_WEBHOOK_URL"          # confirm again
-```
-
-(If you use bash instead of zsh, use `~/.bashrc` in place of `~/.zshrc`.)
-
-##### Step 3: Send a real message
-
-```sh
-# 1) Preview only: never touches Slack (safe to run anytime):
-./slack/send_slack_webhook.sh --dry-run --message "AIOps test from V7"
-
-# 2) Send for real: needs SLACK_WEBHOOK_URL set (Step 2):
-./slack/send_slack_webhook.sh --message "AIOps test from V7"
-
-# 3) Send without exporting anything: pass the URL right on the command line:
-./slack/send_slack_webhook.sh --url 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL' --message "AIOps test from V7"
-
-# 4) Build the alert from a real incident evidence file (generate one first so the file exists):
-./scripts/aiops_score_and_summarize.sh INC-001 flask-api 650 1.8 1 1 local-oncall artifacts/aiops/evidence/local/INC-001.json
-./slack/send_slack_webhook.sh --evidence-file artifacts/aiops/evidence/local/INC-001.json
-```
-
-**What success looks like:** the script prints `Slack alert sent.` and the message appears in your chosen channel within a second or two.
-
-**What failure looks like:** it prints `Slack did not accept the message. Response: ...` (or `invalid_token` / `no_service`) and exits with a non-zero status. That almost always means the URL is wrong, was revoked, or has a typo: go back to Step 1 and copy it again. The script is deliberately loud here so a bad URL never *looks* like it worked.
-
-##### Step 4: Wire it into the incident scoring (automatic alerts)
-
-Once `SLACK_WEBHOOK_URL` is exported (Step 2), the scoring script sends a Slack alert on **every** run: and the wording reflects the severity (`:rotating_light:` for `high`, `:warning:` for `medium`, `:white_check_mark:` for `low`):
-
-```sh
-./scripts/aiops_local_incident_test.sh http://localhost:8080/api/health flask-api 650 1.8 1 1 local-oncall
-```
-
-If `SLACK_WEBHOOK_URL` is *not* set, that same command instead prints:
-
-```text
-[Slack] SLACK_WEBHOOK_URL not set; skipping notification.
-        Message that would be sent: <severity> alert for <service> (risk_score=<n>)
-```
-
-: which is your cue to go do Step 2.
-
-##### Quick checklist if Slack still shows nothing
-
-- Did you leave off `--dry-run`? (`--dry-run` is *always* silent in Slack; that's its job.)
-- Does `echo "$SLACK_WEBHOOK_URL"` print your real `https://hooks.slack.com/services/...` URL in *this* terminal? If it's blank, re-run the `export` (Step 2) or `source ~/.zshrc`.
-- Did the script print `Slack alert sent.`? If it printed an error instead, the webhook URL is the problem: recreate/recopy it (Step 1).
-- Are you looking in the channel you picked in Step 1.6? The webhook only ever posts to that one channel.
-- Is `python3` installed? (`python3 --version`) The sender uses it to build the JSON payload and to parse `--evidence-file`.
-
-### Step D: Break the System (Local Failure Drill)
-
-```sh
-docker compose stop flask-api
-curl -i http://localhost:8080/api/health     # 502 from nginx; flask-api is gone
-open http://localhost:9090/targets            # flask-api now DOWN; the ServiceDown alert arms
-open http://localhost:9090/alerts             # ServiceDown moves Pending -> Firing after 30s
-open http://localhost:9093                     # the firing alert lands in Alertmanager
-```
-
-This is what an incident actually looks like in operations: a dependency goes away and the health check starts failing. Note how `./scripts/aiops_local_incident_test.sh` now fails fast at the `curl -fsS` health check, exactly as it should.
-
-### Step E: Fix the System
-
-```sh
-docker compose start flask-api
-curl http://localhost:8080/api/health         # back to {"status":"ok",...}
-./scripts/aiops_local_incident_test.sh
-```
-
-### Step F: Explain What Happened
-
-Document these three answers after every drill:
-
-1. What failed?
-2. Why did it fail?
-3. What fixed it?
-
-### Step G: Automate
-
-The automation is already in place; your job is to use and extend it:
-
-- `scripts/aiops_score_and_summarize.sh`: scoring + JSON evidence + Slack in one place.
-- `scripts/aiops_local_incident_test.sh` / `scripts/aiops_cloud_incident_test.sh`: repeatable test harnesses.
-- `.github/workflows/provision.yml`: on every push to `main`, runs `terraform-shared`, `terraform-live`, then `helm-deploy` (fintech, hospital, ui charts), then `notify`. Requires the repo secret `AWS_ROLE_TO_ASSUME` (an IAM role ARN with a GitHub OIDC trust policy: reuse the one from earlier versions).
-
-### Step H: Improve
-
-After each drill:
-
-1. Adjust thresholds and point values in `artifacts/aiops/risk-rules.yaml` (and keep `aiops_score_and_summarize.sh` in sync).
-2. Improve the quality of `recommended_action` text for each severity.
-3. Track and reduce mean time to detect and mean time to recover across drills.
-
-### Step I: Cloud Deployment and AIOps Testing
-
-**I1: Configure AWS access**
-
-```sh
-aws configure
-aws sts get-caller-identity
-```
-
-**I2: (Optional) Bootstrap remote state**: only if you do not already have a state backend from a prior version:
-
-```sh
-terraform -chdir=infrastructure/bootstrap init
-terraform -chdir=infrastructure/bootstrap apply -auto-approve
-```
-
-**I3: Deploy the shared layer**
-
-```sh
-terraform -chdir=environments/shared init
-terraform -chdir=environments/shared validate
-terraform -chdir=environments/shared plan  -var-file=shared.tfvars
-terraform -chdir=environments/shared apply -var-file=shared.tfvars
-```
-
-**I4: Fill in live network values**: edit `environments/live/live.tfvars` and replace the placeholders `vpc_id = "vpc-xxxxxxxx"` and the two `subnet-…` entries with real IDs.
-
-**I5: Deploy the live layer (EKS + ALB)**
-
-```sh
-terraform -chdir=environments/live init
-terraform -chdir=environments/live validate
-terraform -chdir=environments/live plan  -var-file=live.tfvars
-terraform -chdir=environments/live apply -var-file=live.tfvars
-```
-
-**I6: Install Helm charts** (the `provision.yml` pipeline also does this on push):
-
-```sh
-aws eks --region us-east-1 update-kubeconfig --name express-reliability-platform-eks-live
-helm upgrade --install fintech  ./environments/live/helm/fintech-chart  --namespace fintech  --create-namespace
-helm upgrade --install hospital ./environments/live/helm/hospital-chart --namespace hospital --create-namespace
-helm upgrade --install ui       ./environments/live/helm/ui-chart       --namespace ui       --create-namespace
-```
-
-**I7: Test cloud AIOps in `dev`**
-
-```sh
-./scripts/aiops_cloud_incident_test.sh dev node-api 700 2.2 1 2 cloud-oncall
-```
-
-Argument order: `<environment> <service> <latency_ms> <error_rate_pct> <restart_count> <multi_service_failures> <owner>`. Valid environments are `dev`, `staging`, `prod` only.
-
-**I8: Promote to `staging`** after a stable recovery in `dev`:
-
-```sh
-./scripts/aiops_cloud_incident_test.sh staging node-api 650 1.5 1 1 cloud-oncall
-```
-
-**I9: Run a `prod` test only with approval**: the guardrail blocks it otherwise:
-
-```sh
-APPROVED_PROD_TEST=true ./scripts/aiops_cloud_incident_test.sh prod node-api 600 1.2 1 1 cloud-oncall
-```
-
-Cloud evidence lands in `artifacts/aiops/evidence/cloud/<env>-<timestamp>.json`.
-
-### Step J: Cleanup (Local)
-
-```sh
-docker compose down            # stop flask-api, web-ui, prometheus, grafana, alertmanager
-docker compose down -v         # also drop the grafana-data volume, if you want a clean slate
-```
-
-## 11) Validation Checklist
-
-- [ ] AIOps incident-management notes and risk rules are reviewed (`artifacts/aiops/`).
-- [ ] `docker compose up --build -d` brought up `flask-api`, `web-ui`, `prometheus`, `grafana`, and `alertmanager`; `http://localhost:8080/api/health` returns `status: ok` and Prometheus shows `flask-api` UP.
-- [ ] `risk-rules.yaml` thresholds and severity bands match `aiops_score_and_summarize.sh`.
-- [ ] Local AIOps test ran the health check and wrote a JSON evidence file to `artifacts/aiops/evidence/local/`.
-- [ ] Slack dry-run output is visible with no `SLACK_WEBHOOK_URL` set.
-- [ ] A real Slack alert fires when `SLACK_WEBHOOK_URL` is exported.
-- [ ] `send_slack_webhook.sh --evidence-file …` formats a readable message from a JSON file.
-- [ ] Cloud AIOps test wrote `dev` evidence to `artifacts/aiops/evidence/cloud/`.
-- [ ] Promotion to `staging` happened only after a stable `dev` recovery.
-- [ ] A `prod` test ran only with `APPROVED_PROD_TEST=true`.
-- [ ] Every incident summary includes severity, risk score, and a recommended first action.
-- [ ] Recovery is tied to SLO/SLI targets (health endpoint up, trends back to baseline).
-
-## 12) Troubleshooting
-
-- **Health endpoint fails locally**: make sure the local stack is up (`docker compose up --build -d` in this repo, then `docker compose ps`). `http://localhost:8080/api/health` is served by `web-ui` (nginx) and proxied to `flask-api`; if it returns `502`, `flask-api` is down: `docker compose up -d flask-api` or check `docker compose logs flask-api`.
-- **Port already in use**: `8080`, `5050`, `9090`, `3001`, or `9093` is taken by something else. Stop the other process or edit the port mappings in `docker-compose.yml`.
-- **Grafana shows no data / no dashboard**: Grafana is not auto-provisioned in V7. Log in (`admin` / `admin`), add a Prometheus datasource pointing at `http://prometheus:9090`, then import `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json` via **Dashboards → New → Import**.
-- **`node-api` target down in Prometheus**: expected: `monitoring/prometheus.yml` is carried over from V5 and lists a `node-api` job, but V7 ships no `node-api` service. Ignore it or delete that job from `monitoring/prometheus.yml`.
-- **No evidence file created**: confirm the scripts are executable (`chmod +x scripts/*.sh slack/*.sh`) and that `aiops_score_and_summarize.sh` received all 8 arguments (the last one is the output file path).
-- **Too many high-risk incidents**: tune thresholds / point values in `artifacts/aiops/risk-rules.yaml` and `aiops_score_and_summarize.sh`.
-- **Slack message not sending**: verify `SLACK_WEBHOOK_URL` is exported in the current shell; run `slack/send_slack_webhook.sh --dry-run` first to confirm message format; ensure `python3` is installed (the sender uses it to parse evidence and build the JSON payload).
-- **`Invalid environment` from the cloud test**: the first argument must be exactly `dev`, `staging`, or `prod`.
-- **`Prod tests require APPROVED_PROD_TEST=true`**: set that variable only after a formal approval.
-- **Terraform `live` plan/apply fails**: confirm real `vpc_id` and `subnet_ids` are set in `environments/live/live.tfvars` (the defaults are placeholders).
-- **GitHub Actions can't reach AWS**: the `AWS_ROLE_TO_ASSUME` repo secret is missing or its IAM role's OIDC trust policy doesn't allow this repo/branch.
-
-## 13) Cloud Cleanup
-
-```sh
-terraform -chdir=environments/live   destroy -var-file=live.tfvars
-terraform -chdir=environments/shared destroy -var-file=shared.tfvars
-```
-
-- Archive everything under `artifacts/aiops/evidence/` (local and cloud) as portfolio proof.
-- Record lessons learned and follow-up action items with owners.
-- Leave `infrastructure/bootstrap` in place if other versions share that state backend.
-
-## 14) Next Version Preview
-
-In V8 you build on V7 and add the GitOps governance layer: Trivy image scanning, OPA Gatekeeper admission policies, Checkov infrastructure scanning, and risk scoring in the deployment workflow, so unsafe changes are blocked before they ever reach the cluster. (The full incident pipeline: ServiceNow and Jira tickets, chaos drills, and postmortems: follows in V9.)
+Shut it down with `docker compose down` (add `-v` to also drop the Grafana data volume).
 
 ---
 
-## 15) Web UI Guide: `apps/web-ui/index.html`
+## Validate the platform
 
-### Platform Continuity
+Checks 1–8 are identical to V6's — cluster up, pods running, public URL, health endpoint, self-healing, liveness probe, rolling update, rollback. See V6's README "Validate the platform" section for the full walkthrough with expected output. Two new checks:
 
-The V7 UI keeps the same V2 regulated-readiness console and evolves it with AIOps risk scoring and incident-triage checks. Students should experience this as the same platform growing, not a separate app.
+### 9. Monitoring is scraping the platform
 
-### What the V7 UI Does
+```sh
+kubectl port-forward -n monitoring svc/global-monitoring-prometheus 9090:9090 &
+open http://localhost:9090/targets
+```
+Expect: `flask-api` and `node-api` targets `UP`.
 
-The V7 `index.html` is the AIOps incident-intelligence console. It turns incident signals into a risk score, a severity label, and a recommended first action.
+### 10. Risk scoring intro runs
 
-The page checks:
+```sh
+./scripts/risk_score.sh 650 1.8 1 2
+```
+Expect: `TOTAL RISK SCORE: 100 / 100` and `VERDICT: HIGH`.
 
-- Reliability impact from latency, error rate, and blast radius.
-- Cost-efficiency impact from alert noise and operational toil.
-- Security and compliance through incident evidence.
-- Intelligence maturity through AIOps scoring and summary generation.
+---
 
-### What It Is Used For
+## Incident-response practice
 
-Use the V7 UI to explain AIOps in plain language: how an operations team moves from raw signals to prioritized action instead of guessing which alert matters most. Useful for:
+This is the "break it on purpose" drill V7 introduces — read [`sre/incidents/README.md`](sre/incidents/README.md) first for the roles/severity vocabulary, then run this against the **local** Docker Compose stack:
 
-- Demonstrating risk scoring from multiple incident inputs.
-- Practicing severity classification.
-- Explaining how AIOps reduces alert fatigue.
-- Preparing for V8's GitOps governance layer (Trivy, OPA Gatekeeper, Checkov, risk scoring).
+```sh
+# 1. Break it
+docker compose stop flask-api
+curl -i http://localhost:8080/api/health     # 502 from nginx — flask-api is gone
+open http://localhost:9090/targets            # flask-api now DOWN — ServiceDown alert arms
+open http://localhost:9090/alerts             # ServiceDown moves Pending -> Firing after 30s
+open http://localhost:9093                     # the firing alert lands in Alertmanager
 
-### How to Read the Results
+# 2. Triage: what would risk_score.sh say about this?
+./scripts/risk_score.sh 9999 100 1 1   # unreachable service ≈ maximal latency + error rate
 
-The UI generates an AIOps incident scorecard.
+# 3. Fix it
+docker compose start flask-api
+curl http://localhost:8080/api/health         # back to {"status":"ok",...}
 
-| Field | Meaning |
+# 4. Write it up
+cp sre/incidents/postmortem-template.md /tmp/flask-api-outage.md
+# fill in: what happened, timeline, root cause, what fixed it, follow-ups
+```
+
+This is deliberately manual — no evidence file gets written automatically, no Slack alert fires. The point of V7 is to practice the loop by hand before V8+ automates any of it.
+
+---
+
+## Operate (rolling updates, rollback, scaling)
+
+Identical to V6 — same `helm upgrade --set image.tag=...`, same `helm rollback` (never `kubectl rollout undo` on a Helm-managed deployment), same `kubectl scale`. See V6's README "Operate" section; nothing here changed for V7.
+
+---
+
+## Cleanup
+
+### Path A: Scripted (recommended)
+
+```sh
+ENV=dev  ./scripts/cleanup_v7.sh   # tear down dev only
+ENV=prod ./scripts/cleanup_v7.sh   # tear down prod only
+```
+
+Same mechanics as V6's cleanup script (Helm uninstall, namespace delete, orphan-ELB reaping, env-scoped EKS destroy, bootstrap destroy only when no other env's state remains) — plus one addition: it also uninstalls the `global-monitoring` Helm release and deletes the `monitoring` namespace before touching Terraform state. V6's bootstrap and ECR repos are never touched.
+
+Local Docker Compose stack:
+
+```sh
+docker compose down      # stop flask-api, web-ui, prometheus, grafana, alertmanager
+docker compose down -v   # also drop the grafana-data volume
+```
+
+### Path B: Manual
+
+Same as V6's manual cleanup path (Helm/namespace → LB reap → EKS destroy → bootstrap destroy → kubectl context), with `helm uninstall global-monitoring -n monitoring` and `kubectl delete namespace monitoring` added before step 1. See V6's README for the full script and the "why" behind the LB-reap and pre-destroy-apply steps — unchanged in V7.
+
+---
+
+## Reference
+
+### Project structure
+
+```text
+express-reliability-platform-v07/
+├── docker-compose.yml                        ← local stack: flask-api, web-ui, prometheus, grafana, alertmanager
+├── apps/
+│   ├── flask-api/                            ← Flask service: /, /health, /api/health, /metrics, /score
+│   ├── node-api/                             ← Express service: /, /health, /api/status, /score
+│   └── web-ui/
+│       ├── index.html                        ← V2-lineage readiness console (all versions, version picker)
+│       ├── nginx.conf.template                ← envsubst template; API_UPSTREAM picks flask-api (local) or node-api (k8s)
+│       └── Dockerfile
+├── monitoring/
+│   ├── prometheus.yml                        ← scrape config; routes alerts to alertmanager:9093
+│   ├── alert.rules.yml                       ← ServiceDown / HighErrorRate / HighLatency
+│   ├── alertmanager/
+│   │   └── alertmanager.yml                  ← alert routing + Slack receiver
+│   ├── grafana-dashboard.json                ← platform overview dashboard
+│   └── grafana-dashboard-golden-signals.json ← latency / traffic / errors / saturation
+├── sre/
+│   └── incidents/
+│       ├── README.md                         ← severity levels, roles, the detect→...→postmortem loop
+│       └── postmortem-template.md
+├── platform/
+│   ├── helm/
+│   │   ├── flask-api/                        ← Chart.yaml, values.yaml, templates/deployment.yaml
+│   │   ├── node-api/
+│   │   ├── web-ui/                           ← service.type=LoadBalancer
+│   │   └── global-monitoring/                ← values.yaml for the community kube-prometheus-stack chart
+│   └── terraform/
+│       ├── bootstrap/                        ← state backend + ECR (shared across envs)
+│       │   ├── main.tf  ecr.tf  variables.tf
+│       ├── modules/                          ← reusable, single-concern modules (identical to V6)
+│       │   ├── vpc/  eks-iam/  eks-cluster/  budget/
+│       └── eks/                              ← thin root composition (uses modules/)
+│           ├── main.tf  variables.tf
+│           └── environments/
+│               ├── dev.tfvars
+│               └── prod.tfvars
+├── scripts/
+│   ├── tf_deploy_v7.sh                       ← ENV=dev|staging|prod end-to-end deploy + monitoring
+│   ├── build_push_images_v7.sh               ← image pipeline (all three services from this repo's apps/)
+│   ├── cleanup_v7.sh                         ← ENV=dev|staging|prod env-scoped teardown
+│   └── risk_score.sh                         ← AIOps risk-scoring introduction
+├── .github/
+│   └── workflows/
+│       └── provision.yml                     ← bootstrap / terraform-eks / helm-deploy / notify
+├── .gitignore
+└── README.md
+```
+
+### Configuration reference
+
+#### 1. Helm chart values
+
+Same shape as V6, and (for `flask-api`/`node-api`/`web-ui`) identical values — this didn't change in V7.
+
+| Key | `flask-api` | `node-api` | `web-ui` |
+|---|---|---|---|
+| `replicaCount` | `2` | `2` | `2` |
+| `service.type` | `ClusterIP` | `ClusterIP` | `LoadBalancer` |
+| `service.port` | `5000` | `3000` | `80` |
+| `resources.requests` | `100m` / `128Mi` | `100m` / `128Mi` | `50m` / `64Mi` |
+| `resources.limits` | `500m` / `256Mi` | `500m` / `256Mi` | `250m` / `128Mi` |
+| `probes.liveness.path` | `/health` | `/health` | `/` |
+| `probes.liveness.initialDelaySeconds` | `30` | `30` | `15` |
+| `probes.readiness.path` | `/health` | `/health` | `/` |
+| `probes.readiness.initialDelaySeconds` | `10` | `10` | `5` |
+
+`image.repository` is always overridden by `--set image.repository=${ECR_BASE}/<svc>` from the deploy script — see V6's README "Helm chart values" section for the full table (probe periods/thresholds, override examples) and why the placeholder account ID in `values.yaml` is intentional.
+
+**`platform/helm/global-monitoring/values.yaml`** is new in V7: it's values for the community `prometheus-community/kube-prometheus-stack` chart, not a chart of its own. Edit it to change scrape targets, alert routing, or the Grafana admin password before deploying to a real environment (the default `admin`/`admin` is fine for this course, not for anything else).
+
+#### 2. Terraform variables
+
+Identical variable set to V6 — `aws_region`, `project_name`, `version_suffix` (now `v07`), `environment`, `owner`, `cost_center`, `vpc_cidr`, `kubernetes_version`, `node_instance_types`, `node_desired_size`/`min`/`max`, `monthly_budget_usd`, `budget_alert_email`. See V6's README "Terraform variables" section for the full table with defaults and when-to-change guidance — nothing here changed except the values in `dev.tfvars`/`prod.tfvars` (see [Per-environment deploy](#per-environment-deploy)).
+
+#### 3. Script environment variables
+
+| Script | Variable | Default | Purpose |
+|---|---|---|---|
+| [`build_push_images_v7.sh`](scripts/build_push_images_v7.sh) | (none — reads everything from `platform/terraform/bootstrap` output and `apps/`) | | No `V6_APPS_SRC`-style override needed: all three Dockerfiles live in this repo. |
+| [`tf_deploy_v7.sh`](scripts/tf_deploy_v7.sh) | `ENV` | `dev` | Which env to deploy. Picks the tfvars file and the per-env state key. |
+| | `SKIP_MONITORING` | `false` | Set `true` to skip installing/upgrading the monitoring Helm release. |
+| [`cleanup_v7.sh`](scripts/cleanup_v7.sh) | `ENV` | `dev` | Which env to tear down. Other envs' state is preserved. |
+| [`risk_score.sh`](scripts/risk_score.sh) | positional args | `120 0.2 0 0` | `latency_ms error_rate_pct restart_count multi_service_failures`, in that order — all optional, defaulting to a healthy baseline. |
+
+#### 4. Hardcoded values worth knowing about
+
+Same category as V6's table (backend block populated via `-backend-config`, `REGION`/`PROJECT`/`NAMESPACE` at the top of each script, `containerPort` in each chart's `templates/deployment.yaml`) — see V6's README for the full table. One V7-specific addition:
+
+| File | Value | When to edit |
+|---|---|---|
+| [`apps/web-ui/Dockerfile`](apps/web-ui/Dockerfile) | `ENV API_UPSTREAM=node-api-node-api:3000` | This is nginx's default proxy target for `/api/` — correct for the Helm/k8s deployment (where `node-api-node-api` is the in-cluster service name). `docker-compose.yml` overrides it to `flask-api:5000` for the local stack, which has no `node-api` container. Change the Dockerfile default only if you rename the Helm release. |
+
+### Architecture diagrams
+
+**What's new in V7, on top of V6's cluster:**
+
+```mermaid
+flowchart LR
+    Metrics[flask-api /metrics] --> Prom[Prometheus]
+    Prom -->|alert.rules.yml| AM[Alertmanager]
+    AM -->|severity label| Slack[Slack receiver]
+    Prom --> Grafana[Grafana dashboards]
+    AM --> Human[On-call reads sre/incidents/README.md]
+    Human --> Score["scripts/risk_score.sh<br/>(manual, by hand)"]
+    Score --> Action[low / medium / high verdict]
+    Action --> Postmortem[sre/incidents/postmortem-template.md]
+```
+
+**Deploy path — identical shape to V6, `v07` instead of `v06`, plus the monitoring install:**
+
+```mermaid
+flowchart LR
+    Boot[Terraform platform/terraform/bootstrap] --> S3[(S3: reliability-platform-v07-tfstate-...)]
+    Boot --> DDB[(DynamoDB: terraform-state-lock-v07)]
+    Boot --> ECR[(ECR: reliability-platform/flask-api, node-api, web-ui)]
+    Push[scripts/build_push_images_v7.sh] -->|linux/amd64 images| ECR
+    TF[Terraform platform/terraform/eks] --> EKS[EKS Control Plane]
+    EKS --> NG[Managed Node Group]
+    ECR --> NG
+    Helm1[helm install app charts] --> NG
+    Helm2[helm install global-monitoring] --> NG
+    User[Browser] --> ALB[ALB from web-ui-web-ui Service]
+    ALB --> NG
+```
+
+### Web UI guide
+
+`apps/web-ui/index.html` is the same client-side, self-contained readiness console every version of this course shares — a version picker (V1 through Capstone) that recomputes a simulated readiness score from three dropdowns (evidence, automation, governance quality) with no backend calls. It is **not** wired to `flask-api`/`node-api` or to real incident signals; the "AIOps" and "incident response" language in its V7 tile is narrative framing for the version-picker story, not a live integration with `monitoring/` or `scripts/risk_score.sh`.
+
+Selecting V7 in the picker shows:
+
+| Field (in the JSON output) | Meaning |
 |---|---|
-| `service` | The service being evaluated. |
-| `incident_risk_score` | Incident risk from 1 to 10. Higher is more urgent. |
-| `severity` | Severity label: `low`, `medium`, `high`, or `critical`. |
-| `readiness_score` | Overall platform readiness after considering incident risk. |
-| `recommended_first_action` | What the operator should do first. |
-| `next` | Points students toward V8 workflow automation. |
+| `readiness_score` | 0–100 average of the four domain scores below. |
+| `readiness_grade` | `production ready` / `controlled pilot` / `needs targeted improvement` / `high risk`. |
+| `domains.reliability`, `.cost_efficiency`, `.security_compliance`, `.intelligence_aiops_mlops` | Per-domain scores, adjusted by the evidence/automation/governance dropdowns. |
+| `version_adds`, `next` | Narrative text describing what this version adds and what comes next. |
 
-Suggested risk interpretation (UI 1:10 scale):
+Use it to explain the course's overall arc to a student, not as a live dashboard for this specific V7 deployment — for that, use Grafana (`monitoring/grafana-dashboard*.json`) and Prometheus, which are reading real metrics from real containers.
 
-- `1:3`: Low: monitor and document.
-- `4:6`: Medium: investigate and attach evidence.
-- `7:8`: High: open an incident and notify the team.
-- `9:10`: Critical: escalate immediately and follow the runbook.
+### Troubleshooting
 
-> Note: the UI uses a 1:10 readability scale; the `aiops_score_and_summarize.sh` script uses a 0:100 scale with bands `low` 0:39 / `medium` 40:69 / `high` 70:100. Same idea, different resolution.
+Identical failure modes to V6 apply unchanged (see V6's README table): `connection refused` from kubectl, nodes stuck `NotReady`, `ImagePullBackOff`, `CrashLoopBackOff`, pods `Pending`, `helm upgrade` hangs, `EXTERNAL-IP` stays `<pending>`, `budgets:TagResource` denial, state lock errors, AMI retirement, `DependencyViolation` on destroy, `BucketNotEmpty` on bootstrap destroy. V7-specific additions:
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Health endpoint fails locally | Local stack isn't up | `docker compose up --build -d`, then `docker compose ps`. `http://localhost:8080/api/health` is served by `web-ui` (nginx) and proxied to `flask-api`; a `502` means `flask-api` is down — `docker compose up -d flask-api` or check `docker compose logs flask-api`. |
+| Port already in use | `8080`/`5050`/`9090`/`3001`/`9093` taken by something else | Stop the other process or edit the port mappings in `docker-compose.yml`. |
+| Grafana shows no data / no dashboard | Not auto-provisioned | Log in `admin`/`admin`, add a Prometheus datasource (`http://prometheus:9090`), import both `monitoring/grafana-dashboard*.json` files via **Dashboards → New → Import**. |
+| `node-api` target `DOWN` in local Prometheus | Expected — the local Docker Compose stack has no `node-api` container | Ignore it, or delete the `node-api` job from `monitoring/prometheus.yml`. It's `UP` when scraped in-cluster via `global-monitoring`. |
+| `web-ui` proxies `/api/` to the wrong place | `API_UPSTREAM` mismatch | Local (Compose) should be `flask-api:5000` (set in `docker-compose.yml`); in-cluster (Helm) should be `node-api-node-api:3000` (the Dockerfile default). Don't edit one to match the other. |
+| `risk_score.sh` always prints `LOW` | Arguments in the wrong order, or none passed | Order is `latency_ms error_rate_pct restart_count multi_service_failures`. Run with no args to confirm the healthy baseline, then pass real numbers. |
+| `helm upgrade --install global-monitoring` fails with "chart not found" | Repo not added/updated | `helm repo add prometheus-community https://prometheus-community.github.io/helm-charts && helm repo update prometheus-community`. |
+
+---
+
+## What's next: V8
+
+V8 builds on V7 and adds the GitOps governance layer: Trivy image scanning, OPA Gatekeeper admission policies, Checkov infrastructure scanning, and risk scoring wired directly into the deployment workflow, so unsafe changes are blocked before they ever reach the cluster. The full incident pipeline this version only introduced by hand — evidence files, Slack paging, ServiceNow/Jira tickets, chaos drills — is built out in V9.
