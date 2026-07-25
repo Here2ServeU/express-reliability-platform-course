@@ -202,6 +202,8 @@ This installs Prometheus (scraping `flask-api`/`node-api` pods in the `platform`
 kubectl get pods -n monitoring
 kubectl port-forward -n monitoring svc/global-monitoring-grafana 3000:80
 open http://localhost:3000   # admin / admin
+kubectl port-forward -n monitoring svc/global-monitoring-prometheus 9090:9090
+open http://localhost:9090/targets   # expect flask-api & node-api UP
 ```
 
 ---
