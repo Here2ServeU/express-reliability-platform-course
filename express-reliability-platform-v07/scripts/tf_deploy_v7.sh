@@ -52,7 +52,7 @@ echo "  state bucket: ${STATE_BUCKET}"
 echo "  lock table:   ${LOCK_TABLE}"
 echo "  ECR base:     ${ECR_BASE}"
 
-echo '=== Step 2b: Build and push images (from this repo's apps/) ==='
+echo '=== Step 2b: Build and push images (from this repos apps/) ==='
 "${0%/*}/build_push_images_v7.sh"
 
 echo "=== Step 3: Initialize EKS stack against V7 bootstrap backend (${ENV}) ==="
