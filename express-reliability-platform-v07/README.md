@@ -66,7 +66,7 @@ V6 gave you modular, repeatable, cost-aware infrastructure — but standing up a
 
 | Layer | What it is | Where it lives |
 |---|---|---|
-| **Monitoring** | Prometheus (metrics + alert rules), Grafana (two dashboards), Alertmanager (routing). Runs locally via Docker Compose or in-cluster via the `kube-prometheus-stack` Helm chart. | [`monitoring/`](monitoring/), [`docker-compose.yml`](docker-compose.yml), [`platform/helm/global-monitoring/`](platform/helm/global-monitoring/) |
+| **Monitoring** | Prometheus (metrics + alert rules), Grafana (two dashboards), Alertmanager (routing). Runs locally via Docker Compose or in-cluster via the `kube-prometheus-stack` Helm chart, with dashboards loaded from the `grafana-dashboards` chart. | [`monitoring/`](monitoring/), [`docker-compose.yml`](docker-compose.yml), [`platform/helm/global-monitoring/`](platform/helm/global-monitoring/), [`platform/helm/grafana-dashboards/`](platform/helm/grafana-dashboards/) |
 | **SRE incident response (intro)** | Severity levels, on-call roles, the detect→triage→mitigate→resolve→postmortem loop, and a blameless postmortem template. | [`sre/incidents/`](sre/incidents/) |
 | **AIOps risk scoring (intro)** | One script, four `if` blocks, no JSON evidence file, no Slack integration, no rules file to keep in sync — just enough to introduce the concept of turning signals into a score. | [`scripts/risk_score.sh`](scripts/risk_score.sh) |
 
@@ -175,7 +175,7 @@ ENV=dev  ./scripts/tf_deploy_v7.sh   # or ENV=prod
 | 5 | Helm install all three app charts | ~30s + pod startup |
 | 6 | `kubectl rollout restart` so `:latest` images are picked up | ~5s |
 | 7 | Wait for all app rollouts to finish | pod startup |
-| 8 | **New:** install monitoring (`kube-prometheus-stack`) into the `monitoring` namespace | ~1-2 min |
+| 8 | **New:** install `grafana-dashboards` (dashboard ConfigMap), then monitoring (`kube-prometheus-stack`) into the `monitoring` namespace | ~1-2 min |
 | 9 | Print the public URL | ALB takes 60-90s |
 
 The script is idempotent within an env, and safe to switch `ENV` between runs — same as V6. Set `SKIP_MONITORING=true` to skip step 8 on a re-run where you only want to redeploy the apps.
@@ -189,6 +189,15 @@ Phases 1–6 are identical to V6's manual walkthrough (bootstrap, build/push, EK
 #### New Phase 7: Install monitoring · ~1-2 min
 
 ```sh
+kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+# grafana-dashboards must be installed before kube-prometheus-stack: the
+# Grafana pod's dashboardsConfigMaps.default value (in global-monitoring's
+# values.yaml) points at this ConfigMap, and its volume mount hangs in
+# ContainerCreating if the ConfigMap doesn't exist yet.
+helm upgrade --install grafana-dashboards platform/helm/grafana-dashboards \
+  --namespace monitoring
+
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update prometheus-community
 helm upgrade --install global-monitoring prometheus-community/kube-prometheus-stack \
@@ -196,7 +205,7 @@ helm upgrade --install global-monitoring prometheus-community/kube-prometheus-st
   -f platform/helm/global-monitoring/values.yaml
 ```
 
-This installs Prometheus (scraping `flask-api`/`node-api` pods in the `platform` namespace), Grafana, and Alertmanager, using the same alert rules and routing as the local Docker Compose stack — just cluster-wide instead of per-container. `platform/helm/global-monitoring/values.yaml` is values for the community chart, not a standalone chart of its own.
+This installs Prometheus (scraping `flask-api`/`node-api` pods in the `platform` namespace), Grafana, and Alertmanager, using the same alert rules and routing as the local Docker Compose stack — just cluster-wide instead of per-container. `platform/helm/global-monitoring/values.yaml` is values for the community chart, not a standalone chart of its own. `platform/helm/grafana-dashboards/` *is* a real (tiny) chart — it just wraps the two dashboard JSON files in `monitoring/` into a labeled ConfigMap the community chart's sidecar auto-loads.
 
 ```sh
 kubectl get pods -n monitoring
@@ -309,7 +318,7 @@ ENV=dev  ./scripts/cleanup_v7.sh   # tear down dev only
 ENV=prod ./scripts/cleanup_v7.sh   # tear down prod only
 ```
 
-Same mechanics as V6's cleanup script (Helm uninstall, namespace delete, orphan-ELB reaping, env-scoped EKS destroy, bootstrap destroy only when no other env's state remains) — plus one addition: it also uninstalls the `global-monitoring` Helm release and deletes the `monitoring` namespace before touching Terraform state. V6's bootstrap and ECR repos are never touched.
+Same mechanics as V6's cleanup script (Helm uninstall, namespace delete, orphan-ELB reaping, env-scoped EKS destroy, bootstrap destroy only when no other env's state remains) — plus one addition: it also uninstalls the `global-monitoring` and `grafana-dashboards` Helm releases and deletes the `monitoring` namespace before touching Terraform state. V6's bootstrap and ECR repos are never touched.
 
 Local Docker Compose stack:
 
@@ -320,7 +329,7 @@ docker compose down -v   # also drop the grafana-data volume
 
 ### Path B: Manual
 
-Same as V6's manual cleanup path (Helm/namespace → LB reap → EKS destroy → bootstrap destroy → kubectl context), with `helm uninstall global-monitoring -n monitoring` and `kubectl delete namespace monitoring` added before step 1. See V6's README for the full script and the "why" behind the LB-reap and pre-destroy-apply steps — unchanged in V7.
+Same as V6's manual cleanup path (Helm/namespace → LB reap → EKS destroy → bootstrap destroy → kubectl context), with `helm uninstall global-monitoring grafana-dashboards -n monitoring` and `kubectl delete namespace monitoring` added before step 1. See V6's README for the full script and the "why" behind the LB-reap and pre-destroy-apply steps — unchanged in V7.
 
 ---
 
@@ -354,7 +363,8 @@ express-reliability-platform-v07/
 │   │   ├── flask-api/                        ← Chart.yaml, values.yaml, templates/deployment.yaml
 │   │   ├── node-api/
 │   │   ├── web-ui/                           ← service.type=LoadBalancer
-│   │   └── global-monitoring/                ← values.yaml for the community kube-prometheus-stack chart
+│   │   ├── global-monitoring/                ← values.yaml for the community kube-prometheus-stack chart
+│   │   └── grafana-dashboards/                ← real chart: ConfigMap wrapping monitoring/*.json for Grafana's sidecar
 │   └── terraform/
 │       ├── bootstrap/                        ← state backend + ECR (shared across envs)
 │       │   ├── main.tf  ecr.tf  variables.tf
@@ -398,6 +408,8 @@ Same shape as V6, and (for `flask-api`/`node-api`/`web-ui`) identical values —
 `image.repository` is always overridden by `--set image.repository=${ECR_BASE}/<svc>` from the deploy script — see V6's README "Helm chart values" section for the full table (probe periods/thresholds, override examples) and why the placeholder account ID in `values.yaml` is intentional.
 
 **`platform/helm/global-monitoring/values.yaml`** is new in V7: it's values for the community `prometheus-community/kube-prometheus-stack` chart, not a chart of its own. Edit it to change scrape targets, alert routing, or the Grafana admin password before deploying to a real environment (the default `admin`/`admin` is fine for this course, not for anything else).
+
+**`platform/helm/grafana-dashboards/`** is new in V7 too, and unlike `global-monitoring/` it *is* a real chart (`Chart.yaml` + one templated ConfigMap). It packages `monitoring/grafana-dashboard.json` and `monitoring/grafana-dashboard-golden-signals.json` (copied into the chart's own `dashboards/` folder — Helm's `.Files.Get` can't read outside the chart directory) as a `grafana_dashboard: "1"`-labeled ConfigMap that the community chart's sidecar auto-discovers. It must be installed before `global-monitoring`, or the Grafana pod hangs in `ContainerCreating` waiting for a ConfigMap that doesn't exist yet. If you edit a dashboard JSON, copy the updated file into `platform/helm/grafana-dashboards/dashboards/` too and re-run `helm upgrade --install grafana-dashboards platform/helm/grafana-dashboards -n monitoring`.
 
 #### 2. Terraform variables
 
