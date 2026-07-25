@@ -110,6 +110,15 @@ echo '=== Step 9: Install monitoring stack (Prometheus/Grafana/Alertmanager) ===
 # local docker-compose stack, deployed cluster-wide. Set SKIP_MONITORING=true
 # to skip this step (e.g. re-running the script just to redeploy apps).
 if [ "${SKIP_MONITORING:-false}" != "true" ]; then
+  kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+  # grafana-dashboards must exist before the kube-prometheus-stack install:
+  # values.yaml sets dashboardsConfigMaps.default to this name, and the
+  # Grafana pod's volume mount hangs in ContainerCreating waiting for it if
+  # it's not there yet.
+  helm upgrade --install grafana-dashboards platform/helm/grafana-dashboards \
+    --namespace monitoring
+
   helm repo add prometheus-community https://prometheus-community.github.io/helm-charts >/dev/null 2>&1 || true
   helm repo update prometheus-community >/dev/null 2>&1 || true
   helm upgrade --install global-monitoring prometheus-community/kube-prometheus-stack \
