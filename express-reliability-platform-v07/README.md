@@ -43,6 +43,8 @@ ENV=dev  ./scripts/tf_deploy_v7.sh   # 1× t3.medium, $50/mo budget
 kubectl get svc web-ui-web-ui -n platform \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
 
+# When you get the public URL, ensure to add http://Public_URL
+
 # 3. Try the risk-scoring intro against a simulated bad incident
 ./scripts/risk_score.sh 650 1.8 1 2
 
