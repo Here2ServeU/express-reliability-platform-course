@@ -209,13 +209,26 @@ helm upgrade --install global-monitoring prometheus-community/kube-prometheus-st
 
 This installs Prometheus (scraping `flask-api`/`node-api` pods in the `platform` namespace), Grafana, and Alertmanager, using the same alert rules and routing as the local Docker Compose stack — just cluster-wide instead of per-container. `platform/helm/global-monitoring/values.yaml` is values for the community chart, not a standalone chart of its own. `platform/helm/grafana-dashboards/` *is* a real (tiny) chart — it just wraps the two dashboard JSON files in `monitoring/` into a labeled ConfigMap the community chart's sidecar auto-loads.
 
+**Grafana arrives fully wired — there is nothing to click.** Its sidecar provisions two datasources from `global-monitoring/values.yaml`, and the `grafana-dashboards` ConfigMap supplies both dashboards:
+
+| What | Name in Grafana | uid | Points at |
+|---|---|---|---|
+| Data source | **Prometheus** (default) | `prometheus` | `global-monitoring-kube-pro-prometheus:9090` |
+| Data source | **Alertmanager** | `alertmanager` | `global-monitoring-kube-pro-alertmanager:9093` |
+| Dashboard | **Express Reliability Platform V7** | `erp-v7-overview` | uses the `prometheus` datasource |
+| Dashboard | **Reliability Platform — Golden Signals** | `rp-golden-signals` | uses the default datasource |
+
+The uids are load-bearing: every panel in `monitoring/grafana-dashboard.json` pins datasource uid `prometheus`, so if you rename it in the values file the panels go blank.
+
 ```sh
 kubectl get pods -n monitoring
 kubectl port-forward -n monitoring svc/global-monitoring-grafana 3000:80
-open http://localhost:3000   # admin / admin
-kubectl port-forward -n monitoring svc/global-monitoring-prometheus 9090:9090
+open http://localhost:3000   # admin / admin — Dashboards → Express Reliability Platform V7
+kubectl port-forward -n monitoring svc/global-monitoring-kube-pro-prometheus 9090:9090
 open http://localhost:9090/targets   # expect flask-api & node-api UP
 ```
+
+> **Service names:** the chart truncates its release prefix, so Prometheus and Alertmanager are `global-monitoring-kube-pro-prometheus` / `global-monitoring-kube-pro-alertmanager` (Grafana is plain `global-monitoring-grafana`). If a port-forward errors with `services "..." not found`, run `kubectl get svc -n monitoring` and use the name you see.
 
 ---
 
@@ -263,7 +276,7 @@ Checks 1–8 are identical to V6's — cluster up, pods running, public URL, hea
 ### 9. Monitoring is scraping the platform
 
 ```sh
-kubectl port-forward -n monitoring svc/global-monitoring-prometheus 9090:9090 &
+kubectl port-forward -n monitoring svc/global-monitoring-kube-pro-prometheus 9090:9090 &
 open http://localhost:9090/targets
 ```
 Expect: `flask-api` and `node-api` targets `UP`.
@@ -310,9 +323,14 @@ This is deliberately manual — no evidence file gets written automatically, no 
 WEB_UI=$(kubectl get svc web-ui-web-ui -n platform \
   -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
 
+# Start Grafana — datasources and dashboards are already provisioned,
+# open "Express Reliability Platform V7" and watch it during the drill
+kubectl port-forward -n monitoring svc/global-monitoring-grafana 3000:80 &
+open http://localhost:3000   # admin / admin
+
 # Prometheus and Alertmanager aren't public — forward them locally
-kubectl port-forward -n monitoring svc/global-monitoring-prometheus 9090:9090 &
-kubectl port-forward -n monitoring svc/global-monitoring-alertmanager 9093:9093 &
+kubectl port-forward -n monitoring svc/global-monitoring-kube-pro-prometheus 9090:9090 &
+kubectl port-forward -n monitoring svc/global-monitoring-kube-pro-alertmanager 9093:9093 &
 
 # 1. Break it — scale flask-api to zero (reversible; Helm/replicaCount stays at 2)
 kubectl scale deployment/flask-api-flask-api -n platform --replicas=0
@@ -334,7 +352,7 @@ cp sre/incidents/postmortem-template.md /tmp/flask-api-outage.md
 # fill in: what happened, timeline, root cause, what fixed it, follow-ups
 
 # 5. Stop the port-forwards when done
-kill %1 %2
+kill %1 %2 %3
 ```
 
 Same drill, same alert rules, cluster-wide instead of per-container — `kubectl scale --replicas=0` is the EKS equivalent of `docker compose stop`.
@@ -390,7 +408,7 @@ express-reliability-platform-v07/
 │   ├── alert.rules.yml                       ← ServiceDown / HighErrorRate / HighLatency
 │   ├── alertmanager/
 │   │   └── alertmanager.yml                  ← alert routing + Slack receiver
-│   ├── grafana-dashboard.json                ← platform overview dashboard
+│   ├── grafana-dashboard.json                ← platform overview dashboard ("Express Reliability Platform V7")
 │   └── grafana-dashboard-golden-signals.json ← latency / traffic / errors / saturation
 ├── sre/
 │   └── incidents/
@@ -528,6 +546,7 @@ Identical failure modes to V6 apply unchanged (see V6's README table): `connecti
 | Health endpoint fails locally | Local stack isn't up | `docker compose up --build -d`, then `docker compose ps`. `http://localhost:8080/api/health` is served by `web-ui` (nginx) and proxied to `flask-api`; a `502` means `flask-api` is down — `docker compose up -d flask-api` or check `docker compose logs flask-api`. |
 | Port already in use | `8080`/`5050`/`9090`/`3001`/`9093` taken by something else | Stop the other process or edit the port mappings in `docker-compose.yml`. |
 | Grafana shows no data / no dashboard | Not auto-provisioned | Log in `admin`/`admin`, add a Prometheus datasource (`http://prometheus:9090`), import both `monitoring/grafana-dashboard*.json` files via **Dashboards → New → Import**. |
+| In-cluster Grafana: dashboard panels all say "Datasource prometheus was not found" | The chart's datasource uid was renamed, or `sidecar.datasources` was disabled in `global-monitoring/values.yaml` | The dashboard JSON pins datasource uid `prometheus` on every panel. Keep `grafana.sidecar.datasources.uid: prometheus` in the values file, then `kubectl rollout restart deployment/global-monitoring-grafana -n monitoring`. |
 | `node-api` target `DOWN` in local Prometheus | Expected — the local Docker Compose stack has no `node-api` container | Ignore it, or delete the `node-api` job from `monitoring/prometheus.yml`. It's `UP` when scraped in-cluster via `global-monitoring`. |
 | `web-ui` proxies `/api/` to the wrong place | `API_UPSTREAM` mismatch | Local (Compose) should be `flask-api:5000` (set in `docker-compose.yml`); in-cluster (Helm) should be `node-api-node-api:3000` (the Dockerfile default). Don't edit one to match the other. |
 | `risk_score.sh` always prints `LOW` | Arguments in the wrong order, or none passed | Order is `latency_ms error_rate_pct restart_count multi_service_failures`. Run with no args to confirm the healthy baseline, then pass real numbers. |
