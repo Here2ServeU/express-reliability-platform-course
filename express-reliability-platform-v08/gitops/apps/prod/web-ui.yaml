@@ -1,0 +1,52 @@
+# Argo CD Application: web-ui (prod). See flask-api.yaml in this directory
+# for the annotated version.
+#
+# web-ui is the only one of the three whose Service is a LoadBalancer, so
+# this is the Application that provisions the public ALB. Deleting it (or
+# letting prune remove it) tears that ALB down.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web-ui
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/express-reliability-platform-course.git
+    targetRevision: main
+    path: express-reliability-platform-v08/platform/helm/web-ui
+
+    helm:
+      parameters:
+        - name: image.repository
+          value: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/reliability-platform/web-ui
+        - name: image.tag
+          value: v8
+        - name: replicaCount
+          value: "3"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

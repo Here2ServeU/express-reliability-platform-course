@@ -1,0 +1,54 @@
+# AppProject — the governance half of GitOps.
+#
+# An Argo CD Application says "deploy this". An AppProject says "and here is
+# the only thing you are allowed to say". Without a project, any Application
+# in the argocd namespace can deploy any chart from any repo into any
+# namespace of the cluster, including kube-system. This one fences that in:
+#
+#   - only this course repo can be a source
+#   - only the `platform` namespace can be a destination
+#   - cluster-scoped resources cannot be created at all
+#
+# It is the same idea as the Gatekeeper constraints in governance/, applied
+# one layer earlier: Gatekeeper rejects a bad Pod at the API server,
+# the AppProject stops Argo CD from ever submitting one.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+  # Keep the project alive until every Application in it is gone, otherwise
+  # deleting the project orphans running workloads.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Application services for the Express Reliability Platform
+
+  # Which Git repos Applications in this project may pull from.
+  # scripts/gitops_set_repo_v8.sh rewrites this to your fork's URL.
+  # "*" would work and is what most tutorials use — it also means a
+  # compromised Application manifest can pull a chart from anywhere.
+  sourceRepos:
+    - https://github.com/YOUR_GITHUB_USERNAME/express-reliability-platform-course.git
+
+  # Which cluster + namespace pairs may be deployed to. `platform` only:
+  # an Application that tries to install into kube-system or monitoring is
+  # rejected by Argo CD before any manifest reaches the API server.
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: platform
+
+  # No cluster-scoped resources (Namespaces, ClusterRoles, CRDs, webhooks).
+  # The apps in this project are Deployments and Services; nothing they ship
+  # needs cluster scope, so the allow-list is empty and the deny-list is
+  # everything.
+  clusterResourceWhitelist: []
+
+  # Inside `platform`, allow the namespaced kinds the three charts actually
+  # render. Anything else — a ServiceAccount, a Secret, a Role — is refused,
+  # which is what you want from a project whose only job is running apps.
+  namespaceResourceWhitelist:
+    - group: apps
+      kind: Deployment
+    - group: ""
+      kind: Service

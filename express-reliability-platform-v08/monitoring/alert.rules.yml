@@ -1,0 +1,36 @@
+groups:
+  - name: reliability-platform
+    rules:
+
+      # Fires when Prometheus can't scrape a target at all — the fastest
+      # possible signal that a dependency went away (see README Step D).
+      - alert: ServiceDown
+        expr: up == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} is down"
+          description: "Prometheus has not been able to scrape {{ $labels.job }} for 30s."
+
+      # Alert when more than 5% of requests are failing
+      - alert: HighErrorRate
+        expr: rate(flask_api_requests_total{status=~"5.."}[5m])
+          / rate(flask_api_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Flask API error rate above 5%"
+          description: "More than 5% of requests are returning errors."
+
+      # Alert when p95 response time exceeds 500ms
+      - alert: HighLatency
+        expr: histogram_quantile(0.95,
+          rate(flask_api_request_latency_seconds_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Flask API p95 latency above 500ms"
+          description: "95th percentile response time is over 500 milliseconds."

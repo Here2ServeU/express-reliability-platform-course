@@ -1,0 +1,15 @@
+# The namespace Argo CD runs in.
+#
+# Same reason as monitoring-ns.yaml: `helm install argocd --create-namespace`
+# would produce an unlabelled namespace that require-ns-labels rejects.
+#
+# Note what is NOT here: Argo CD's own Applications live in this namespace,
+# but nothing in this namespace is managed by Argo CD. Something has to be
+# installed by hand to start the loop, and this is it.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+  labels:
+    owner: platform-team
+    environment: dev

@@ -1,0 +1,84 @@
+# Argo CD Application: flask-api (prod).
+#
+# Same chart as gitops/apps/dev/flask-api.yaml — see that file for the
+# annotated version. What differs between the two directories IS the
+# environment: here, 3 replicas instead of 2. That difference lives in Git,
+# so "how does prod differ from dev" is answered by
+# `diff -r gitops/apps/dev gitops/apps/prod` rather than by reading two
+# shell scripts and hoping.
+#
+# Only ONE of these directories is ever active on a given cluster: the root
+# Application applied by scripts/gitops_bootstrap_v8.sh points at
+# gitops/apps/dev OR gitops/apps/prod, per the ENV you deployed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flask-api
+  namespace: argocd
+  finalizers:
+    # Without this, deleting the Application leaves the Deployment and
+    # Service running in `platform` with nothing managing them.
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/express-reliability-platform-course.git
+    targetRevision: main
+    path: express-reliability-platform-v08/platform/helm/flask-api
+
+    helm:
+      # The same overrides V7 passed as `--set` on the command line. The
+      # difference: these are committed, reviewable, and diffable. "Who
+      # changed the image tag" is answered by `git log`, not by asking around.
+      parameters:
+        - name: image.repository
+          # Rewritten to your account's ECR by scripts/gitops_set_repo_v8.sh.
+          value: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/reliability-platform/flask-api
+        - name: image.tag
+          # Ships as the mutable `v8` tag so the first deploy works straight
+          # after `tf_deploy_v8.sh`. Mutable tags and GitOps do not mix:
+          # pushing a new `v8` changes nothing in Git, so Argo CD sees no
+          # diff and never rolls the pods. `scripts/promote_image_v8.sh`
+          # replaces this with an immutable commit SHA — that is the whole
+          # point of the promotion exercise in the README.
+          value: v8
+        - name: replicaCount
+          value: "3"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+
+  syncPolicy:
+    automated:
+      # Delete resources that were removed from Git. Off by default in Argo
+      # CD because it is the setting that can delete production.
+      prune: true
+      # Revert manual `kubectl edit` on anything Git owns. This is the
+      # setting the drift drill in the README demonstrates.
+      selfHeal: true
+    syncOptions:
+      # Do NOT add CreateNamespace=true. The `platform` namespace carries the
+      # owner/environment labels that governance/gatekeeper's
+      # require-ns-labels constraint demands; a namespace auto-created by
+      # Argo CD would carry none and be rejected at admission.
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+
+  ignoreDifferences:
+    # Replica count is deliberately NOT Git-owned here. V7's incident drill
+    # runs `kubectl scale deployment/flask-api-flask-api --replicas=0` to
+    # break the service on purpose; with selfHeal on and no exception, Argo
+    # CD scales it straight back up and the ServiceDown alert never fires.
+    # Drop this block once you are done with the drill and want replica
+    # count strictly owned by Git.
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

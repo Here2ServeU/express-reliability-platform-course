@@ -1,0 +1,319 @@
+# V8 pipeline.
+#
+# The big change from V7: this workflow no longer deploys the applications.
+# It scans, provisions, installs governance, builds images, and then commits
+# the new image tag to gitops/apps/<env>/. Argo CD does the deploying.
+#
+# CI writes to Git. CD reads from Git. Neither one has a `helm upgrade` on
+# the application path any more.
+name: Provision Platform
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      # The promote job below commits to gitops/. Without this, that commit
+      # would trigger this workflow again, which would promote again, which
+      # would commit again. The commit message also carries [skip ci] — belt
+      # and braces, because paths-ignore does not apply to workflow_dispatch.
+      - 'gitops/apps/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'dev, staging, or prod'
+        required: true
+        default: 'dev'
+      promote:
+        description: 'Commit the new image tag to gitops/ (this is what deploys)'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: provision-platform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  NAMESPACE: platform
+  ENVIRONMENT: ${{ github.event.inputs.environment || 'dev' }}
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE GATE 1 — image vulnerabilities.
+  #
+  # Gatekeeper (governance/) enforces at admission, inside the cluster. These
+  # two jobs enforce earlier and cheaper: a CVE caught here never reaches ECR
+  # at all. Neither replaces the other — CI can be bypassed by anyone with
+  # kubectl, and admission control cannot tell you about a CVE.
+  # ───────────────────────────────────────────────────────────────────────────
+  scan-images:
+    name: Trivy image scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and scan each image
+        run: |
+          for SVC in flask-api node-api web-ui; do
+            echo "=== Scanning: ${SVC} ==="
+            # --load puts the image in the local docker daemon so Trivy can
+            # see it. Nothing is pushed from this job; the push happens in
+            # build-push, after both gates pass.
+            docker buildx build --load --platform linux/amd64 \
+              -t "${SVC}:scan-candidate" "./apps/${SVC}"
+
+            # --exit-code 1 fails the job on a finding.
+            # --ignore-unfixed skips CVEs with no patch available: blocking
+            #   on those stops every deploy and fixes nothing, which just
+            #   teaches people to disable the scanner.
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "${HOME}/.cache/trivy:/root/.cache/trivy" \
+              aquasec/trivy:latest image \
+              --exit-code 1 \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --format table \
+              "${SVC}:scan-candidate"
+
+            echo "${SVC}: SCAN PASSED"
+          done
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # GOVERNANCE GATE 2 — infrastructure misconfiguration.
+  # ───────────────────────────────────────────────────────────────────────────
+  checkov-scan:
+    name: Checkov Terraform scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Checkov on Terraform
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: platform/terraform/
+          framework: terraform
+          output_format: cli
+          # soft_fail: findings are printed but do not block. This course's
+          # Terraform trips several legitimate Checkov rules on purpose —
+          # public subnets, no VPC flow logs, a permissive node role —
+          # because tightening them is a later version's job. Flip this to
+          # false once you have worked through the findings.
+          soft_fail: true
+          skip_check: CKV_AWS_111
+
+  bootstrap:
+    name: Terraform bootstrap
+    runs-on: ubuntu-latest
+    needs: [scan-images, checkov-scan]
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply bootstrap (state bucket, lock table, ECR repos)
+        run: |
+          terraform -chdir=platform/terraform/bootstrap init -input=false
+          terraform -chdir=platform/terraform/bootstrap apply -auto-approve
+
+  terraform-eks:
+    name: Terraform EKS
+    runs-on: ubuntu-latest
+    needs: bootstrap
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply EKS stack (env-scoped state key)
+        run: |
+          terraform -chdir=platform/terraform/bootstrap init -input=false
+          STATE_BUCKET=$(terraform -chdir=platform/terraform/bootstrap output -raw state_bucket)
+          LOCK_TABLE=$(terraform -chdir=platform/terraform/bootstrap output -raw lock_table)
+          terraform -chdir=platform/terraform/eks init -reconfigure -input=false \
+            -backend-config="bucket=${STATE_BUCKET}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${LOCK_TABLE}" \
+            -backend-config="key=eks/v8/${ENVIRONMENT}/terraform.tfstate"
+          terraform -chdir=platform/terraform/eks apply -auto-approve \
+            -var-file="environments/${ENVIRONMENT}.tfvars"
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Cluster-side governance. Runs before any workload, so the policies are
+  # live for the first pod Argo CD creates rather than retrofitted around it.
+  # ───────────────────────────────────────────────────────────────────────────
+  governance:
+    name: Gatekeeper + policies
+    runs-on: ubuntu-latest
+    needs: terraform-eks
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --name "reliability-platform-${ENVIRONMENT}" --region "${AWS_REGION}"
+      - name: Create labelled namespaces
+        run: |
+          kubectl apply -f governance/namespaces/
+          for NS in platform monitoring argocd; do
+            kubectl label namespace "$NS" "environment=${ENVIRONMENT}" --overwrite
+          done
+      - name: Install Gatekeeper and apply policies
+        run: |
+          chmod +x scripts/governance_install_v8.sh
+          ./scripts/governance_install_v8.sh
+      - name: Show what is enforcing
+        run: kubectl get constraints
+
+  build-push:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    needs: governance
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      # The immutable tag every downstream job refers to.
+      image_tag: ${{ steps.tag.outputs.value }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - id: tag
+        run: echo "value=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build and push under the commit sha and the v8 tag
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          ECR="${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/reliability-platform"
+          aws ecr get-login-password --region "${AWS_REGION}" \
+            | docker login --username AWS --password-stdin \
+              "${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          TAG="${{ steps.tag.outputs.value }}"
+          for SVC in flask-api node-api web-ui; do
+            docker buildx build --platform linux/amd64 \
+              -t "${ECR}/${SVC}:${TAG}" \
+              -t "${ECR}/${SVC}:v8" \
+              --push "./apps/${SVC}"
+          done
+
+  monitoring:
+    name: Monitoring stack
+    runs-on: ubuntu-latest
+    needs: governance
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        run: |
+          aws eks update-kubeconfig \
+            --name "reliability-platform-${ENVIRONMENT}" --region "${AWS_REGION}"
+      - name: Deploy monitoring stack
+        run: |
+          helm upgrade --install grafana-dashboards platform/helm/grafana-dashboards \
+            --namespace monitoring
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update prometheus-community
+          helm upgrade --install global-monitoring prometheus-community/kube-prometheus-stack \
+            --namespace monitoring \
+            -f platform/helm/global-monitoring/values.yaml
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # THE GITOPS HANDOFF.
+  #
+  # This job does not deploy anything. It commits the new image tag to
+  # gitops/apps/<env>/ and pushes. Argo CD notices the commit and deploys.
+  #
+  # That split is the point: CI's write access is to the Git repo, not to the
+  # cluster. A compromised CI runner can propose a bad image; it cannot reach
+  # past Argo CD's AppProject to put that image in kube-system.
+  #
+  # Opt-in, because it writes to your default branch. Run the workflow
+  # manually with promote=true, or drop the `if:` once you trust it.
+  # ───────────────────────────────────────────────────────────────────────────
+  promote:
+    name: Promote to GitOps (this is the deploy)
+    runs-on: ubuntu-latest
+    needs: [build-push, monitoring]
+    if: github.event.inputs.promote == 'true'
+    permissions:
+      contents: write   # to push the promotion commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The default GITHUB_TOKEN can push back to this same repo.
+          persist-credentials: true
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: us-east-1
+      - name: Rewrite image.tag in gitops/apps/<env>
+        run: |
+          chmod +x scripts/promote_image_v8.sh
+          ./scripts/promote_image_v8.sh \
+            "${{ needs.build-push.outputs.image_tag }}" "${ENVIRONMENT}"
+      - name: Commit and push
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          if git diff --quiet -- "gitops/apps/${ENVIRONMENT}"; then
+            echo "Already at ${{ needs.build-push.outputs.image_tag }} — nothing to promote."
+            exit 0
+          fi
+          git add "gitops/apps/${ENVIRONMENT}"
+          git commit -m "deploy(${ENVIRONMENT}): promote to ${{ needs.build-push.outputs.image_tag }} [skip ci]"
+          git push
+      - name: Where to watch it land
+        run: |
+          echo "Argo CD syncs within its 180s reconciliation window."
+          echo "  kubectl get applications -n argocd -w"
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build-push, monitoring]
+    if: always()
+    steps:
+      - name: Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -z "${SLACK_WEBHOOK_URL}" ]; then
+            echo "SLACK_WEBHOOK_URL not set; skipping notification."
+            exit 0
+          fi
+          if [ "${{ needs.build-push.result }}" = "success" ]; then
+            STATUS=":white_check_mark: provision succeeded"
+          else
+            STATUS=":rotating_light: provision failed"
+          fi
+          curl -sS -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"${STATUS} for ${{ github.repository }}@${{ github.sha }} (${ENVIRONMENT})\"}" \
+            "${SLACK_WEBHOOK_URL}"

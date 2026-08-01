@@ -1,0 +1,42 @@
+# The root Application ("app of apps") for the dev environment.
+#
+# This is the single object scripts/gitops_bootstrap_v8.sh applies by hand.
+# It watches gitops/apps/dev/ and creates one Argo CD Application per YAML
+# file it finds there. After this, adding a fourth service to the platform
+# means committing a fourth file to that directory — no kubectl, no helm,
+# no script run.
+#
+# Why a root app instead of applying the three Applications directly: the
+# three Applications then live in Git under Argo CD's management too. Delete
+# one from Git and it is pruned from the cluster; edit one by hand with
+# `kubectl edit` and selfHeal puts it back.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # The root app deploys Applications into the argocd namespace, which the
+  # `platform` project does not allow as a destination. It therefore runs in
+  # the built-in `default` project. This is the standard app-of-apps
+  # arrangement: a small, privileged root managing tightly-fenced children.
+  project: default
+
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/express-reliability-platform-course.git
+    targetRevision: main
+    path: express-reliability-platform-v08/gitops/apps/dev
+    directory:
+      # Only this directory, not its subdirectories.
+      recurse: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

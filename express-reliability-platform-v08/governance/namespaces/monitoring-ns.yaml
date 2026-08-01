@@ -1,0 +1,17 @@
+# The namespace the V7 monitoring stack runs in (Prometheus, Grafana,
+# Alertmanager, and the grafana-dashboards ConfigMap).
+#
+# New file in V8, and a good illustration of what "governance" costs: V7's
+# deploy script created this namespace implicitly with
+# `helm --create-namespace`. A Helm-created namespace carries no labels, so
+# once require-ns-labels is enforcing, that install fails at admission with
+# "Namespace is missing required label: owner". Declaring the namespace
+# first — labelled — is the fix, and it is why tf_deploy_v8.sh creates all
+# three namespaces before it installs anything into them.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    owner: platform-team
+    environment: dev
