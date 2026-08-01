@@ -1,0 +1,63 @@
+# Values for the community argo-cd Helm chart. Like
+# platform/helm/global-monitoring/values.yaml, this directory holds values,
+# not a chart of its own. Installed by scripts/gitops_bootstrap_v8.sh:
+#
+#   helm repo add argo https://argoproj.github.io/argo-helm
+#   helm upgrade --install argocd argo/argo-cd \
+#     --namespace argocd --create-namespace \
+#     -f gitops/argocd/values.yaml
+#
+# Argo CD is the one piece of V8 that is NOT itself managed by GitOps —
+# something has to be installed imperatively to start the loop. Everything
+# after this point comes from Git.
+
+global:
+  # Gatekeeper's require-resource-limits constraint only matches the
+  # `platform` namespace, so Argo CD's own pods are not required to carry
+  # limits. They are set anyway — a platform team that exempts itself from
+  # its own policies has a governance problem, not a policy problem.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+configs:
+  params:
+    # Serve plain HTTP. The course reaches the UI through
+    # `kubectl port-forward`, which is already an encrypted tunnel to the
+    # API server; leaving TLS on means the browser hits a self-signed cert
+    # and every student sees a scary interstitial. Do NOT carry this setting
+    # into a cluster where the UI is exposed through an Ingress.
+    server.insecure: true
+
+  cm:
+    # Argo CD compares live cluster state against Git every 3 minutes.
+    # Lower it and you hammer the Git provider's API; raise it and drift
+    # takes longer to surface. This is the "how fast does GitOps notice?"
+    # dial referenced in the drift drill in the README.
+    timeout.reconciliation: 180s
+
+server:
+  service:
+    # ClusterIP + port-forward keeps the Argo CD UI (which can deploy
+    # anything to this cluster) off the public internet. web-ui is the only
+    # service in this course that gets a real LoadBalancer.
+    type: ClusterIP
+
+# Single-replica everything: this is a course cluster on 1-3 t3.medium nodes.
+# A real install runs 2+ replicas of the server and repo-server behind a PDB.
+controller:
+  replicas: 1
+repoServer:
+  replicas: 1
+applicationSet:
+  replicas: 1
+
+# The notifications and ApplicationSet controllers are not used by V8.
+# ApplicationSet stays enabled (it is a small pod and the chart wires it in
+# by default); notifications is switched off to save a pod on the node.
+notifications:
+  enabled: false

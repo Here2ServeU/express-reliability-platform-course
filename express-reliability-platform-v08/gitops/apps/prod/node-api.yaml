@@ -1,0 +1,49 @@
+# Argo CD Application: node-api (prod). See flask-api.yaml in this directory
+# for the annotated version — the three app Applications are deliberately
+# identical in shape so a reviewer can diff them against each other.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: node-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+
+  source:
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/express-reliability-platform-course.git
+    targetRevision: main
+    path: express-reliability-platform-v08/platform/helm/node-api
+
+    helm:
+      parameters:
+        - name: image.repository
+          value: YOUR_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/reliability-platform/node-api
+        - name: image.tag
+          value: v8
+        - name: replicaCount
+          value: "3"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 2m
+
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas

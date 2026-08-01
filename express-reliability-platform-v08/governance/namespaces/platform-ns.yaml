@@ -1,7 +1,19 @@
+# The namespace the three application services run in.
+#
+# V7 created this with `kubectl create namespace platform` and no labels.
+# That stops working in V8: the require-ns-labels constraint denies any
+# namespace missing `owner` or `environment`, so the namespace has to be
+# declared rather than conjured. This file is why the platform namespace
+# survives its own policy.
+#
+# The `environment` value here is a committed default. scripts/tf_deploy_v8.sh
+# re-labels it to the ENV being deployed (dev / staging / prod) right after
+# applying this file — the constraint checks that the label is present, not
+# what it says.
 apiVersion: v1
 kind: Namespace
 metadata:
   name: platform
   labels:
     owner: platform-team
-    environment: production
+    environment: dev
