@@ -301,6 +301,42 @@ cp sre/incidents/postmortem-template.md /tmp/flask-api-outage.md
 
 This is deliberately manual — no evidence file gets written automatically, no Slack alert fires. The point of V7 is to practice the loop by hand before V8+ automates any of it.
 
+**No Docker Compose? Run the same drill against the deployed EKS cluster instead.** Everything here is `kubectl`, and every view opens in your browser — no local containers involved. Requires the cluster from the [Quick Start](#quick-start-the-4-command-path) to already be up.
+
+```sh
+# 0. Grab the public URL once (web-ui is a real LoadBalancer in-cluster, no port-forward needed)
+WEB_UI=$(kubectl get svc web-ui-web-ui -n platform \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+
+# Prometheus and Alertmanager aren't public — forward them locally
+kubectl port-forward -n monitoring svc/global-monitoring-prometheus 9090:9090 &
+kubectl port-forward -n monitoring svc/global-monitoring-alertmanager 9093:9093 &
+
+# 1. Break it — scale flask-api to zero (reversible; Helm/replicaCount stays at 2)
+kubectl scale deployment/flask-api-flask-api -n platform --replicas=0
+curl -i "http://${WEB_UI}/api/health"          # 502/504 — flask-api is gone
+open http://localhost:9090/targets              # flask-api pods now DOWN — ServiceDown alert arms
+open http://localhost:9090/alerts               # ServiceDown moves Pending -> Firing after 30s
+open http://localhost:9093                      # the firing alert lands in Alertmanager
+
+# 2. Triage: what would risk_score.sh say about this?
+./scripts/risk_score.sh 9999 100 1 1   # unreachable service ≈ maximal latency + error rate
+
+# 3. Fix it — restore the Helm-defined replica count
+kubectl scale deployment/flask-api-flask-api -n platform --replicas=2
+kubectl rollout status deployment/flask-api-flask-api -n platform
+curl "http://${WEB_UI}/api/health"             # back to {"status":"ok",...}
+
+# 4. Write it up
+cp sre/incidents/postmortem-template.md /tmp/flask-api-outage.md
+# fill in: what happened, timeline, root cause, what fixed it, follow-ups
+
+# 5. Stop the port-forwards when done
+kill %1 %2
+```
+
+Same drill, same alert rules, cluster-wide instead of per-container — `kubectl scale --replicas=0` is the EKS equivalent of `docker compose stop`.
+
 ---
 
 ## Operate (rolling updates, rollback, scaling)
