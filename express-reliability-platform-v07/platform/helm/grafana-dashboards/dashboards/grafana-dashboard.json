@@ -31,7 +31,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -107,7 +107,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -196,7 +196,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -242,7 +242,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -290,7 +290,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "v4",
+    "v7",
     "reliability",
     "observability"
   ],
@@ -303,8 +303,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Express Reliability Platform V4",
-  "uid": "erp-v4-overview",
+  "title": "Express Reliability Platform V7",
+  "uid": "erp-v7-overview",
   "version": 1,
   "weekStart": ""
 }

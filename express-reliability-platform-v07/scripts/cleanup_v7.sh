@@ -36,6 +36,8 @@ helm uninstall web-ui node-api flask-api -n "${NAMESPACE}" 2>/dev/null \
   || echo '  (some app releases were already absent)'
 helm uninstall global-monitoring -n monitoring 2>/dev/null \
   || echo '  (monitoring release was already absent)'
+helm uninstall grafana-dashboards -n monitoring 2>/dev/null \
+  || echo '  (grafana-dashboards release was already absent)'
 
 echo '=== Step 2: Delete platform and monitoring namespaces ==='
 kubectl delete namespace "${NAMESPACE}" --ignore-not-found 2>/dev/null \

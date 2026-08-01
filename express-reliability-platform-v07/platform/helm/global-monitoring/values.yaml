@@ -52,3 +52,27 @@ grafana:
   adminPassword: admin
   dashboardsConfigMaps:
     default: "grafana-dashboards"
+  # Datasources are provisioned by the chart's sidecar — no clicking through
+  # the Grafana UI, and no hardcoded service DNS (the sidecar fills in the
+  # in-cluster URLs itself). These are the chart defaults, spelled out here
+  # so you can see what Grafana comes up with:
+  #   Prometheus   uid "prometheus"   (default datasource)
+  #   Alertmanager uid "alertmanager" (reads the firing alerts)
+  # The uids matter: monitoring/grafana-dashboard.json pins uid "prometheus"
+  # on every panel, so don't rename it without editing the dashboard too.
+  sidecar:
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+      isDefaultDatasource: true
+      name: Prometheus
+      uid: prometheus
+      defaultDatasourceScrapeInterval: 15s
+      alertmanager:
+        enabled: true
+        name: Alertmanager
+        uid: alertmanager
+        implementation: prometheus
+        handleGrafanaManagedAlerts: false
+    dashboards:
+      enabled: true
