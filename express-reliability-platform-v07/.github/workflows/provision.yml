@@ -52,8 +52,11 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
       - name: Apply EKS stack (env-scoped state key)
         run: |
-          STATE_BUCKET=$(terraform -chdir=platform/terraform/bootstrap output -raw state_bucket)
-          LOCK_TABLE=$(terraform -chdir=platform/terraform/bootstrap output -raw lock_table)
+          # Jobs use fresh runners, so bootstrap's local Terraform state is
+          # not available here. These are the deterministic bootstrap names.
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          STATE_BUCKET="reliability-platform-v07-tfstate-${ACCOUNT}"
+          LOCK_TABLE="terraform-state-lock-v07"
           terraform -chdir=platform/terraform/eks init -reconfigure -input=false \
             -backend-config="bucket=${STATE_BUCKET}" \
             -backend-config="region=${AWS_REGION}" \

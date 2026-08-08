@@ -13,6 +13,7 @@
 - [Deploy](#deploy)
   - [Path A: Scripted (recommended)](#path-a-scripted-recommended)
   - [Path B: Manual walkthrough](#path-b-manual-walkthrough)
+- [Deploy with CI/CD (GitHub Actions)](#deploy-with-cicd-github-actions)
 - [Local monitoring stack](#local-monitoring-stack)
 - [Validate the platform](#validate-the-platform)
 - [Incident-response practice](#incident-response-practice)
@@ -229,6 +230,87 @@ open http://localhost:9090/targets   # expect flask-api & node-api UP
 ```
 
 > **Service names:** the chart truncates its release prefix, so Prometheus and Alertmanager are `global-monitoring-kube-pro-prometheus` / `global-monitoring-kube-pro-alertmanager` (Grafana is plain `global-monitoring-grafana`). If a port-forward errors with `services "..." not found`, run `kubectl get svc -n monitoring` and use the name you see.
+
+---
+
+## Deploy with CI/CD (GitHub Actions)
+
+Use this path when GitHub Actions—not your laptop—should deploy V7. The workflow at [`.github/workflows/provision.yml`](.github/workflows/provision.yml) uses GitHub OIDC to assume an AWS IAM role, so no long-lived AWS credentials are stored in GitHub.
+
+### 1. Push V7 to GitHub
+
+Create a GitHub repository and push the V7 directory to its `main` branch:
+
+```sh
+cd express-reliability-platform-v07
+git init
+git add .
+git commit -m "Add V7 reliability platform"
+git branch -M main
+git remote add origin https://github.com/YOUR_GITHUB_USER/express-reliability-platform-v07.git
+git push -u origin main
+```
+
+If V7 already belongs to a repository, commit and push it normally instead of running `git init`.
+
+### 2. Create the AWS OIDC deployment role
+
+In AWS IAM, add the `token.actions.githubusercontent.com` OpenID Connect provider if it does not already exist; use `sts.amazonaws.com` as its audience. Then create a role such as `github-actions-reliability-platform-v07` with this trust policy, replacing the placeholders:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {"Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"},
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {"token.actions.githubusercontent.com:aud": "sts.amazonaws.com"},
+      "StringLike": {"token.actions.githubusercontent.com:sub": "repo:YOUR_GITHUB_USER/express-reliability-platform-v07:*"}
+    }
+  }]
+}
+```
+
+For this course, attach `AdministratorAccess` to the role so Terraform can create EKS, IAM, VPC, S3, DynamoDB, ECR, and Budget resources. Use a least-privilege policy before applying this pattern to a real production account.
+
+### 3. Add GitHub Actions secrets
+
+In **Settings → Secrets and variables → Actions**, add:
+
+| Secret | Value | Required |
+|---|---|---|
+| `AWS_ROLE_TO_ASSUME` | `arn:aws:iam::ACCOUNT_ID:role/github-actions-reliability-platform-v07` | Yes |
+| `SLACK_WEBHOOK_URL` | Slack incoming-webhook URL | Optional; posts deployment status |
+
+Do not add `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY`; OIDC replaces them.
+
+### 4. Run the workflow
+
+A push to `main` deploys `dev` automatically:
+
+```sh
+git commit --allow-empty -m "ci: deploy V7 dev"
+git push origin main
+```
+
+To choose an environment, open **Actions → Provision Platform → Run workflow**, choose `dev` or `prod`, then run it. Do not select `staging` until you add `platform/terraform/eks/environments/staging.tfvars` with a non-overlapping VPC CIDR.
+
+The jobs run in order: bootstrap state and ECR resources, Terraform EKS apply, image build and ECR push, Helm app deployment, rollout verification, monitoring deployment, and optional Slack notification. The first EKS deployment normally takes 15–25 minutes.
+
+### 5. Verify the deployment
+
+Once the `helm-deploy` job succeeds, connect your local `kubectl` and check the workloads:
+
+```sh
+aws eks update-kubeconfig --region us-east-1 --name reliability-platform-dev
+kubectl get pods -n platform
+kubectl get pods -n monitoring
+kubectl get svc web-ui-web-ui -n platform \
+  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'
+```
+
+Open `http://<hostname>` after the load balancer assigns its hostname. If a job fails, start with its GitHub Actions log; downstream jobs do not run after a failed dependency.
 
 ---
 
