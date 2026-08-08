@@ -14,7 +14,7 @@ Demonstrates the skills required for DevOps Engineer, SRE, and Platform Engineer
 
 Built by: [YOUR NAME]
 Cluster: AWS EKS  Region: [YOUR REGION]
-GitHub: https://github.com/[YOUR_USERNAME]/express-reliability-platform-v10
+GitHub: https://github.com/[YOUR_USERNAME]/express-reliability-platform-v09
 
 ## Architecture
 
@@ -25,7 +25,7 @@ Browser → web-ui (Nginx) → node-api (Node.js) → flask-api (Python risk sco
 - Alertmanager routes alerts to Slack; incident scripts open ServiceNow + Jira.
 - automation/recovery_policy.sh watches the cluster and fixes failures automatically.
 
-## All 10 Versions
+## Course Versions
 
 | Version | Title | Key Addition |
 |---------|-------|--------------|
@@ -36,9 +36,8 @@ Browser → web-ui (Nginx) → node-api (Node.js) → flask-api (Python risk sco
 | V5  | Kubernetes on EKS            | EKS, kubectl, HPA, Liveness Probes, Helm |
 | V6  | Terraform Modules            | Modules, tfvars, AWS Budgets, Helm charts |
 | V7  | Layer Separation + CI/CD     | Shared/live layers, GitHub Actions, OIDC |
-| V8  | GitOps + Governance          | OPA Gatekeeper, Trivy, Risk Scoring |
-| V9  | Incident Pipeline            | Slack, ServiceNow, Jira, Chaos drills |
-| V10 | Self-Healing Automation      | Recovery policy, Chaos suite |
+| V8  | Governance + Incident Pipeline | OPA Gatekeeper, Trivy, Slack, ITSM, chaos drills |
+| V9  | Capstone                     | Self-healing recovery and chaos-suite evidence |
 
 ## Tool Stack
 
@@ -54,14 +53,14 @@ Browser → web-ui (Nginx) → node-api (Node.js) → flask-api (Python risk sco
 ## How to Deploy
 
 ```bash
-git clone https://github.com/[YOUR_USERNAME]/express-reliability-platform-v10.git
-cd express-reliability-platform-v10
+git clone https://github.com/[YOUR_USERNAME]/express-reliability-platform-v09.git
+cd express-reliability-platform-v09
 
 export SLACK_WEBHOOK_URL="YOUR_URL"
 export SN_INSTANCE="devXXXXXX" && export SN_USER="admin" && export SN_PASS="YOUR_PASS"
 export JIRA_DOMAIN="your-domain.atlassian.net" && export JIRA_EMAIL="your@email" && export JIRA_API_TOKEN="YOUR_TOKEN"
 
-./scripts/tf_deploy_v10.sh
+./scripts/deploy_capstone.sh
 ```
 
 ## Chaos Suite Results
@@ -81,4 +80,4 @@ Mean MTTR: [YOUR AVERAGE]s
 I built a complete reliability platform from scratch on AWS EKS.
 It monitors itself, heals itself, and proves resilience through chaos engineering.
 Mean MTTR: [X]s across four failure modes.
-Repo: https://github.com/[YOUR_USERNAME]/express-reliability-platform-v10
+Repo: https://github.com/[YOUR_USERNAME]/express-reliability-platform-v09

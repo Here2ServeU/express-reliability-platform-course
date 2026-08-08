@@ -17,8 +17,8 @@ Think of your platform like a hospital building:
 - The **foundation** (V1:V3) is the concrete and steel: local app, container image, then a multi-service stack; it must be solid before anything else is added.
 - The **cloud and observability layer** (V4:V6) puts the platform on AWS, adds dashboards, moves to Kubernetes, and organizes infrastructure into reusable, cost-aware modules with Helm.
 - The **delivery and governance layer** (V7:V8) separates shared/live infrastructure, automates deployment with GitHub Actions, and adds GitOps governance with Trivy, OPA Gatekeeper, Checkov, and AIOps risk scoring.
-- The **incident and automation layer** (V9:V10) sends alerts to Slack, creates ServiceNow and Jira tickets, runs chaos drills, and closes the loop with self-healing recovery scripts.
-- The **capstone** is a standalone, self-contained platform; it bundles the application services, CI/CD (GitHub Actions), GitOps (ArgoCD), AIOps, observability and alerting, and FinOps into one deployable project you present in interviews and to clients.
+- **V8** combines GitOps governance with the complete incident pipeline: Slack, ServiceNow, Jira, chaos drills, and postmortems.
+- **V9: Capstone** is the self-contained final platform. It adds automated recovery and a chaos suite, then bundles the application services, CI/CD, GitOps, AIOps, observability, alerting, and FinOps into one deployable project.
 
 ---
 
@@ -93,16 +93,14 @@ Each version builds directly on the previous one. **Never skip a version.**
 | **V5** | Move to Kubernetes on EKS with probes and autoscaling | Validate self-healing by deleting pods and watching replacements |
 | **V6** | Rebuild EKS with reusable modules, dev/prod tfvars, tags, and budgets | Create disciplined, repeatable, cost-aware infrastructure |
 | **V7** | Add AIOps incident management: risk-score, classify, summarize, and route incidents to Slack | Convert raw signals into scored, audited incidents on shared/live Terraform layers deployed via OIDC |
-| **V8** | Add GitOps governance, Trivy, OPA Gatekeeper, Checkov, and risk scoring | Block unsafe deploys before they reach the cluster |
-| **V9** | Connect the incident pipeline: Slack, ServiceNow, Jira, chaos, postmortems | Notify, ticket, drill, and document incidents automatically |
-| **V10** | Add automated recovery scripts and a chaos suite | Recover common failures and record MTTR evidence |
-| **Capstone** | Standalone platform integrating apps, platform, governance, incident, chaos, automation, monitoring, and docs | A finished system ready for enterprise delivery or an interview |
+| **V8** | Add GitOps governance, Trivy, OPA Gatekeeper, Checkov, risk scoring, Slack, ITSM tickets, chaos drills, and postmortems | Block unsafe deploys and exercise the full incident pipeline |
+| **V9: Capstone** | Add automated recovery scripts and a chaos suite to the complete platform | A finished, self-healing system ready for enterprise delivery or an interview |
 
 ---
 
 ## Platform Architecture
 
-The diagram below is the architecture you build incrementally across V1:V10 and present from the
+The diagram below is the architecture you build incrementally across V1:V9 and present as the V9
 capstone. Users hit an edge-protected ingress; GitOps (ArgoCD) delivers the workloads from Git;
 observability watches the golden signals; and the intelligence layer turns alerts into incidents that
 are routed to Slack with a one-command fix and reconciled back to Git state.
@@ -117,7 +115,7 @@ flowchart TB
     NODE --> DATA[(Transactional Data Store)]
     FLASK --> DATA
 
-    subgraph DELIVERY["GitOps Delivery: V4, V6, V10"]
+    subgraph DELIVERY["GitOps Delivery: V4, V6, V9"]
       direction LR
       GIT[Git Repository] --> CI[GitHub Actions + OIDC]
       CI --> SCAN[Trivy · Snyk · OPA policy gate]
@@ -129,7 +127,7 @@ flowchart TB
     K8S -.runs.-> FLASK
     K8S -.runs.-> UI
 
-    subgraph OBSERVE["Observability: V5, V10"]
+    subgraph OBSERVE["Observability: V5, V9"]
       direction LR
       NODE --> PROM[Prometheus]
       FLASK --> PROM
@@ -138,7 +136,7 @@ flowchart TB
       PROM --> AM[Alertmanager]
     end
 
-    subgraph INTEL["Intelligence & Response: V7, V8, V9, V10"]
+    subgraph INTEL["Intelligence & Response: V7, V8, V9"]
       direction LR
       AM --> AIOPS[AIOps: detect + risk score + summarize]
       AIOPS --> SLACK[Slack alert with resolve script]
@@ -151,11 +149,11 @@ flowchart TB
     REMED -->|rollback / change| GIT
     REMED -->|restart / scale| K8S
 
-    IAC[Terraform Modules: V5, V6, V10] --> CLOUD[AWS Account / VPC]
+    IAC[Terraform Modules: V5, V6, V9] --> CLOUD[AWS Account / VPC]
     CLOUD --> K8S
 ```
 
-> Full written breakdown: [capstone reference architecture](express-reliability-platform-capstone/docs/reference-architecture.md).
+> Full written breakdown: [capstone reference architecture](express-reliability-platform-v09/docs/README.md).
 
 ---
 
@@ -172,17 +170,13 @@ Phase 3: Operational Intelligence (V7:V8)
   Score incidents with AIOps and route them to Slack (V7), then gate deploys with GitOps
   governance: Trivy, OPA Gatekeeper, Checkov, and risk scoring (V8).
 
-Phase 4: Incident Response (V9)
-  Connect the full incident pipeline: Slack alerts, ServiceNow and Jira tickets, chaos drills,
+Phase 4: Governance + Incident Response (V8)
+  Add GitOps governance, then connect Slack alerts, ServiceNow and Jira tickets, chaos drills,
   and automated postmortems.
 
-Phase 5: Automation & Recovery (V10)
+Phase 5: V9 Capstone
   Add self-healing recovery scripts, a recovery policy loop, and a chaos suite that records
-  MTTR evidence.
-
-Capstone: Standalone Platform
-  A self-contained project bundling the apps, CI/CD (GitHub Actions), GitOps (ArgoCD), AIOps,
-  observability + alerting, and FinOps into one documented, presentable system.
+  MTTR evidence in one documented, presentable system.
 ```
 
 ---

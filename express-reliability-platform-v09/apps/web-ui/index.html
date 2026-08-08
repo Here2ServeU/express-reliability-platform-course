@@ -131,10 +131,8 @@
           <button class="version" type="button" data-version="v5"><strong>V5</strong><span>Kubernetes readiness, probes, scaling, self-healing patterns.</span></button>
           <button class="version current" type="button" data-version="v6"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></button>
           <button class="version" type="button" data-version="v7"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></button>
-          <button class="version" type="button" data-version="v8"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></button>
-          <button class="version" type="button" data-version="v9"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></button>
-          <button class="version" type="button" data-version="v10"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></button>
-          <button class="version" type="button" data-version="capstone"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></button>
+          <button class="version" type="button" data-version="v8"><strong>V8</strong><span>GitOps governance, incident automation, ITSM, and chaos drills.</span></button>
+          <button class="version" type="button" data-version="v9"><strong>V9 Capstone</strong><span>Self-healing recovery and the complete resilience platform.</span></button>
         </div>
       </aside>
     </div>
@@ -256,43 +254,23 @@
       },
       v8: {
         label: "V8",
-        badge: "Version 8: AIOps Risk Scoring",
-        focus: "AIOps risk scoring and anomaly signals",
-        description: "V8 adds AIOps risk scoring, anomaly signals, and Slack-ready summaries for faster triage.",
+        badge: "Version 8: Governance and Incident Response",
+        focus: "GitOps governance and incident response",
+        description: "V8 combines GitOps governance, risk scoring, Slack and ITSM workflows, and controlled chaos drills.",
         scores: [89, 83, 85, 82],
         notes: ["Risk scoring", "Signal priority", "Secure summaries", "AIOps triage"],
-        adds: ["AIOps risk scoring", "Anomaly signals", "Slack-ready summaries"],
-        next: "Move to V9 for ITSM integration, chaos drills, Jira, and ServiceNow incident records."
+        adds: ["GitOps governance", "ITSM workflows", "Chaos drills", "Automated postmortems"],
+        next: "Move to the V9 capstone for automated recovery and full-platform resilience evidence."
       },
       v9: {
         label: "V9",
-        badge: "Version 9: ITSM and Chaos Evidence",
-        focus: "ITSM integration and chaos evidence",
-        description: "V9 connects readiness work to ITSM integration, chaos drills, Jira, and ServiceNow incident records.",
+        badge: "Version 9: Self-Healing Capstone",
+        focus: "Complete self-healing reliability platform",
+        description: "V9 is the capstone: it adds automated recovery and a chaos suite to the governed incident pipeline.",
         scores: [90, 84, 87, 84],
         notes: ["Chaos drills", "Incident records", "Ticket evidence", "Correlation signals"],
-        adds: ["ITSM integration", "Chaos drills", "Jira records", "ServiceNow incident records"],
-        next: "Move to V10 for healthcare telemetry, robotics simulation, and predictive remediation."
-      },
-      v10: {
-        label: "V10",
-        badge: "Version 10: Healthcare Telemetry and Predictive Remediation",
-        focus: "Healthcare telemetry and predictive remediation",
-        description: "V10 adds healthcare telemetry, robotics simulation, and predictive remediation for advanced regulated operations.",
-        scores: [92, 86, 89, 88],
-        notes: ["Telemetry readiness", "Prediction controls", "Compliance signals", "MLOps readiness"],
-        adds: ["Healthcare telemetry", "Robotics simulation", "Predictive remediation"],
-        next: "Move to the Capstone for the full regulated platform console with student creator customization."
-      },
-      capstone: {
-        label: "Capstone",
-        badge: "Capstone: Regulated Platform Readiness Console",
-        focus: "Full regulated platform console",
-        description: "The Capstone combines reliability, FinOps, security, compliance, AIOps, and MLOps into a creator-customized regulated platform console.",
-        scores: [94, 88, 91, 90],
-        notes: ["Full readiness", "FinOps evidence", "Audit posture", "AI operations"],
-        adds: ["Creator customization", "Full regulated platform console", "Cross-domain evidence"],
-        next: "Use the Capstone evidence to explain the platform as a student-built regulated operations portfolio."
+        adds: ["Recovery policy", "Chaos suite", "MTTR evidence", "Portfolio-ready platform"],
+        next: "Use the V9 capstone evidence to explain the platform as a student-built reliability portfolio."
       }
     };
 

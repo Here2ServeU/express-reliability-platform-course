@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-echo '=== V9 Cleanup ==='
+echo '=== V9 Capstone Cleanup ==='
 
 # Step 1: Remove OPA Gatekeeper (must happen before cluster destroy)
 echo 'Step 1: Removing OPA Gatekeeper...'
@@ -47,4 +47,4 @@ terraform -chdir=terraform/bootstrap destroy -auto-approve
 # Step 7: Remove kubectl context
 kubectl config delete-context $(kubectl config current-context) 2>/dev/null || true
 
-echo '=== V9 cleanup complete ==='
+echo '=== V9 capstone cleanup complete ==='
