@@ -256,6 +256,8 @@ If V7 already belongs to a repository, commit and push it normally instead of ru
 ### 2. Create the AWS OIDC deployment role
 
 In AWS IAM, add the `token.actions.githubusercontent.com` OpenID Connect provider if it does not already exist; use `sts.amazonaws.com` as its audience. Then create a role such as `github-actions-reliability-platform-v07` with this trust policy, replacing the placeholders:
+- `ACCOUNT_ID`
+- `YOUR_GITHUB_USER` in repo:YOUR_GITHUB_USER/express-reliability-platform-v07:*
 
 ```json
 {
