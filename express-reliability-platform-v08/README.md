@@ -1,6 +1,6 @@
-# Express Reliability Platform V8: GitOps and Governance
+# Express Reliability Platform V8: GitOps, Governance, and Incident Response
 
-> **What you will build (in one paragraph).** Everything V7 builds — the same EKS-on-AWS stack, the same reusable Terraform modules, per-environment tfvars, cost-aware tagging and budgets, the same three services, the same Prometheus/Grafana/Alertmanager monitoring stack, the same SRE incident-response drill and risk-scoring script — plus the two layers that decide *how changes reach the cluster* and *what the cluster will accept*. **GitOps**: Argo CD watches `gitops/apps/<env>/` in your Git repo and makes the cluster match it, so deploying stops being something a script does and becomes something a commit does. **Governance**: OPA Gatekeeper rejects non-compliant workloads at admission, and Trivy + Checkov reject them earlier still, in CI. Nothing V7 does was removed or rewritten — the two new layers wrap around it. About 35 minutes per env on a fresh AWS account, same run-rate as V7 (~$2.10/day `dev`, ~$5.40/day `prod`) plus a few cents/day for the monitoring, Argo CD, and Gatekeeper pods.
+> **What you will build (in one paragraph).** Everything V7 builds — the same EKS-on-AWS stack, reusable Terraform modules, per-environment tfvars, cost-aware tagging and budgets, three services, Prometheus/Grafana/Alertmanager monitoring, and SRE risk scoring — plus GitOps, governance, and the complete incident-response pipeline. **GitOps**: Argo CD makes the cluster match the desired state in `gitops/apps/<env>/`. **Governance**: OPA Gatekeeper, Trivy, and Checkov block unsafe changes. **Incident response**: Alertmanager can page Slack, helper scripts create ServiceNow and Jira records, four chaos drills produce evidence, and an automated postmortem captures the outcome. Nothing V7 does was removed or rewritten; these layers build on it.
 
 ## Table of contents
 
@@ -34,7 +34,6 @@
   - [Architecture diagrams](#architecture-diagrams)
   - [Web UI guide](#web-ui-guide)
   - [Troubleshooting](#troubleshooting)
-- [What's next: V9](#whats-next-v9)
 
 ---
 
@@ -1164,10 +1163,8 @@ Identical failure modes to V6 apply unchanged (see V6's README table): `connecti
 
 ---
 
-## What's next: V9
+## Incident pipeline and chaos drills
 
-V8 gave the platform a source of truth and a set of rules. What it still does entirely by hand is *respond*. `risk_score.sh` runs when you run it; the postmortem gets written because you remember to write it; a rejected deploy tells the person who ran it and nobody else.
+The V9 incident material is now part of V8. Use `incident/slack_alert.sh`, `incident/servicenow_ticket.sh`, and `incident/jira_issue.sh` to exercise external integrations (each supports a safe dry run without credentials). Run the four scripts in `chaos/` to test pod loss, node drain, resource pressure, and network latency; capture the resulting timeline with `incident/postmortem.sh`.
 
-V9 builds out the incident pipeline this course has been introducing one piece at a time: evidence files written automatically per incident, Slack paging wired to Alertmanager's severity labels, ServiceNow/Jira ticket creation, and chaos drills that exercise the whole loop on a schedule instead of when someone feels like breaking something.
-
-Two threads from V8 carry directly into it. The **audit trail** — every deploy is a commit with an author, so an incident timeline can be assembled from `git log` instead of from memory. And **`enforcementAction`** — once you are comfortable moving a policy from `dryrun` to `deny`, you have the mechanism for progressive delivery: the same "observe, then enforce" pattern applied to promotion between `dev`, `staging`, and `prod`.
+V9 is the capstone: it adds automated recovery and an end-to-end chaos suite to this governed incident pipeline.

@@ -25,7 +25,7 @@ PAYLOAD=$(cat <<JSON
     "color": "${COLOR}",
     "title": "${EMOJI} ${TITLE}",
     "text": "*Severity:* ${SEVERITY}\n*Service:* ${SERVICE}\n*Message:* ${MESSAGE}\n*Time:* ${TIMESTAMP}",
-    "footer": "Reliability Platform V9",
+    "footer": "Reliability Platform V8",
     "ts": $(date +%s)
   }]
 }

@@ -1,7 +1,0 @@
-__pycache__/
-*.pyc
-artifacts/evidence/*.json
-node_modules/
-.terraform/
-*.tfstate
-*.tfstate.backup

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy the full V10 platform: bootstrap -> shared -> live -> images -> Helm.
+# Deploy the V9 capstone: bootstrap -> shared -> live -> images -> Helm.
 set -e
 
 REGION="us-east-1"
@@ -23,7 +23,7 @@ CLUSTER=$(terraform -chdir=terraform/live output -raw cluster_name)
 aws eks --region "${REGION}" update-kubeconfig --name "${CLUSTER}"
 
 echo '=== Step 5: Build and push images ==='
-./scripts/build_push_images_v10.sh
+./scripts/build_push_images_v9.sh
 
 echo '=== Step 6: Install Helm charts ==='
 ECR_BASE=$(terraform -chdir=terraform/bootstrap output -raw ecr_base)
@@ -34,4 +34,4 @@ for SVC in flask-api node-api web-ui; do
     --set image.repository="${ECR_BASE}/${SVC}"
 done
 
-echo '=== V10 deploy complete ==='
+echo '=== V9 capstone deploy complete ==='

@@ -1,81 +1,61 @@
-# Express Reliability Platform V9: The Complete Incident Pipeline
+# Express Reliability Platform V9: Capstone
 
-## Version Purpose
+## Purpose
 
-Version 9 aligns with the Word guide's incident pipeline. It builds on V8 governance and adds Slack
-alerts, ServiceNow incidents, Jira issues, chaos drills, and an automated postmortem script.
+V9 is the final, standalone capstone. It builds on V8's GitOps governance and complete incident pipeline, then adds self-healing recovery scripts, a recovery policy loop, and a repeatable chaos suite that records MTTR evidence.
 
-## Goal
+## What You Will Demonstrate
 
-Configure Alertmanager to send Slack messages when alerts fire. Create ServiceNow and Jira tickets
-automatically through REST APIs. Run four chaos engineering drills and post a structured postmortem.
+- A three-service AWS EKS platform with monitoring, alerting, GitOps, and governance.
+- Automated Slack, ServiceNow, Jira, and postmortem incident workflows.
+- Recovery for crash loops, memory pressure, and unreachable services.
+- Four controlled chaos drills with recorded recovery evidence.
 
 ## Project Structure
 
 ```text
 express-reliability-platform-v09/
-├── apps/                         # same application services carried from V8
-├── environments/                 # shared and live Terraform layers
-├── governance/                   # V8 Gatekeeper policies
-├── infrastructure/               # bootstrap state resources
-├── modules/                      # reusable Terraform modules
-├── incident/
-│   ├── slack_alert.sh
-│   ├── servicenow_ticket.sh
-│   ├── jira_issue.sh
-│   ├── postmortem.sh
-│   ├── send_slack_message.py
-│   ├── create_servicenow_ticket.py
-│   └── create_jira_issue.py
-├── chaos/
-│   └── run_chaos_drill.sh
-├── artifacts/evidence/
-└── scripts/
-    ├── cleanup_v9.sh
-    ├── simulate_latency.py
-    ├── simulate_error.py
-    └── terraform_init_apply.sh
+├── apps/                         # Flask API, Node API, and web UI
+├── platform/                     # Helm charts and Terraform layers
+├── governance/                   # Gatekeeper policies and namespaces
+├── monitoring/                   # Prometheus, Grafana, and Alertmanager
+├── incident/                     # Slack, ServiceNow, Jira, postmortem helpers
+├── chaos/                        # four controlled resilience drills
+├── automation/                   # recovery scripts and recovery policy loop
+├── scripts/                      # deploy, image build, cleanup, chaos suite
+└── docs/                         # portfolio and deployment guide
 ```
 
-## Prerequisites
-
-Before running this version, confirm:
-
-- [ ] **Terraform ≥ 1.5, kubectl ≥ 1.29, helm ≥ 3.14, and AWS CLI v2** installed.
-- [ ] **Docker Desktop is running** — verify: `docker ps`.
-- [ ] **AWS CLI v2 configured** with credentials for EKS, IAM, EC2, and ECR — verify: `aws sts get-caller-identity`.
-- [ ] **Make the helper scripts executable** (one time):
-  ```sh
-  chmod +x scripts/*.sh
-  ```
-
-## Run Steps
-
-Dry-run the Slack, ServiceNow, and Jira scripts without credentials:
+## Run the Capstone
 
 ```sh
-./incident/slack_alert.sh INFO "Pipeline test" "Slack dry-run message"
-./incident/servicenow_ticket.sh "Pipeline test incident" "2"
-./incident/jira_issue.sh "Pipeline test issue" "Dry-run Jira issue"
+cd express-reliability-platform-v09
+chmod +x automation/*.sh chaos/*.sh incident/*.sh scripts/*.sh
+
+# Configure integrations when you are ready to use them.
+export SLACK_WEBHOOK_URL="YOUR_URL"
+export SN_INSTANCE="devXXXXXX"
+export SN_USER="admin"
+export SN_PASS="YOUR_PASSWORD"
+export JIRA_DOMAIN="your-domain.atlassian.net"
+export JIRA_EMAIL="you@example.com"
+export JIRA_API_TOKEN="YOUR_TOKEN"
+
+./scripts/deploy_capstone.sh
 ```
 
-Run a chaos drill:
+Start auto-recovery in one terminal and run the chaos suite in another:
 
 ```sh
-./chaos/run_chaos_drill.sh INC-CHAOS-001 node-api latency
-```
-
-Generate a postmortem:
-
-```sh
-INCIDENT_ID=INC-CHAOS-001 SERVICE=node-api IMPACT="Latency spike" ROOT_CAUSE="Chaos drill" RECOVERY_TIME="45s" ./incident/postmortem.sh
+INTERVAL_SECONDS=30 ./automation/recovery_policy.sh
+./scripts/chaos_suite.sh
 ```
 
 ## Validation Checklist
 
-- [ ] Alertmanager configuration routes alerts to Slack.
-- [ ] A test alert reaches Slack.
-- [ ] ServiceNow ticket creation works or dry-run payload is valid.
-- [ ] Jira issue creation works or dry-run payload is valid.
-- [ ] Four chaos drills run and record results.
-- [ ] The postmortem script prints and posts a structured summary.
+- [ ] The three services are healthy on EKS.
+- [ ] Prometheus, Grafana, and Alertmanager are collecting and routing alerts.
+- [ ] Slack, ServiceNow, and Jira integrations work or produce valid dry-run payloads.
+- [ ] All four chaos drills complete and capture evidence.
+- [ ] Each automated recovery path runs successfully.
+- [ ] MTTR evidence is ready for the portfolio documentation.
