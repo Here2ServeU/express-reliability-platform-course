@@ -6,7 +6,7 @@ This playbook is built on over a decade of experience working with leading globa
 It also reflects the practical steps I took to rapidly transition into senior-level IT roles from a full-time pastoral ministry background.
 
 ## Academic Research
-- **PhD, National University**: Focused on cloud reliability, automation, and platform engineering. Research includes:
+- **Ph.D. Candidate, National University (in progress)**: Research focused on cloud reliability, automation, and platform engineering. Research includes:
   - Deterministic cloud deployments
   - Observability and incident response
   - Quantum-inspired optimization for IT systems
