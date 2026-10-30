@@ -1,0 +1,36 @@
+replicaCount: 2
+
+image:
+  repository: REGION-docker.pkg.dev/PROJECT_ID/reliability-platform/node-api   # set by scripts/deploy_capstone.sh
+  tag: ""   # set to the git SHA at deploy time (Gatekeeper blocks :latest)
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+probes:
+  liveness:
+    path: /health
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+  readiness:
+    path: /health
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    failureThreshold: 3
+
+serviceAccount:
+  name: platform-workload   # Workload Identity: bound to a Google SA by Terraform
+
+# Service DNS name of flask-api inside the cluster
+flaskBaseUrl: http://flask-api-flask-api:5000

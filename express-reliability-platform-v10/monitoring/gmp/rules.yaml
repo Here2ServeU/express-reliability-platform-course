@@ -1,0 +1,30 @@
+# The V4-V9 Prometheus alert rules, running on Google Managed Prometheus.
+# Fires into Cloud Monitoring alongside the SLO burn-rate alerts.
+apiVersion: monitoring.googleapis.com/v1
+kind: Rules
+metadata:
+  name: reliability-platform
+  namespace: platform
+spec:
+  groups:
+    - name: reliability-platform
+      interval: 30s
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(flask_api_requests_total{status=~"5.."}[5m]))
+              / sum(rate(flask_api_requests_total[5m])) > 0.05
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Flask API error rate above 5%"
+        - alert: SlowResponseTime
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(flask_api_request_latency_seconds_bucket[5m]))) > 0.5
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Flask API p95 latency above 500ms"

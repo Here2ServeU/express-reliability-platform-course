@@ -1,0 +1,32 @@
+# Google Managed Prometheus: scrape /metrics from both APIs.
+# Replaces the self-run Prometheus scrape config (monitoring/prometheus.yml)
+# used on EKS. Metrics land in Cloud Monitoring as
+# prometheus.googleapis.com/<metric_name>/<kind>, which the SLOs in
+# platform/terraform/live/slo.tf read.
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: flask-api
+  namespace: platform
+spec:
+  selector:
+    matchLabels:
+      app: flask-api-flask-api
+  endpoints:
+    - port: 5000
+      path: /metrics
+      interval: 30s
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: node-api
+  namespace: platform
+spec:
+  selector:
+    matchLabels:
+      app: node-api-node-api
+  endpoints:
+    - port: 3000
+      path: /metrics
+      interval: 30s

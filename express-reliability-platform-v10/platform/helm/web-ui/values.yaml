@@ -1,0 +1,33 @@
+replicaCount: 2
+
+image:
+  repository: REGION-docker.pkg.dev/PROJECT_ID/reliability-platform/web-ui   # set by scripts/deploy_capstone.sh
+  tag: ""   # set to the git SHA at deploy time (Gatekeeper blocks :latest)
+  pullPolicy: IfNotPresent
+
+service:
+  type: LoadBalancer
+  port: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+
+probes:
+  liveness:
+    path: /
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    failureThreshold: 3
+  readiness:
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 3
+
+serviceAccount:
+  name: platform-workload   # Workload Identity: bound to a Google SA by Terraform

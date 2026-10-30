@@ -19,6 +19,7 @@ Think of your platform like a hospital building:
 - The **delivery and governance layer** (V7:V8) separates shared/live infrastructure, automates deployment with GitHub Actions, and adds GitOps governance with Trivy, OPA Gatekeeper, Checkov, and AIOps risk scoring.
 - **V8** combines GitOps governance with the complete incident pipeline: Slack, ServiceNow, Jira, chaos drills, and postmortems.
 - **V9: Capstone** is the self-contained final platform. It adds automated recovery and a chaos suite, then bundles the application services, CI/CD, GitOps, AIOps, observability, alerting, and FinOps into one deployable project.
+- **V10: Multi-Cloud** ports the finished platform to Google Cloud (GKE, Artifact Registry, Workload Identity) and adds Cloud Monitoring SLOs with burn-rate alerting, proving the design is not tied to one cloud.
 
 ---
 
@@ -95,6 +96,7 @@ Each version builds directly on the previous one. **Never skip a version.**
 | **V7** | Add AIOps incident management: risk-score, classify, summarize, and route incidents to Slack | Convert raw signals into scored, audited incidents on shared/live Terraform layers deployed via OIDC |
 | **V8** | Add GitOps governance, Trivy, OPA Gatekeeper, Checkov, risk scoring, Slack, ITSM tickets, chaos drills, and postmortems | Block unsafe deploys and exercise the full incident pipeline |
 | **V9: Capstone** | Add automated recovery scripts and a chaos suite to the complete platform | A finished, self-healing system ready for enterprise delivery or an interview |
+| **V10: Multi-Cloud** | Port the platform to GCP GKE with Workload Identity, Managed Prometheus, and SLOs as code with burn-rate alerts | Show the same reliability design running on a second cloud; answers "Do you know GCP?" with working code |
 
 ---
 
@@ -177,6 +179,10 @@ Phase 4: Governance + Incident Response (V8)
 Phase 5: V9 Capstone
   Add self-healing recovery scripts, a recovery policy loop, and a chaos suite that records
   MTTR evidence in one documented, presentable system.
+
+Phase 6: V10 Multi-Cloud
+  Move the platform to Google Cloud: GKE, Artifact Registry, Workload Identity, keyless CI/CD,
+  Managed Prometheus, and Cloud Monitoring SLOs with an error-budget chaos drill.
 ```
 
 ---
