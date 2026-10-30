@@ -1,0 +1,159 @@
+name: Deploy Platform (GKE)
+
+# Keyless CI/CD: GitHub's OIDC token is exchanged for short-lived Google
+# credentials through Workload Identity Federation. No JSON keys in secrets.
+#
+# Repository secrets (from `terraform -chdir=platform/terraform/bootstrap output`):
+#   GCP_PROJECT_ID                 your project ID
+#   GCP_WORKLOAD_IDENTITY_PROVIDER workload_identity_provider output
+#   GCP_SERVICE_ACCOUNT            deployer_service_account output
+#   GCP_STATE_BUCKET               state_bucket output
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-platform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+  ZONE: us-central1-a
+  NAMESPACE: platform
+  REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reliability-platform
+  TAG: ${{ github.sha }}
+
+jobs:
+  scan-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and scan each image
+        run: |
+          for SVC in flask-api node-api web-ui; do
+            echo "=== Scanning: ${SVC} ==="
+            docker buildx build --load --platform linux/amd64 -t ${SVC}:scan-candidate ./apps/${SVC}
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v $HOME/.cache/trivy:/root/.cache/trivy \
+              aquasec/trivy:0.56.2 image \
+              --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+              --format table ${SVC}:scan-candidate
+            echo "${SVC}: SCAN PASSED"
+          done
+
+  checkov-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Checkov on Terraform
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: platform/terraform/
+          framework: terraform
+          output_format: cli
+          soft_fail: true   # report findings without blocking; set false to enforce
+
+  deploy-infra:
+    runs-on: ubuntu-latest
+    needs: [scan-images, checkov-scan]
+    permissions:
+      id-token: write   # lets GitHub mint the OIDC token Google trusts
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply shared layer (network)
+        run: |
+          terraform -chdir=platform/terraform/shared init -input=false \
+            -backend-config="bucket=${{ secrets.GCP_STATE_BUCKET }}"
+          terraform -chdir=platform/terraform/shared apply -auto-approve \
+            -var "project_id=${PROJECT_ID}" -var "region=${REGION}"
+      - name: Apply live layer (GKE + SLOs)
+        run: |
+          terraform -chdir=platform/terraform/live init -input=false \
+            -backend-config="bucket=${{ secrets.GCP_STATE_BUCKET }}"
+          terraform -chdir=platform/terraform/live apply -auto-approve \
+            -var "project_id=${PROJECT_ID}" -var "region=${REGION}" -var "zone=${ZONE}" \
+            -var "state_bucket=${{ secrets.GCP_STATE_BUCKET }}"
+
+  deploy-apps:
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: reliability-platform
+          location: ${{ env.ZONE }}
+      - uses: azure/setup-helm@v4
+      - name: AIOps risk score
+        run: |
+          chmod +x scripts/risk_score.sh
+          ./scripts/risk_score.sh
+      - name: Namespace and Workload Identity service account
+        run: |
+          kubectl apply -f governance/namespaces/platform-ns.yaml
+          kubectl create serviceaccount platform-workload -n ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl annotate serviceaccount platform-workload -n ${NAMESPACE} --overwrite \
+            iam.gke.io/gcp-service-account=erp-workload@${PROJECT_ID}.iam.gserviceaccount.com
+      - name: Push images and deploy Helm charts
+        run: |
+          gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+          for SVC in flask-api node-api web-ui; do
+            docker buildx build --platform linux/amd64 \
+              -t ${REGISTRY}/${SVC}:${TAG} --push ./apps/${SVC}
+            helm upgrade --install "$SVC" "platform/helm/$SVC" \
+              --namespace ${NAMESPACE} --create-namespace \
+              --set image.repository="${REGISTRY}/${SVC}" \
+              --set image.tag="${TAG}" \
+              --wait --timeout 10m
+          done
+          kubectl apply -f monitoring/gmp/
+
+  chaos-drill:
+    runs-on: ubuntu-latest
+    needs: deploy-apps
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          install_components: gke-gcloud-auth-plugin
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: reliability-platform
+          location: ${{ env.ZONE }}
+      - name: Run pod-kill chaos drill
+        run: |
+          chmod +x chaos/kill_pod.sh incident/slack_alert.sh
+          NAMESPACE=${NAMESPACE} RECOVERY_SLO=60 ./chaos/kill_pod.sh flask-api-flask-api
