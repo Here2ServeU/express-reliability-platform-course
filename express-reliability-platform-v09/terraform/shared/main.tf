@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket         = "reliability-platform-v08-tfstate-YOUR_ACCOUNT_ID"
+    # Bucket is passed at init time: -backend-config="bucket=<state_bucket>"
     key            = "shared/v8/terraform.tfstate"
     region         = "us-east-1"
     dynamodb_table = "terraform-state-lock-v08"

@@ -4,6 +4,6 @@
 #
 #   terraform -chdir=terraform/platform init -backend-config=backend.hcl
 #
-# To use a different account, change only the account-number suffix below to match
+# Replace YOUR_ACCOUNT_ID below with your AWS account number, to match
 # the bucket created by `terraform/bootstrap` (output: state_bucket).
 bucket = "reliability-platform-tfstate-YOUR_ACCOUNT_ID"

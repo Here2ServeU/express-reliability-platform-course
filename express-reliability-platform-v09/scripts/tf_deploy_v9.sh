@@ -11,11 +11,11 @@ terraform -chdir=terraform/bootstrap apply -auto-approve
 BUCKET=$(terraform -chdir=terraform/bootstrap output -raw state_bucket)
 
 echo '=== Step 2: Shared layer (VPC, subnets) ==='
-terraform -chdir=terraform/shared init -reconfigure -input=false
+terraform -chdir=terraform/shared init -reconfigure -input=false -backend-config="bucket=${BUCKET}"
 terraform -chdir=terraform/shared apply -auto-approve
 
 echo '=== Step 3: Live layer (EKS cluster) ==='
-terraform -chdir=terraform/live init -reconfigure -input=false
+terraform -chdir=terraform/live init -reconfigure -input=false -backend-config="bucket=${BUCKET}"
 terraform -chdir=terraform/live apply -auto-approve -var "state_bucket=${BUCKET}"
 
 echo '=== Step 4: Connect kubectl ==='

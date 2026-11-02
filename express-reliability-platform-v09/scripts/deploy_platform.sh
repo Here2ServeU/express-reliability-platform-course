@@ -13,11 +13,11 @@ echo '=== Step 2: Build and push images to ECR ==='
 ./scripts/build_push_images.sh
 
 echo '=== Step 3: Deploy shared layer (VPC, subnets) ==='
-terraform -chdir=platform/terraform/shared init -reconfigure -input=false
+terraform -chdir=platform/terraform/shared init -reconfigure -input=false -backend-config="bucket=${BUCKET}"
 terraform -chdir=platform/terraform/shared apply -auto-approve
 
 echo '=== Step 4: Deploy live layer (EKS cluster) ==='
-terraform -chdir=platform/terraform/live init -reconfigure -input=false
+terraform -chdir=platform/terraform/live init -reconfigure -input=false -backend-config="bucket=${BUCKET}"
 terraform -chdir=platform/terraform/live apply -auto-approve -var "state_bucket=${BUCKET}"
 CLUSTER=$(terraform -chdir=platform/terraform/live output -raw cluster_name)
 aws eks --region "$REGION" update-kubeconfig --name "$CLUSTER"
