@@ -25,21 +25,23 @@ All infrastructure is provisioned with Terraform under `terraform/`. Region: `us
 | **EC2** | Worker nodes (run in private subnets, managed by the EKS node group) | [eks.tf](terraform/platform/eks.tf) |
 | **S3 + DynamoDB** | Remote Terraform state bucket + state lock table (bootstrap stage) | [bootstrap/main.tf](terraform/bootstrap/main.tf) |
 
-## Architecture
+## High-Level Architecture
 
-```text
-Internet
-   │
-   ▼
-Application Load Balancer (ALB)        ← created by the AWS Load Balancer Controller from k8s/ingress.yaml
-   │
-   ▼
-EKS Cluster (reliability-platform-eks)
-   ├── namespace: reliability
-   │     ├── web-ui   (Deployment + Service)
-   │     ├── node-api (Deployment + Service + HPA)
-   │     └── flask-api(Deployment + Service + HPA)
-   └── worker nodes (EC2, private subnets) ──► pull images from Amazon ECR via NAT Gateway
+The platform moves from ECS to Kubernetes, which now restarts failed pods and scales the APIs for you.
+
+```mermaid
+flowchart TB
+    I[Internet] --> ALB[Application Load Balancer<br/>from k8s/ingress.yaml]
+    ALB --> UI
+    subgraph EKS["EKS cluster: reliability-platform-eks"]
+      subgraph NS["namespace: reliability"]
+        direction LR
+        UI[web-ui] --> NODE[node-api + HPA] --> FLASK[flask-api + HPA]
+      end
+      NODES[Worker nodes in private subnets]
+    end
+    NODES -->|through NAT gateway| ECR[(Amazon ECR)]
+    TF[Terraform] -->|VPC, IAM, EKS, ECR| EKS
 ```
 
 ## Project Structure

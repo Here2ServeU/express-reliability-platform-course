@@ -50,7 +50,9 @@ Every new engineer joining a bank's technology team runs the platform locally on
 - A local Node.js Express service that responds in a browser.
 - A personal GitHub repository for your V1 working baseline.
 
-## 5) Architecture Diagram (Mermaid)
+## 5) High-Level Architecture
+
+One service on your own laptop, with nothing in the cloud yet.
 
 ```mermaid
 flowchart LR

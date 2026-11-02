@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
-    bucket         = "reliability-platform-capstone-tfstate-YOUR_ACCOUNT_ID"
-    key            = "live/capstone/terraform.tfstate"
+    bucket         = "reliability-platform-v09-tfstate-YOUR_ACCOUNT_ID"
+    key            = "live/v09/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-state-lock-capstone"
+    dynamodb_table = "terraform-state-lock-v09"
   }
   required_providers { aws = { source = "hashicorp/aws", version = "~> 5.0" } }
 }
@@ -17,7 +17,7 @@ data "terraform_remote_state" "shared" {
   backend = "s3"
   config = {
     bucket = var.state_bucket
-    key    = "shared/capstone/terraform.tfstate"
+    key    = "shared/v09/terraform.tfstate"
     region = "us-east-1"
   }
 }

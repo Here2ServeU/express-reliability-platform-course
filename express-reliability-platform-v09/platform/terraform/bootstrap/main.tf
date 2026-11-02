@@ -9,7 +9,7 @@ provider "aws" { region = "us-east-1" }
 data "aws_caller_identity" "current" {}
 
 resource "aws_s3_bucket" "tfstate" {
-  bucket        = "reliability-platform-capstone-tfstate-${data.aws_caller_identity.current.account_id}"
+  bucket        = "reliability-platform-v09-tfstate-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
 }
 
@@ -19,7 +19,7 @@ resource "aws_s3_bucket_versioning" "tfstate" {
 }
 
 resource "aws_dynamodb_table" "tflock" {
-  name         = "terraform-state-lock-capstone"
+  name         = "terraform-state-lock-v09"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "LockID"
   attribute {

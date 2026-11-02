@@ -5,6 +5,7 @@
 ## Table of contents
 
 - [Quick Start (the 5-command path)](#quick-start-the-5-command-path)
+- [High-level architecture](#high-level-architecture)
 - [What's new in V8 (and what stayed exactly the same)](#whats-new-in-v8-and-what-stayed-exactly-the-same)
 - [Modules overview](#modules-overview)
 - [Per-environment deploy](#per-environment-deploy)
@@ -72,6 +73,33 @@ ENV=dev ./scripts/cleanup_v8.sh
 Prefer to stay local? Skip straight to the [local monitoring stack](#local-monitoring-stack) — `docker compose up --build -d` brings up `flask-api`, `web-ui`, `prometheus`, `grafana`, and `alertmanager` with no AWS account required. The GitOps and governance layers are cluster-side and are not part of the Compose stack.
 
 **You'll know it worked when** `curl -I http://<the-hostname>` returns `HTTP/1.1 200 OK`, `kubectl get pods -n platform` shows 6 pods all `Running 1/1`, `kubectl get applications -n argocd` shows four Applications `Synced`/`Healthy`, and `kubectl run bad --image=nginx:latest -n platform` is **refused** by the admission webhook.
+
+---
+
+## High-Level Architecture
+
+V7 could tell you when the platform was unhealthy. V8 makes Git the source of truth, blocks unsafe
+changes at two checkpoints, and connects alerts to the full incident pipeline.
+
+```mermaid
+flowchart TB
+    DEV[Engineer] -->|git push| GIT[(Git repo)]
+    GIT --> CI[GitHub Actions:<br/>Trivy + Checkov]
+    CI --> ECR[(ECR: images tagged by git SHA)]
+    GIT --> ARGO[Argo CD]
+    subgraph EKS["EKS cluster from V6's modules"]
+      ARGO --> GK[OPA Gatekeeper<br/>admission policies]
+      GK -->|allowed| APPS[web-ui, node-api, flask-api]
+      APPS -->|/metrics| STACK[Prometheus, Grafana, Alertmanager]
+    end
+    ECR --> APPS
+    STACK --> SLACK[Slack]
+    SLACK --> ITSM[ServiceNow + Jira]
+    ITSM --> PM[Postmortem]
+    CHAOS[Chaos drills] -->|inject failure| APPS
+```
+
+Detailed control-loop and deploy diagrams are under [Architecture diagrams](#architecture-diagrams).
 
 ---
 
@@ -1107,7 +1135,7 @@ The ordering in that chain is load-bearing, and it is the thing most worth remem
 
 ### Web UI guide
 
-`apps/web-ui/index.html` is the same client-side, self-contained readiness console every version of this course shares — a version picker (V1 through Capstone) that recomputes a simulated readiness score from three dropdowns (evidence, automation, governance quality) with no backend calls. It is **not** wired to `flask-api`/`node-api` or to real incident signals; the "governance" language in its V8 tile is narrative framing for the version-picker story, not a live integration with `governance/` or `gitops/`. In particular, the console's "governance quality" dropdown is a simulation input — it has no connection to whether Gatekeeper is actually enforcing.
+`apps/web-ui/index.html` is the same client-side, self-contained readiness console every version of this course shares — a version picker (V1 through the full platform) that recomputes a simulated readiness score from three dropdowns (evidence, automation, governance quality) with no backend calls. It is **not** wired to `flask-api`/`node-api` or to real incident signals; the "governance" language in its V8 tile is narrative framing for the version-picker story, not a live integration with `governance/` or `gitops/`. In particular, the console's "governance quality" dropdown is a simulation input — it has no connection to whether Gatekeeper is actually enforcing.
 
 Selecting V8 in the picker shows:
 
@@ -1167,4 +1195,4 @@ Identical failure modes to V6 apply unchanged (see V6's README table): `connecti
 
 The V9 incident material is now part of V8. Use `incident/slack_alert.sh`, `incident/servicenow_ticket.sh`, and `incident/jira_issue.sh` to exercise external integrations (each supports a safe dry run without credentials). Run the four scripts in `chaos/` to test pod loss, node drain, resource pressure, and network latency; capture the resulting timeline with `incident/postmortem.sh`.
 
-V9 is the capstone: it adds automated recovery and an end-to-end chaos suite to this governed incident pipeline.
+V9 adds automated recovery and an end-to-end chaos suite to this governed incident pipeline.

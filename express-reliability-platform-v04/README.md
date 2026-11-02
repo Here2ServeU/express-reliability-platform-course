@@ -10,6 +10,30 @@ dashboards, Alertmanager evaluates alert rules, and Terraform replaces hand-type
 Add `/metrics` to services, start the application plus Prometheus and Grafana, generate traffic, break
 one service on purpose, use dashboards to diagnose it, and deploy to AWS using Terraform.
 
+## High-Level Architecture
+
+V4 adds two things to V3: monitoring you can see locally, and Terraform in place of hand-run cloud setup.
+
+```mermaid
+flowchart TB
+    subgraph LOCAL["Local: Docker Compose"]
+      direction LR
+      SVC[web-ui, node-api, flask-api] -->|/metrics| PROM[Prometheus<br/>+ alert rules]
+      PROM --> GRAF[Grafana dashboards]
+    end
+    subgraph AWS["AWS: built by Terraform"]
+      direction LR
+      TF[Terraform bootstrap<br/>S3 state + DynamoDB lock] --> PLAT[Terraform platform]
+      PLAT --> ALB[Application Load Balancer]
+      ALB --> ECS[ECS Fargate services]
+      ECR[(ECR)] --> ECS
+      ECS --> LOGS[CloudWatch Logs]
+    end
+    B[Browser] --> ALB
+```
+
+---
+
 ## Project Structure
 
 ```text

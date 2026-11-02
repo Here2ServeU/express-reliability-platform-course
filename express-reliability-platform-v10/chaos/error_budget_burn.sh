@@ -1,6 +1,6 @@
 #!/bin/bash
 # Chaos Drill 5 (V10): burn the error budget on purpose and watch the
-# SLO burn-rate alert fire in Cloud Monitoring.
+# SLO burn-rate alert fire in Cloud Monitoring (GCP) or the 5xx rate climb in Prometheus (AWS).
 #
 # 1. Make flask-api fail ERROR_RATE of /score requests (default 20%)
 # 2. Send traffic for DURATION seconds
@@ -22,7 +22,8 @@ kubectl run load-gen -n "$NAMESPACE" --rm -i --restart=Never \
   --overrides='{"spec":{"containers":[{"name":"load-gen","image":"curlimages/curl:8.10.1","resources":{"requests":{"cpu":"50m","memory":"32Mi"},"limits":{"cpu":"100m","memory":"64Mi"}},"command":["sh","-c","end=$(( $(date +%s) + '"$DURATION"' )); ok=0; bad=0; while [ $(date +%s) -lt $end ]; do code=$(curl -s -o /dev/null -w %{http_code} http://flask-api-flask-api:5000/score?input=chaos+drill); [ \"$code\" = 200 ] && ok=$((ok+1)) || bad=$((bad+1)); sleep 0.2; done; echo ok=$ok bad=$bad"]}]}}' \
   || true
 
-echo "Check Cloud Monitoring > Services > erp-flask-api for the burn-rate alert."
+echo "GCP: check Cloud Monitoring > Services > erp-flask-api for the burn-rate alert."
+echo "AWS: check flask_api_requests_total{status=\"503\"} in Prometheus."
 echo "Rolling back the fault..."
 START=$(date +%s)
 kubectl set env deployment/"$DEPLOY" -n "$NAMESPACE" ERROR_RATE-

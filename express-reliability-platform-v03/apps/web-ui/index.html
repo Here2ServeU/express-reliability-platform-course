@@ -55,7 +55,7 @@
     .platform { padding: 12px; box-shadow: none; }
     .platform strong { display: block; margin-bottom: 3px; }
     .platform span { color: var(--muted); font-size: 0.9rem; }
-    .capstone { margin-top: 22px; }
+    .growth-summary { margin-top: 22px; }
     .creator-panel { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 12px; }
     .creator-credit { margin-top: 12px; border-left: 4px solid var(--gold); background: #fff8eb; border-radius: 8px; padding: 12px; color: #5f420c; font-weight: 700; }
     .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -122,7 +122,7 @@
       </section>
 
       <aside aria-labelledby="path-title">
-        <h2 id="path-title">V1 to Capstone Growth Path</h2>
+        <h2 id="path-title">Platform Growth Path</h2>
         <div class="versions">
           <button class="version" type="button" data-version="v1"><strong>V1</strong><span>Local UI, simple service checks, first reliability vocabulary.</span></button>
           <button class="version current" type="button" data-version="v2"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></button>
@@ -134,12 +134,12 @@
           <button class="version" type="button" data-version="v8"><strong>V8</strong><span>AIOps risk scoring, anomaly signals, Slack-ready summaries.</span></button>
           <button class="version" type="button" data-version="v9"><strong>V9</strong><span>ITSM integration, chaos drills, Jira and ServiceNow incident records.</span></button>
           <button class="version" type="button" data-version="v10"><strong>V10</strong><span>Healthcare telemetry, robotics simulation, predictive remediation.</span></button>
-          <button class="version" type="button" data-version="capstone"><strong>Capstone</strong><span>Full regulated platform console with student creator customization.</span></button>
+          <button class="version" type="button" data-version="fullPlatform"><strong>Full Platform</strong><span>Full regulated platform console with student creator customization.</span></button>
         </div>
       </aside>
     </div>
 
-    <section class="capstone" aria-labelledby="market-title">
+    <section class="growth-summary" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
       <p class="muted" id="marketCopy">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V5, the platform adds <strong>Kubernetes runtime reliability</strong>.</p>
       <div class="platforms">
@@ -170,12 +170,12 @@
 
       <div class="creator-panel">
         <label>
-          Capstone creator name
+          Creator name
           <input id="creatorName" placeholder="Student name" autocomplete="off" />
         </label>
         <button type="button" onclick="saveCreator()">Save Creator</button>
       </div>
-      <div class="creator-credit" id="creatorCredit">Capstone preview: created by a T2S student engineer.</div>
+      <div class="creator-credit" id="creatorCredit">Platform preview: created by a T2S student engineer.</div>
     </section>
   </main>
 
@@ -282,17 +282,17 @@
         scores: [92, 86, 89, 88],
         notes: ["Telemetry readiness", "Prediction controls", "Compliance signals", "MLOps readiness"],
         adds: ["Healthcare telemetry", "Robotics simulation", "Predictive remediation"],
-        next: "Move to the Capstone for the full regulated platform console with student creator customization."
+        next: "Move to the full platform for the full regulated platform console with student creator customization."
       },
-      capstone: {
-        label: "Capstone",
-        badge: "Capstone: Regulated Platform Readiness Console",
+      fullPlatform: {
+        label: "Full Platform",
+        badge: "Full Platform: Regulated Platform Readiness Console",
         focus: "Full regulated platform console",
-        description: "The Capstone combines reliability, FinOps, security, compliance, AIOps, and MLOps into a creator-customized regulated platform console.",
+        description: "The full platform combines reliability, FinOps, security, compliance, AIOps, and MLOps into a creator-customized regulated platform console.",
         scores: [94, 88, 91, 90],
         notes: ["Full readiness", "FinOps evidence", "Audit posture", "AI operations"],
         adds: ["Creator customization", "Full regulated platform console", "Cross-domain evidence"],
-        next: "Use the Capstone evidence to explain the platform as a student-built regulated operations portfolio."
+        next: "Use the full platform evidence to explain the platform as a student-built regulated operations portfolio."
       }
     };
 
@@ -382,19 +382,19 @@
       const name = document.getElementById("creatorName").value.trim();
       const credit = document.getElementById("creatorCredit");
       if (!name) {
-        credit.textContent = "Capstone preview: created by a T2S student engineer.";
+        credit.textContent = "Platform preview: created by a T2S student engineer.";
         localStorage.removeItem("t2sCreatorName");
         return;
       }
       localStorage.setItem("t2sCreatorName", name);
-      credit.textContent = `Capstone preview: created by ${name}, T2S regulated platform engineer.`;
+      credit.textContent = `Platform preview: created by ${name}, T2S regulated platform engineer.`;
     }
 
     const savedCreator = localStorage.getItem("t2sCreatorName");
     if (savedCreator) {
       document.getElementById("creatorName").value = savedCreator;
       document.getElementById("creatorCredit").textContent =
-        `Capstone preview: created by ${savedCreator}, T2S regulated platform engineer.`;
+        `Platform preview: created by ${savedCreator}, T2S regulated platform engineer.`;
     }
 
     selectVersion(activeVersion);

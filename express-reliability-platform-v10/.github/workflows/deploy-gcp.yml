@@ -3,7 +3,7 @@ name: Deploy Platform (GKE)
 # Keyless CI/CD: GitHub's OIDC token is exchanged for short-lived Google
 # credentials through Workload Identity Federation. No JSON keys in secrets.
 #
-# Repository secrets (from `terraform -chdir=platform/terraform/bootstrap output`):
+# Repository secrets (from `terraform -chdir=platform/terraform/gcp/bootstrap output`):
 #   GCP_PROJECT_ID                 your project ID
 #   GCP_WORKLOAD_IDENTITY_PROVIDER workload_identity_provider output
 #   GCP_SERVICE_ACCOUNT            deployer_service_account output
@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-platform-${{ github.ref }}
+  group: deploy-gcp-${{ github.ref }}
   cancel-in-progress: false
 
 env:
@@ -56,7 +56,7 @@ jobs:
       - name: Run Checkov on Terraform
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: platform/terraform/
+          directory: platform/terraform/gcp/
           framework: terraform
           output_format: cli
           soft_fail: true   # report findings without blocking; set false to enforce
@@ -76,15 +76,15 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
       - name: Apply shared layer (network)
         run: |
-          terraform -chdir=platform/terraform/shared init -input=false \
+          terraform -chdir=platform/terraform/gcp/shared init -input=false \
             -backend-config="bucket=${{ secrets.GCP_STATE_BUCKET }}"
-          terraform -chdir=platform/terraform/shared apply -auto-approve \
+          terraform -chdir=platform/terraform/gcp/shared apply -auto-approve \
             -var "project_id=${PROJECT_ID}" -var "region=${REGION}"
       - name: Apply live layer (GKE + SLOs)
         run: |
-          terraform -chdir=platform/terraform/live init -input=false \
+          terraform -chdir=platform/terraform/gcp/live init -input=false \
             -backend-config="bucket=${{ secrets.GCP_STATE_BUCKET }}"
-          terraform -chdir=platform/terraform/live apply -auto-approve \
+          terraform -chdir=platform/terraform/gcp/live apply -auto-approve \
             -var "project_id=${PROJECT_ID}" -var "region=${REGION}" -var "zone=${ZONE}" \
             -var "state_bucket=${{ secrets.GCP_STATE_BUCKET }}"
 

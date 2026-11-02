@@ -10,6 +10,26 @@ teaches the cloud building blocks before Terraform automates them in V4.
 Create ECR repositories, build and push the three service images, deploy them on ECS Fargate, expose
 them through AWS networking, validate from public endpoints, and clean up all resources.
 
+## High-Level Architecture
+
+The same three services now run on AWS, deployed by hand with scripts. There is no load balancer yet:
+you reach the web UI through its task's public IP.
+
+```mermaid
+flowchart LR
+    DEV[Your laptop<br/>scripts + AWS CLI] -->|build and push| ECR[(Amazon ECR)]
+    DEV -->|create| ECS
+    B[Browser] -->|public IP| UI
+    subgraph VPC["AWS VPC: public subnets + internet gateway"]
+      subgraph ECS["ECS Fargate cluster"]
+        UI[web-ui] --> NODE[node-api] --> FLASK[flask-api]
+      end
+    end
+    ECR -->|pull images| ECS
+```
+
+---
+
 ## Project Structure
 
 ```text

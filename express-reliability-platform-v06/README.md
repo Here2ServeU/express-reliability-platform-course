@@ -5,6 +5,7 @@
 ## Table of contents
 
 - [Quick Start (the 4-command path)](#quick-start-the-4-command-path)
+- [High-level architecture](#high-level-architecture)
 - [Why modules + per-env + cost-aware (the concept layer)](#why-modules--per-env--cost-aware-the-concept-layer)
 - [Modules overview](#modules-overview)
 - [Per-environment deploy](#per-environment-deploy)
@@ -50,6 +51,33 @@ ENV=dev ./scripts/cleanup_v6.sh
 ```
 
 **You'll know it worked when** `curl -I http://<the-hostname>` returns `HTTP/1.1 200 OK` and `kubectl get pods -n platform` shows 6 pods all `Running 1/1`. To prove the FinOps story, also check the AWS Billing console → Budgets; you should see `reliability-platform-v06-<env>-monthly` with the `Environment=<env>` filter.
+
+---
+
+## High-Level Architecture
+
+The runtime is still EKS. What changes is how it is built: reusable modules, one root per environment,
+and spend you can see. Helm replaces V5's raw manifests.
+
+```mermaid
+flowchart TB
+    VARS[dev.tfvars / prod.tfvars] --> ROOT[Terraform root: eks/]
+    ROOT --> VPC[module: vpc]
+    ROOT --> IAM[module: eks-iam]
+    ROOT --> CLUSTER[module: eks-cluster]
+    ROOT --> BUDGET[module: budget<br/>80% and 100% alerts]
+    BOOT[Terraform bootstrap<br/>S3, DynamoDB, ECR] --> ROOT
+    VPC --> EKS
+    IAM --> EKS
+    CLUSTER --> EKS
+    subgraph EKS["EKS cluster, per environment"]
+      direction LR
+      HELM[Helm charts] --> APPS[web-ui, node-api, flask-api<br/>namespace: platform]
+    end
+    B[Browser] --> LB[Load balancer from the web-ui Service] --> APPS
+```
+
+Detailed deploy and chart diagrams are under [Architecture diagrams](#architecture-diagrams).
 
 ---
 

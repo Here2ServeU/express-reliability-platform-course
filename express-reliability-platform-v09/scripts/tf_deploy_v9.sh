@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy the V9 capstone: bootstrap -> shared -> live -> images -> Helm.
+# Deploy V9: bootstrap -> shared -> live -> images -> Helm.
 set -e
 
 REGION="us-east-1"
@@ -34,4 +34,4 @@ for SVC in flask-api node-api web-ui; do
     --set image.repository="${ECR_BASE}/${SVC}"
 done
 
-echo '=== V9 capstone deploy complete ==='
+echo '=== V9 platform deploy complete ==='

@@ -279,5 +279,5 @@ done
 
 echo
 echo '=== Done! V8 teardown complete. ==='
-echo 'V7 bootstrap and ECR repos are intact for the V9 capstone.'
+echo 'V7 bootstrap and ECR repos are intact for V9.'
 echo 'To redeploy V8, run: ./scripts/tf_deploy_v8.sh'

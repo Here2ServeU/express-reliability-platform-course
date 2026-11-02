@@ -1,5 +1,5 @@
 #!/bin/bash
-# cleanup_capstone.sh — remove every AWS resource in reverse order.
+# cleanup_platform.sh — remove every AWS resource in reverse order.
 set -e
 NAMESPACE="platform"
 REGION="${AWS_REGION:-us-east-1}"
@@ -31,7 +31,7 @@ terraform -chdir=platform/terraform/shared destroy -auto-approve
 
 echo '=== Step 6: Drain state bucket and destroy bootstrap ==='
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-aws s3 rm "s3://reliability-platform-capstone-tfstate-${ACCOUNT}" --recursive 2>/dev/null || true
+aws s3 rm "s3://reliability-platform-v09-tfstate-${ACCOUNT}" --recursive 2>/dev/null || true
 terraform -chdir=platform/terraform/bootstrap destroy -auto-approve
 
-echo '=== Capstone cleanup complete ==='
+echo '=== Platform cleanup complete ==='

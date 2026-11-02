@@ -37,7 +37,7 @@ Browser → web-ui (Nginx) → node-api (Node.js) → flask-api (Python risk sco
 | V6  | Terraform Modules            | Modules, tfvars, AWS Budgets, Helm charts |
 | V7  | Layer Separation + CI/CD     | Shared/live layers, GitHub Actions, OIDC |
 | V8  | Governance + Incident Pipeline | OPA Gatekeeper, Trivy, Slack, ITSM, chaos drills |
-| V9  | Capstone                     | Self-healing recovery and chaos-suite evidence |
+| V9  | Self-Healing Platform        | Self-healing recovery and chaos-suite evidence |
 
 ## Tool Stack
 
@@ -60,7 +60,7 @@ export SLACK_WEBHOOK_URL="YOUR_URL"
 export SN_INSTANCE="devXXXXXX" && export SN_USER="admin" && export SN_PASS="YOUR_PASS"
 export JIRA_DOMAIN="your-domain.atlassian.net" && export JIRA_EMAIL="your@email" && export JIRA_API_TOKEN="YOUR_TOKEN"
 
-./scripts/deploy_capstone.sh
+./scripts/deploy_platform.sh
 ```
 
 ## Chaos Suite Results

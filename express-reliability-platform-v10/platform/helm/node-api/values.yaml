@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: REGION-docker.pkg.dev/PROJECT_ID/reliability-platform/node-api   # set by scripts/deploy_capstone.sh
+  repository: REGION-docker.pkg.dev/PROJECT_ID/reliability-platform/node-api   # set by scripts/deploy_aws.sh or deploy_gcp.sh
   tag: ""   # set to the git SHA at deploy time (Gatekeeper blocks :latest)
   pullPolicy: IfNotPresent
 
@@ -30,7 +30,7 @@ probes:
     failureThreshold: 3
 
 serviceAccount:
-  name: platform-workload   # Workload Identity: bound to a Google SA by Terraform
+  name: platform-workload   # created by the deploy script; on GKE it is bound to a Google SA for Workload Identity
 
 # Service DNS name of flask-api inside the cluster
 flaskBaseUrl: http://flask-api-flask-api:5000

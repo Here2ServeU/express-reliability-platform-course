@@ -1,9 +1,9 @@
 terraform {
   backend "s3" {
-    bucket         = "reliability-platform-capstone-tfstate-YOUR_ACCOUNT_ID"
-    key            = "shared/capstone/terraform.tfstate"
+    bucket         = "reliability-platform-v09-tfstate-YOUR_ACCOUNT_ID"
+    key            = "shared/v09/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "terraform-state-lock-capstone"
+    dynamodb_table = "terraform-state-lock-v09"
   }
   required_providers { aws = { source = "hashicorp/aws", version = "~> 5.0" } }
 }

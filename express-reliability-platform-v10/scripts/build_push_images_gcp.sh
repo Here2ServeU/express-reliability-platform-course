@@ -2,10 +2,10 @@
 # Build and push all three service images to Artifact Registry.
 # Images are tagged with the git commit SHA (never :latest), so every
 # deploy is traceable and Gatekeeper's no-latest-tag policy passes.
-# Prints the tag on the last line for deploy_capstone.sh.
+# Prints the tag on the last line for deploy_gcp.sh.
 set -euo pipefail
 
-REGISTRY=$(terraform -chdir=platform/terraform/bootstrap output -raw registry)
+REGISTRY=$(terraform -chdir=platform/terraform/gcp/bootstrap output -raw registry)
 TAG="${TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
 
 gcloud auth configure-docker "$(echo "$REGISTRY" | cut -d/ -f1)" --quiet >&2

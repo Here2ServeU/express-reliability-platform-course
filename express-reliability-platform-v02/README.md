@@ -13,6 +13,22 @@ Containerize the app first, then explore the three-service layout (`flask-api`, 
 that V3 orchestrates with Docker Compose and deploys to the cloud. Validate every layer, push to
 GitHub, and clean up completely.
 
+## High-Level Architecture
+
+Everything runs on your laptop in containers. V1's Express service becomes a portable image, and Docker
+Compose previews the three-service layout that V3 takes to the cloud.
+
+```mermaid
+flowchart LR
+    B[Browser] -->|:8080| UI[web-ui<br/>Nginx]
+    subgraph COMPOSE["Docker Compose on your laptop"]
+      UI --> NODE[node-api<br/>:3000]
+      NODE --> FLASK[flask-api risk scorer<br/>:5000]
+    end
+```
+
+---
+
 ## Project Structure
 
 ```text

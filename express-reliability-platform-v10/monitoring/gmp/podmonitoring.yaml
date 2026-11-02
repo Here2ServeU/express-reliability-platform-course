@@ -2,7 +2,7 @@
 # Replaces the self-run Prometheus scrape config (monitoring/prometheus.yml)
 # used on EKS. Metrics land in Cloud Monitoring as
 # prometheus.googleapis.com/<metric_name>/<kind>, which the SLOs in
-# platform/terraform/live/slo.tf read.
+# platform/terraform/gcp/live/slo.tf read.
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
 metadata:

@@ -5,6 +5,7 @@
 ## Table of contents
 
 - [Quick Start (the 4-command path)](#quick-start-the-4-command-path)
+- [High-level architecture](#high-level-architecture)
 - [What's new in V7 (and what stayed exactly the same)](#whats-new-in-v7-and-what-stayed-exactly-the-same)
 - [Modules overview](#modules-overview)
 - [Per-environment deploy](#per-environment-deploy)
@@ -56,6 +57,28 @@ ENV=dev ./scripts/cleanup_v7.sh
 Prefer to stay local? Skip straight to the [local monitoring stack](#local-monitoring-stack) — `docker compose up --build -d` brings up `flask-api`, `web-ui`, `prometheus`, `grafana`, and `alertmanager` with no AWS account required.
 
 **You'll know it worked when** `curl -I http://<the-hostname>` returns `HTTP/1.1 200 OK`, `kubectl get pods -n platform` shows 6 pods all `Running 1/1`, and `kubectl get pods -n monitoring` shows the Prometheus/Grafana/Alertmanager pods `Running`.
+
+---
+
+## High-Level Architecture
+
+V6's cluster stays as it is. V7 adds a way to notice problems, a process for responding to them, and a
+pipeline that deploys for you.
+
+```mermaid
+flowchart TB
+    GH[GitHub Actions + OIDC<br/>provision.yml] -->|Terraform + Helm| EKS
+    subgraph EKS["EKS cluster from V6's modules"]
+      direction LR
+      APPS[web-ui, node-api, flask-api] -->|/metrics| STACK[global-monitoring:<br/>Prometheus, Grafana, Alertmanager]
+    end
+    STACK -->|alerts| SLACK[Slack]
+    SLACK --> HUMAN[On-call engineer]
+    HUMAN --> RISK[risk_score.sh<br/>run by hand]
+    RISK --> PM[Severity and postmortem<br/>sre/incidents]
+```
+
+Detailed deploy and monitoring diagrams are under [Architecture diagrams](#architecture-diagrams).
 
 ---
 
@@ -608,7 +631,7 @@ flowchart LR
 
 ### Web UI guide
 
-`apps/web-ui/index.html` is the same client-side, self-contained readiness console every version of this course shares — a version picker (V1 through Capstone) that recomputes a simulated readiness score from three dropdowns (evidence, automation, governance quality) with no backend calls. It is **not** wired to `flask-api`/`node-api` or to real incident signals; the "AIOps" and "incident response" language in its V7 tile is narrative framing for the version-picker story, not a live integration with `monitoring/` or `scripts/risk_score.sh`.
+`apps/web-ui/index.html` is the same client-side, self-contained readiness console every version of this course shares — a version picker (V1 through the full platform) that recomputes a simulated readiness score from three dropdowns (evidence, automation, governance quality) with no backend calls. It is **not** wired to `flask-api`/`node-api` or to real incident signals; the "AIOps" and "incident response" language in its V7 tile is narrative framing for the version-picker story, not a live integration with `monitoring/` or `scripts/risk_score.sh`.
 
 Selecting V7 in the picker shows:
 

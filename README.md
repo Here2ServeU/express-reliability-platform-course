@@ -18,8 +18,8 @@ Think of your platform like a hospital building:
 - The **cloud and observability layer** (V4:V6) puts the platform on AWS, adds dashboards, moves to Kubernetes, and organizes infrastructure into reusable, cost-aware modules with Helm.
 - The **delivery and governance layer** (V7:V8) separates shared/live infrastructure, automates deployment with GitHub Actions, and adds GitOps governance with Trivy, OPA Gatekeeper, Checkov, and AIOps risk scoring.
 - **V8** combines GitOps governance with the complete incident pipeline: Slack, ServiceNow, Jira, chaos drills, and postmortems.
-- **V9: Capstone** is the self-contained final platform. It adds automated recovery and a chaos suite, then bundles the application services, CI/CD, GitOps, AIOps, observability, alerting, and FinOps into one deployable project.
-- **V10: Multi-Cloud** ports the finished platform to Google Cloud (GKE, Artifact Registry, Workload Identity) and adds Cloud Monitoring SLOs with burn-rate alerting, proving the design is not tied to one cloud.
+- **V9: Self-Healing Platform** adds automated recovery and a chaos suite that records recovery-time evidence, on the EKS platform with governance and the incident pipeline from V8.
+- **V10: Multi-Cloud** builds on V9: it keeps the AWS path, adds Google Cloud beside it (GKE, Artifact Registry, Workload Identity), and adds Cloud Monitoring SLOs with burn-rate alerting. One command deploys to either cloud.
 
 ---
 
@@ -95,71 +95,84 @@ Each version builds directly on the previous one. **Never skip a version.**
 | **V6** | Rebuild EKS with reusable modules, dev/prod tfvars, tags, and budgets | Create disciplined, repeatable, cost-aware infrastructure |
 | **V7** | Add AIOps incident management: risk-score, classify, summarize, and route incidents to Slack | Convert raw signals into scored, audited incidents on shared/live Terraform layers deployed via OIDC |
 | **V8** | Add GitOps governance, Trivy, OPA Gatekeeper, Checkov, risk scoring, Slack, ITSM tickets, chaos drills, and postmortems | Block unsafe deploys and exercise the full incident pipeline |
-| **V9: Capstone** | Add automated recovery scripts and a chaos suite to the complete platform | A finished, self-healing system ready for enterprise delivery or an interview |
-| **V10: Multi-Cloud** | Port the platform to GCP GKE with Workload Identity, Managed Prometheus, and SLOs as code with burn-rate alerts | Show the same reliability design running on a second cloud; answers "Do you know GCP?" with working code |
+| **V9: Self-Healing Platform** | Add automated recovery scripts and a chaos suite to the platform | A self-healing system with recovery-time evidence you can show in an interview |
+| **V10: Multi-Cloud** | Keep V9 on AWS and add GCP GKE with Workload Identity, Managed Prometheus, and SLOs as code with burn-rate alerts | Deploy the same platform to either cloud from one repository; answers "Do you know GCP?" with working code |
 
 ---
 
 ## Platform Architecture
 
-The diagram below is the architecture you build incrementally across V1:V9 and present as the V9
-capstone. Users hit an edge-protected ingress; GitOps (ArgoCD) delivers the workloads from Git;
-observability watches the golden signals; and the intelligence layer turns alerts into incidents that
-are routed to Slack with a one-command fix and reconciled back to Git state.
+This is the platform you have at the end of V10. Each label shows the version that introduces that
+part. Traffic flows from the load balancer through the three services. Terraform builds the cloud
+underneath them, GitHub Actions and Helm deliver them, and the monitoring and response layers keep them
+healthy. The services, charts, governance, and response layers are the same on both clouds.
 
 ```mermaid
 flowchart TB
-    U[Users / Partners] --> WAF[WAF + Edge Protection]
-    WAF --> ALB[ALB / Ingress Controller]
-    ALB --> UI[Web UI]
-    UI --> NODE[Node API]
-    UI --> FLASK[Flask Scoring API]
-    NODE --> DATA[(Transactional Data Store)]
-    FLASK --> DATA
+    U[Users] --> LB[Cloud load balancer]
+    LB --> UI
 
-    subgraph DELIVERY["GitOps Delivery: V4, V6, V9"]
+    subgraph RUNTIME["Kubernetes: probes and autoscaling (V5), Helm (V6)"]
       direction LR
-      GIT[Git Repository] --> CI[GitHub Actions + OIDC]
-      CI --> SCAN[Trivy · Snyk · OPA policy gate]
-      SCAN --> ECR[(ECR images)]
-      SCAN --> ARGO[ArgoCD]
-      ARGO --> K8S[EKS Workloads]
-    end
-    K8S -.runs.-> NODE
-    K8S -.runs.-> FLASK
-    K8S -.runs.-> UI
-
-    subgraph OBSERVE["Observability: V5, V9"]
-      direction LR
-      NODE --> PROM[Prometheus]
-      FLASK --> PROM
-      UI --> PROM
-      PROM --> GRAF[Grafana dashboards]
-      PROM --> AM[Alertmanager]
+      UI[Web UI] --> NODE[Node API] --> FLASK[Flask risk scorer]
     end
 
-    subgraph INTEL["Intelligence & Response: V7, V8, V9"]
+    subgraph CLOUD["Cloud foundation: Terraform (V4), modules (V6), bootstrap / shared / live (V9)"]
       direction LR
-      AM --> AIOPS[AIOps: detect + risk score + summarize]
-      AIOPS --> SLACK[Slack alert with resolve script]
-      AIOPS --> ITSM[ServiceNow / Jira tickets]
-      AIOPS --> REMED[Predictive / guided remediation]
+      AWS["AWS (V3+)<br/>EKS, ECR, VPC<br/>S3 + DynamoDB state"]
+      GCP["Google Cloud (V10)<br/>GKE, Artifact Registry, VPC + Cloud NAT<br/>GCS state, Workload Identity"]
     end
+    CLOUD --> RUNTIME
 
-    SLACK --> ENG[On-call Engineer]
-    ENG --> REMED
-    REMED -->|rollback / change| GIT
-    REMED -->|restart / scale| K8S
+    subgraph DELIVERY["Delivery"]
+      direction LR
+      GIT[Git] --> CI["GitHub Actions + OIDC (V7)"]
+      CI --> SCAN["Trivy + Checkov (V8)"]
+      SCAN --> RISK["AIOps risk score (V7)"]
+      RISK --> IMG[(Images tagged by git SHA)]
+      IMG --> HELM[Helm deploy]
+    end
+    HELM --> GK["OPA Gatekeeper admission (V8)"]
+    GK --> RUNTIME
 
-    IAC[Terraform Modules: V5, V6, V9] --> CLOUD[AWS Account / VPC]
-    CLOUD --> K8S
+    subgraph OBSERVE["Observability"]
+      direction LR
+      PROM["Prometheus + Grafana (V4)"]
+      GMP["Managed Prometheus + Cloud Monitoring SLOs (V10, GCP)"]
+    end
+    RUNTIME -->|/metrics| OBSERVE
+
+    subgraph RESPOND["Response"]
+      direction LR
+      ALERT["Alertmanager to Slack (V7)"] --> ITSM["ServiceNow + Jira + postmortems (V8)"]
+      HEAL["Recovery policy loop (V9)"]
+      CHAOS["Chaos drills (V8), suite (V9), error-budget burn (V10)"]
+    end
+    OBSERVE --> ALERT
+    HEAL -->|restart / scale / fix| RUNTIME
+    CHAOS -->|inject failure| RUNTIME
 ```
 
-> Full written breakdown: [capstone reference architecture](express-reliability-platform-v09/docs/README.md).
+| Layer | Introduced in | Extended in |
+|---|---|---|
+| Three services | V2 | V10 (accurate 5xx metrics, error-rate chaos knob) |
+| Containers, then cloud runtime | V2, V3 (ECS) | V5 (EKS), V10 (GKE) |
+| Terraform | V4 | V6 (modules, per-environment), V9 (layers), V10 (second cloud) |
+| Monitoring and alerting | V4 | V7 (in-cluster stack, Slack), V10 (SLOs and burn-rate alerts) |
+| CI/CD | V7 | V8 (security gates), V10 (keyless on both clouds) |
+| Governance | V8 | Carried into V9 and V10 |
+| Incident pipeline | V7 (intro) | V8 (Slack, ServiceNow, Jira, postmortems) |
+| Self-healing and chaos | V5 (pod replacement), V8 (drills) | V9 (recovery loop, chaos suite), V10 (Drill 5) |
+
+> **Argo CD:** V8 teaches GitOps with Argo CD. V9 and V10 deploy with Helm, so Argo CD is not part of
+> the diagram above. See [V8's README](express-reliability-platform-v08/README.md).
+
+> Each version's README has its own high-level architecture. Full written breakdown of the finished
+> platform: [V10 docs](express-reliability-platform-v10/docs/README.md).
 
 ---
 
-## The 5 Phases
+## The 6 Phases
 
 ```
 Phase 1: Local Foundations (V1:V3)
@@ -176,13 +189,13 @@ Phase 4: Governance + Incident Response (V8)
   Add GitOps governance, then connect Slack alerts, ServiceNow and Jira tickets, chaos drills,
   and automated postmortems.
 
-Phase 5: V9 Capstone
+Phase 5: V9 Self-Healing Platform
   Add self-healing recovery scripts, a recovery policy loop, and a chaos suite that records
   MTTR evidence in one documented, presentable system.
 
 Phase 6: V10 Multi-Cloud
-  Move the platform to Google Cloud: GKE, Artifact Registry, Workload Identity, keyless CI/CD,
-  Managed Prometheus, and Cloud Monitoring SLOs with an error-budget chaos drill.
+  Keep the V9 platform on AWS and add Google Cloud beside it: GKE, Artifact Registry, Workload
+  Identity, keyless CI/CD, Managed Prometheus, and Cloud Monitoring SLOs with an error-budget chaos drill.
 ```
 
 ---

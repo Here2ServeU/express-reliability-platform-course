@@ -27,7 +27,7 @@ fi
 # If /metrics is unreachable, treat as low risk (service may be starting)
 ERROR_RATE=0
 if PUBLIC=$(kubectl get svc web-ui-web-ui -n platform \
-    -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && [ -n "$PUBLIC" ]; then  # GKE load balancers expose an IP, not a hostname
+    -o jsonpath='{.status.loadBalancer.ingress[0].ip}{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null) && [ -n "$PUBLIC" ]; then  # GKE load balancers expose an IP, EKS a hostname
   ERROR_RATE=$(curl -s --max-time 5 \
     "http://${PUBLIC}/metrics" 2>/dev/null | \
     grep 'flask_api_requests_total.*status="5' | \

@@ -55,7 +55,7 @@
     .platform { padding: 12px; box-shadow: none; }
     .platform strong { display: block; margin-bottom: 3px; }
     .platform span { color: var(--muted); font-size: 0.9rem; }
-    .capstone { margin-top: 22px; }
+    .growth-summary { margin-top: 22px; }
     .creator-panel { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 12px; }
     .creator-credit { margin-top: 12px; border-left: 4px solid var(--gold); background: #fff8eb; border-radius: 8px; padding: 12px; color: #5f420c; font-weight: 700; }
     .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -122,7 +122,7 @@
       </section>
 
       <aside aria-labelledby="path-title">
-        <h2 id="path-title">V1 to Capstone Growth Path</h2>
+        <h2 id="path-title">Platform Growth Path</h2>
         <div class="versions">
           <button class="version" type="button" data-version="v1"><strong>V1</strong><span>Local UI, simple service checks, first reliability vocabulary.</span></button>
           <button class="version current" type="button" data-version="v2"><strong>V2</strong><span>Dockerized UI, Node API, Flask scoring API, simple readiness check.</span></button>
@@ -132,12 +132,12 @@
           <button class="version" type="button" data-version="v6"><strong>V6</strong><span>Terraform modules, repeatable infrastructure, cost-aware environments.</span></button>
           <button class="version" type="button" data-version="v7"><strong>V7</strong><span>Runbooks, incident response, release gates, operational evidence.</span></button>
           <button class="version" type="button" data-version="v8"><strong>V8</strong><span>GitOps governance, incident automation, ITSM, and chaos drills.</span></button>
-          <button class="version" type="button" data-version="v9"><strong>V9 Capstone</strong><span>Self-healing recovery and the complete resilience platform.</span></button>
+          <button class="version" type="button" data-version="v9"><strong>V9 Self-Healing</strong><span>Self-healing recovery and the complete resilience platform.</span></button>
         </div>
       </aside>
     </div>
 
-    <section class="capstone" aria-labelledby="market-title">
+    <section class="growth-summary" aria-labelledby="market-title">
       <h2 id="market-title">Market-Inspired Platform Capabilities</h2>
       <p class="muted" id="marketCopy">The learning path borrows the major capability patterns seen across leading observability, AIOps, security, and FinOps products, then rebuilds them as a teachable student platform. In V5, the platform adds <strong>Kubernetes runtime reliability</strong>.</p>
       <div class="platforms">
@@ -168,12 +168,12 @@
 
       <div class="creator-panel">
         <label>
-          Capstone creator name
+          Creator name
           <input id="creatorName" placeholder="Student name" autocomplete="off" />
         </label>
         <button type="button" onclick="saveCreator()">Save Creator</button>
       </div>
-      <div class="creator-credit" id="creatorCredit">Capstone preview: created by a T2S student engineer.</div>
+      <div class="creator-credit" id="creatorCredit">Platform preview: created by a T2S student engineer.</div>
     </section>
   </main>
 
@@ -260,17 +260,17 @@
         scores: [89, 83, 85, 82],
         notes: ["Risk scoring", "Signal priority", "Secure summaries", "AIOps triage"],
         adds: ["GitOps governance", "ITSM workflows", "Chaos drills", "Automated postmortems"],
-        next: "Move to the V9 capstone for automated recovery and full-platform resilience evidence."
+        next: "Move to V9 for automated recovery and full-platform resilience evidence."
       },
       v9: {
         label: "V9",
-        badge: "Version 9: Self-Healing Capstone",
+        badge: "Version 9: Self-Healing Platform",
         focus: "Complete self-healing reliability platform",
-        description: "V9 is the capstone: it adds automated recovery and a chaos suite to the governed incident pipeline.",
+        description: "V9 adds automated recovery and a chaos suite to the governed incident pipeline.",
         scores: [90, 84, 87, 84],
         notes: ["Chaos drills", "Incident records", "Ticket evidence", "Correlation signals"],
         adds: ["Recovery policy", "Chaos suite", "MTTR evidence", "Portfolio-ready platform"],
-        next: "Use the V9 capstone evidence to explain the platform as a student-built reliability portfolio."
+        next: "Use the V9 evidence to explain the platform as a student-built reliability portfolio."
       }
     };
 
@@ -360,19 +360,19 @@
       const name = document.getElementById("creatorName").value.trim();
       const credit = document.getElementById("creatorCredit");
       if (!name) {
-        credit.textContent = "Capstone preview: created by a T2S student engineer.";
+        credit.textContent = "Platform preview: created by a T2S student engineer.";
         localStorage.removeItem("t2sCreatorName");
         return;
       }
       localStorage.setItem("t2sCreatorName", name);
-      credit.textContent = `Capstone preview: created by ${name}, T2S regulated platform engineer.`;
+      credit.textContent = `Platform preview: created by ${name}, T2S regulated platform engineer.`;
     }
 
     const savedCreator = localStorage.getItem("t2sCreatorName");
     if (savedCreator) {
       document.getElementById("creatorName").value = savedCreator;
       document.getElementById("creatorCredit").textContent =
-        `Capstone preview: created by ${savedCreator}, T2S regulated platform engineer.`;
+        `Platform preview: created by ${savedCreator}, T2S regulated platform engineer.`;
     }
 
     selectVersion(activeVersion);

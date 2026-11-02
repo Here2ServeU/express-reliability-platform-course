@@ -1,0 +1,149 @@
+name: Deploy Platform (EKS)
+
+# Keyless CI/CD: GitHub's OIDC token is exchanged for a short-lived IAM role
+# session. No AWS access keys in secrets.
+#
+# Run scripts/deploy_aws.sh once first so the bootstrap layer exists.
+#
+# Repository secrets:
+#   AWS_ROLE_ARN   IAM role that trusts this repository through GitHub OIDC
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-aws-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  CLUSTER: reliability-platform-cluster
+  NAMESPACE: platform
+  TAG: ${{ github.sha }}
+
+jobs:
+  scan-images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and scan each image
+        run: |
+          for SVC in flask-api node-api web-ui; do
+            echo "=== Scanning: ${SVC} ==="
+            docker buildx build --load --platform linux/amd64 -t ${SVC}:scan-candidate ./apps/${SVC}
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              -v $HOME/.cache/trivy:/root/.cache/trivy \
+              aquasec/trivy:0.56.2 image \
+              --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed \
+              --format table ${SVC}:scan-candidate
+            echo "${SVC}: SCAN PASSED"
+          done
+
+  checkov-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Checkov on Terraform
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: platform/terraform/aws/
+          framework: terraform
+          output_format: cli
+          soft_fail: true   # report findings without blocking; set false to enforce
+          skip_check: CKV_AWS_111   # Skip wildcard IAM check (course uses admin role)
+
+  deploy-infra:
+    runs-on: ubuntu-latest
+    needs: [scan-images, checkov-scan]
+    permissions:
+      id-token: write   # lets GitHub mint the OIDC token AWS trusts
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: hashicorp/setup-terraform@v3
+      - name: Apply shared layer (network)
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET=reliability-platform-v10-tfstate-${ACCOUNT}
+          terraform -chdir=platform/terraform/aws/shared init -input=false \
+            -backend-config="bucket=${BUCKET}"
+          terraform -chdir=platform/terraform/aws/shared apply -auto-approve
+      - name: Apply live layer (EKS)
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          BUCKET=reliability-platform-v10-tfstate-${ACCOUNT}
+          terraform -chdir=platform/terraform/aws/live init -input=false \
+            -backend-config="bucket=${BUCKET}"
+          terraform -chdir=platform/terraform/aws/live apply -auto-approve \
+            -var "state_bucket=${BUCKET}"
+
+  deploy-apps:
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: azure/setup-helm@v4
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name ${CLUSTER} --region ${AWS_REGION}
+      - name: AIOps risk score
+        run: |
+          chmod +x scripts/risk_score.sh
+          ./scripts/risk_score.sh
+      - name: Namespace and service account
+        run: |
+          kubectl apply -f governance/namespaces/platform-ns.yaml
+          kubectl create serviceaccount platform-workload -n ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
+      - name: Push images and deploy Helm charts
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          ECR=${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/reliability-platform
+          aws ecr get-login-password --region ${AWS_REGION} | \
+            docker login --username AWS --password-stdin ${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com
+          for SVC in flask-api node-api web-ui; do
+            docker buildx build --platform linux/amd64 \
+              -t ${ECR}/${SVC}:${TAG} --push ./apps/${SVC}
+            helm upgrade --install "$SVC" "platform/helm/$SVC" \
+              --namespace ${NAMESPACE} --create-namespace \
+              --set image.repository="${ECR}/${SVC}" \
+              --set image.tag="${TAG}" \
+              --wait --timeout 10m
+          done
+
+  chaos-drill:
+    runs-on: ubuntu-latest
+    needs: deploy-apps
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Configure kubectl
+        run: aws eks update-kubeconfig --name ${CLUSTER} --region ${AWS_REGION}
+      - name: Run pod-kill chaos drill
+        run: |
+          chmod +x chaos/kill_pod.sh incident/slack_alert.sh
+          NAMESPACE=${NAMESPACE} RECOVERY_SLO=60 ./chaos/kill_pod.sh flask-api-flask-api

@@ -1,15 +1,41 @@
-# Express Reliability Platform V9: Capstone
+# Express Reliability Platform V9: Self-Healing Platform
 
 ## Purpose
 
-V9 is the final, standalone capstone. It builds on V8's GitOps governance and complete incident pipeline, then adds self-healing recovery scripts, a recovery policy loop, and a repeatable chaos suite that records MTTR evidence.
+V9 builds on V8's governance and complete incident pipeline, then adds self-healing recovery scripts, a recovery policy loop, and a repeatable chaos suite that records MTTR evidence. V10 builds on this version by adding a second cloud.
 
 ## What You Will Demonstrate
 
-- A three-service AWS EKS platform with monitoring, alerting, GitOps, and governance.
+- A three-service AWS EKS platform with monitoring, alerting, and governance.
 - Automated Slack, ServiceNow, Jira, and postmortem incident workflows.
 - Recovery for crash loops, memory pressure, and unreachable services.
 - Four controlled chaos drills with recorded recovery evidence.
+
+## High-Level Architecture
+
+V9 closes the loop: failures are injected on purpose, detected, and fixed automatically, and the recovery
+time is recorded as evidence. The cluster is built in Terraform layers and the apps are installed with Helm.
+
+```mermaid
+flowchart TB
+    subgraph TF["Terraform layers"]
+      direction LR
+      BOOT[bootstrap<br/>S3, DynamoDB, ECR] --> SHARED[shared<br/>VPC, subnets] --> LIVE[live<br/>EKS module]
+    end
+    LIVE --> EKS
+    B[Browser] --> LB[Load balancer] --> UI
+    subgraph EKS["EKS cluster"]
+      direction LR
+      GK[OPA Gatekeeper] -->|admits| UI[web-ui]
+      UI --> NODE[node-api] --> FLASK[flask-api]
+    end
+    CHAOS[Chaos suite<br/>four drills] -->|inject failure| EKS
+    HEAL[recovery_policy.sh<br/>crash loop, memory, unreachable] -->|watch and fix| EKS
+    CHAOS --> EVID[MTTR evidence]
+    EKS -->|metrics and alerts| INC[Slack, ServiceNow, Jira, postmortem]
+```
+
+---
 
 ## Project Structure
 
@@ -26,7 +52,7 @@ express-reliability-platform-v09/
 └── docs/                         # portfolio and deployment guide
 ```
 
-## Run the Capstone
+## Run the Platform
 
 ```sh
 cd express-reliability-platform-v09
@@ -41,7 +67,7 @@ export JIRA_DOMAIN="your-domain.atlassian.net"
 export JIRA_EMAIL="you@example.com"
 export JIRA_API_TOKEN="YOUR_TOKEN"
 
-./scripts/deploy_capstone.sh
+./scripts/deploy_platform.sh
 ```
 
 Start auto-recovery in one terminal and run the chaos suite in another:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# deploy_capstone.sh — one command brings up the complete platform.
+# deploy_platform.sh — one command brings up the complete platform.
 set -e
 REGION="${AWS_REGION:-us-east-1}"
 NAMESPACE="platform"
@@ -43,5 +43,5 @@ echo '=== Step 7: Deploy monitoring ==='
 kubectl apply -f monitoring/ 2>/dev/null || echo "  (apply monitoring via your Prometheus/Grafana stack)"
 
 echo '================================================='
-echo 'Capstone deployment complete.'
+echo 'Platform deployment complete.'
 echo '================================================='
