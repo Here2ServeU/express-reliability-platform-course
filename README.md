@@ -308,3 +308,13 @@ If a file is missing in your personal copy, get it from the matching version fol
 ## License
 
 This repository is licensed under [LICENSE](LICENSE).
+
+---
+
+## About the Author
+
+**Rev. Dr. Emmanuel Naweji** is a Senior Cloud and Site Reliability Engineer with 10+ years of experience architecting, securing, and scaling cloud infrastructure, including roles at IBM and Comcast. He designs self-healing, multi-cloud platforms on AWS, Azure, and GCP for regulated environments such as finance and healthcare.
+
+He is a Ph.D. Candidate at [National University](https://www.nu.edu), with a dissertation on *Quantum-Augmented Agentic Orchestration for Cyber-Physical Resilience in Cloud-Native Health Systems*, and the CEO and Founder of **Transformed 2 Succeed (T2S)**, which equips aspiring engineers with practical Cloud and DevOps skills. He is also a pastor and mentor, and the founder of Kids Teck Inc, which gives the next generation early access to technology education.
+
+[Website](https://www.emmanuelnaweji.com/) · [LinkedIn](https://linkedin.com/in/ready2assist) · [Medium](https://here2serveyou.medium.com/) · [GitHub](https://github.com/Here2ServeU)
